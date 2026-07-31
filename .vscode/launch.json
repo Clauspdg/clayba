@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Web: Next.js dev",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Admin: Next.js dev",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/admin",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Functions: Debug (emulator)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/functions",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["run", "serve"],
+      "console": "integratedTerminal"
+    }
+  ]
+}

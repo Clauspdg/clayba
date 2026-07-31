@@ -1,0 +1,13 @@
+{
+  "version": "0.1.0",
+  "major": 0,
+  "minor": 1,
+  "patch": 0,
+  "sprint": "4.6",
+  "androidVersionCodes": {
+    "driver": 1,
+    "passenger": 1
+  },
+  "commit": "dev",
+  "buildDate": "2026-07-31T16:35:02.671Z"
+}

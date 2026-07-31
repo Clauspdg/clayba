@@ -1,0 +1,63 @@
+rules_version = '2';
+
+// -----------------------------------------------------------------------------
+// The Ride — Cloud Storage Security Rules (Sprint 5, Part 4)
+//
+// Paths match exactly what `@the-ride/firebase/client`'s upload helpers
+// write to (`packages/firebase/src/client/storage.ts`) — driver
+// profile-photo/documents and passenger avatar are keyed by the uploading
+// user's auth uid (not a Firestore document id, which may not exist yet at
+// upload time — see that file's comment for why). Anything not explicitly
+// listed below falls through to the deny-all default at the bottom.
+// -----------------------------------------------------------------------------
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /drivers/{uid}/profile-photo.jpg {
+      allow read: if isSignedIn();
+      allow write: if isOwner(uid) && isImage() && isUnder5MB();
+    }
+
+    // Documents are sensitive (license, insurance, background check) — only
+    // the owner may read/write them, never publicly and never any other
+    // signed-in user. Admin review tooling reads these via the Admin SDK,
+    // which bypasses these rules entirely.
+    match /drivers/{uid}/documents/{document} {
+      allow read, write: if isOwner(uid) && isUnder5MB();
+    }
+
+    // No client-side ownership check against the `vehicles` Firestore
+    // collection yet (would need a `firestore.get()` cross-reference from a
+    // vehicle to its owning driver's uid) — vehicle photo writes go through
+    // the Admin SDK for now. See docs/authentication.md's "Remaining work".
+    match /vehicles/{vehicleId}/photos/{photo} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /passengers/{uid}/avatar.jpg {
+      allow read: if isSignedIn();
+      allow write: if isOwner(uid) && isImage() && isUnder5MB();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

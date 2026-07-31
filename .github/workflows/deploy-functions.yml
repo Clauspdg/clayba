@@ -1,0 +1,48 @@
+name: Deploy Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "functions/**"
+      - "packages/types/**"
+      - "packages/utils/**"
+      - "firestore.rules"
+      - "storage.rules"
+      - "firestore.indexes.json"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Cloud Functions + Firestore/Storage rules
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build functions
+        run: pnpm turbo run build --filter="@the-ride/functions"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy Cloud Functions
+        run: pnpm exec firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive
+
+      - name: Deploy Firestore + Storage rules
+        run: pnpm exec firebase deploy --only firestore:rules,storage --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive

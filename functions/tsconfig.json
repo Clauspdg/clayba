@@ -1,0 +1,17 @@
+{
+  "extends": "../packages/config/typescript/node.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib",
+    "baseUrl": ".",
+    "paths": {
+      "@the-ride/types": ["../packages/types/src"],
+      "@the-ride/types/*": ["../packages/types/src/*"],
+      "@the-ride/utils": ["../packages/utils/src"],
+      "@the-ride/utils/*": ["../packages/utils/src/*"]
+    }
+  },
+  "compileOnSave": true,
+  "include": ["src"],
+  "exclude": ["node_modules", "lib"]
+}

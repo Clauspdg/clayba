@@ -1,0 +1,41 @@
+{
+  "projects": {
+    "default": "the-ride-dev",
+    "development": "the-ride-dev",
+    "staging": "the-ride-staging",
+    "production": "the-ride-prod"
+  },
+  "targets": {
+    "the-ride-dev": {
+      "hosting": {
+        "web": [
+          "the-ride-web-dev"
+        ],
+        "admin": [
+          "the-ride-admin-dev"
+        ]
+      }
+    },
+    "the-ride-staging": {
+      "hosting": {
+        "web": [
+          "the-ride-web-staging"
+        ],
+        "admin": [
+          "the-ride-admin-staging"
+        ]
+      }
+    },
+    "the-ride-prod": {
+      "hosting": {
+        "web": [
+          "the-ride-web-prod"
+        ],
+        "admin": [
+          "the-ride-admin-prod"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

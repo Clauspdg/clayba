@@ -1,0 +1,30 @@
+{
+  "name": "@the-ride/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared ESLint, TypeScript, and Tailwind configuration for The Ride monorepo.",
+  "exports": {
+    "./eslint/base": "./eslint/base.mjs",
+    "./eslint/next": "./eslint/next.mjs",
+    "./eslint/react-native": "./eslint/react-native.mjs",
+    "./eslint/node": "./eslint/node.mjs",
+    "./typescript/base.json": "./typescript/base.json",
+    "./typescript/nextjs.json": "./typescript/nextjs.json",
+    "./typescript/react-native.json": "./typescript/react-native.json",
+    "./typescript/node.json": "./typescript/node.json",
+    "./tailwind/base": "./tailwind/base.ts",
+    "./env": "./env/index.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.10.0",
+    "typescript-eslint": "^8.5.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.6.0",
+    "expo": "~52.0.0",
+    "globals": "^14.0.0"
+  }
+}

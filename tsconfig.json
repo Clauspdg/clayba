@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "references": [
+    { "path": "apps/web" },
+    { "path": "apps/admin" },
+    { "path": "apps/driver-app" },
+    { "path": "apps/passenger-app" },
+    { "path": "packages/ui" },
+    { "path": "packages/firebase" },
+    { "path": "packages/types" },
+    { "path": "packages/utils" },
+    { "path": "packages/api" },
+    { "path": "packages/hooks" },
+    { "path": "functions" }
+  ]
+}

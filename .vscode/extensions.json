@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "firsttris.vscode-jest-runner",
+    "expo.vscode-expo-tools",
+    "toba.vsfire",
+    "mikestead.dotenv",
+    "eamodio.gitlens",
+    "usernamehw.errorlens",
+    "christian-kohler.path-intellisense",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}

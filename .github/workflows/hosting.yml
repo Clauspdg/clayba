@@ -1,0 +1,67 @@
+name: Hosting (Staging / Production)
+
+# Manual dispatch only (Sprint 4.6, Parts 8-9: "prepare, do not deploy
+# automatically"). deploy-web.yml/deploy-admin.yml remain the existing
+# auto-deploy-on-push-to-main path for the default Firebase project; this
+# workflow is the explicit, operator-triggered path for staging and
+# production, matching scripts/deploy-hosting.mjs's environment selection.
+# See docs/deployment.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which environment to build and deploy"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Build + Deploy Hosting (${{ github.event.inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Quality gates
+        run: |
+          pnpm turbo run lint
+          pnpm turbo run type-check
+          pnpm turbo run test
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Build + deploy hosting
+        env:
+          # Placeholders — configure real values as repository/environment
+          # secrets before running this workflow for real. No secrets are
+          # embedded in this file.
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+        run: node scripts/deploy-hosting.mjs ${{ github.event.inputs.environment }} --deploy

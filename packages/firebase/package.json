@@ -1,0 +1,39 @@
+{
+  "name": "@the-ride/firebase",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared Firebase client/admin SDK wrappers: Authentication, Firestore, Storage, and FCM.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./client/native-persistence": "./src/client/native-persistence.ts",
+    "./admin": "./src/admin/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./firestore": "./src/firestore/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "firebase": "^10.14.0",
+    "firebase-admin": "^12.5.0",
+    "@the-ride/types": "workspace:*",
+    "@the-ride/utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "@react-native-async-storage/async-storage": "1.23.1"
+  },
+  "peerDependenciesMeta": {
+    "@react-native-async-storage/async-storage": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@the-ride/config": "workspace:*",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "typescript": "^5.6.0"
+  }
+}

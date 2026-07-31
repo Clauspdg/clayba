@@ -1,0 +1,17 @@
+Copyright (c) 2026 The Ride. All Rights Reserved.
+
+This source code and all associated files are the proprietary and
+confidential property of The Ride and its owner(s). Unauthorized copying,
+modification, distribution, or use of this software, via any medium, is
+strictly prohibited without prior written permission.
+
+NO LICENSE, EXPRESS OR IMPLIED, TO ANY INTELLECTUAL PROPERTY RIGHTS IS
+GRANTED BY THIS DOCUMENT.
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+To open-source any part of this project, replace this file with the text
+of the chosen license (e.g. MIT, Apache-2.0) and update the `license`
+field in each `package.json`.

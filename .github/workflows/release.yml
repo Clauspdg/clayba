@@ -1,0 +1,67 @@
+name: Release
+
+# Manual dispatch only — runs the full quality gate, then assembles
+# /release/v{version}/ (Sprint 4.6, Part 5) and uploads it as a workflow
+# artifact. Deliberately does NOT publish a GitHub Release automatically;
+# publishing is a separate, deliberate step an operator takes after
+# reviewing the generated artifact (`gh release create`, see
+# docs/release-process.md) — this workflow only prepares it.
+#
+# Real Android binaries require a prior EAS build (see android.yml /
+# docs/android-build.md); pass their downloaded location as
+# artifacts-dir to bundle real .apk/.aab files instead of the generator's
+# placeholders.
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifacts-dir:
+        description: "Path to downloaded EAS build outputs (optional — omit to generate placeholder binaries)"
+        required: false
+        type: string
+
+jobs:
+  release:
+    name: Build release folder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Quality gates
+        run: |
+          pnpm turbo run lint
+          pnpm turbo run type-check
+          pnpm turbo run test
+
+      - name: Generate release folder
+        run: |
+          if [ -n "${{ github.event.inputs.artifacts-dir }}" ]; then
+            node scripts/generate-release.mjs --artifacts-dir "${{ github.event.inputs.artifacts-dir }}"
+          else
+            node scripts/generate-release.mjs
+          fi
+
+      - name: Show version
+        run: node scripts/version.mjs show
+
+      - name: Upload release folder as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-ride-release
+          path: release/
+          retention-days: 30

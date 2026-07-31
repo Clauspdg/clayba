@@ -1,0 +1,23 @@
+{
+  "extends": "../../packages/config/typescript/react-native.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@the-ride/ui": ["../../packages/ui/src"],
+      "@the-ride/ui/*": ["../../packages/ui/src/*"],
+      "@the-ride/firebase": ["../../packages/firebase/src"],
+      "@the-ride/firebase/*": ["../../packages/firebase/src/*"],
+      "@the-ride/types": ["../../packages/types/src"],
+      "@the-ride/types/*": ["../../packages/types/src/*"],
+      "@the-ride/utils": ["../../packages/utils/src"],
+      "@the-ride/utils/*": ["../../packages/utils/src/*"],
+      "@the-ride/api": ["../../packages/api/src"],
+      "@the-ride/api/*": ["../../packages/api/src/*"],
+      "@the-ride/hooks": ["../../packages/hooks/src"],
+      "@the-ride/hooks/*": ["../../packages/hooks/src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}

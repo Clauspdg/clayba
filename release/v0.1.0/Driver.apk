@@ -1,0 +1,10 @@
+THE RIDE — PLACEHOLDER ARTIFACT
+
+This is NOT a real Android APK. It stands in for
+Driver.apk until a real `eas build` (see docs/android-build.md) has
+produced one and this generator was re-run with --artifacts-dir pointing
+at the downloaded EAS output.
+
+App:     Driver
+Version: 0.1.0
+Format:  APK

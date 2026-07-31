@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@the-ride/ui": ["packages/ui/src"],
+      "@the-ride/ui/*": ["packages/ui/src/*"],
+      "@the-ride/firebase": ["packages/firebase/src"],
+      "@the-ride/firebase/*": ["packages/firebase/src/*"],
+      "@the-ride/types": ["packages/types/src"],
+      "@the-ride/types/*": ["packages/types/src/*"],
+      "@the-ride/utils": ["packages/utils/src"],
+      "@the-ride/utils/*": ["packages/utils/src/*"],
+      "@the-ride/api": ["packages/api/src"],
+      "@the-ride/api/*": ["packages/api/src/*"],
+      "@the-ride/hooks": ["packages/hooks/src"],
+      "@the-ride/hooks/*": ["packages/hooks/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", ".next", ".expo", "coverage"]
+}

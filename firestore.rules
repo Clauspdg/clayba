@@ -1,0 +1,256 @@
+rules_version = '2';
+
+// -----------------------------------------------------------------------------
+// The Ride — Firestore Security Rules
+//
+// RBAC source of truth: packages/types/src/authentication (Role enum,
+// ROLE_PERMISSIONS matrix). These rules enforce the same role model at the
+// database layer as a defense-in-depth backstop — the primary enforcement
+// point is the guards in packages/firebase/src/auth, which every server-side
+// write path (Cloud Functions, Next.js server actions) must call.
+//
+// Collections not listed below fall through to the deny-all default at the
+// bottom of this file.
+// -----------------------------------------------------------------------------
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role;
+    }
+
+    function hasRole(roles) {
+      return isSignedIn() && role() in roles;
+    }
+
+    function isAdmin() {
+      return hasRole(['admin', 'super_admin']);
+    }
+
+    function isOwner(userIdField) {
+      return isSignedIn() && userIdField == request.auth.uid;
+    }
+
+    // --- authentication: users, auditLogs ---
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || hasRole(['support']);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /auditLogs/{logId} {
+      // Written exclusively by the Admin SDK (AuditLogsRepository.record) —
+      // never client-writable, regardless of role.
+      allow read: if hasRole(['admin', 'super_admin']);
+      allow write: if false;
+    }
+
+    // --- drivers: driverApplications, drivers, driverWarnings, driverSuspensions ---
+
+    match /driverApplications/{applicationId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Status transitions (approve/reject/activate) go through
+      // DriversRepository server-side only.
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /drivers/{driverId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher', 'support']));
+      // All mutations (approve/suspend/reactivate/warn/terminate) go through
+      // DriversRepository server-side only.
+      allow write: if isAdmin();
+    }
+
+    match /driverWarnings/{warningId} {
+      allow read: if isSignedIn() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /driverSuspensions/{suspensionId} {
+      allow read: if isSignedIn() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // --- drivers: driverPresence (Sprint 4, Part 2) ---
+    // Document id === driverId (the `drivers` collection id, not the auth uid),
+    // so ownership is resolved the same way as passengers/favoritePlaces: via
+    // a get() on the parent record's userId field.
+
+    match /driverPresence/{driverId} {
+      function isPresenceOwner() {
+        return isSignedIn() && get(/databases/$(database)/documents/drivers/$(driverId)).data.userId == request.auth.uid;
+      }
+
+      allow read: if isPresenceOwner() || hasRole(['admin', 'super_admin', 'dispatcher']);
+      // Heartbeats and status transitions go through DriverPresenceRepository
+      // server-side only (never client-writable directly).
+      allow write: if isAdmin();
+    }
+
+    // --- fleet-management: vehicles ---
+
+    match /vehicles/{vehicleId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || hasRole(['dispatcher']);
+    }
+
+    // --- settings: vehicleCategories (Sprint 3, Part 3) ---
+
+    match /vehicleCategories/{categoryId} {
+      // Publicly readable so the booking flow can list ride tiers before a rider signs in.
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- passengers: passengers, favoritePlaces, paymentPreferences ---
+
+    match /passengers/{passengerId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || hasRole(['support']));
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+
+      function isPassengerOwner() {
+        return isSignedIn() && get(/databases/$(database)/documents/passengers/$(passengerId)).data.userId == request.auth.uid;
+      }
+
+      match /favoritePlaces/{placeId} {
+        allow read, write: if isPassengerOwner() || isAdmin();
+      }
+
+      match /paymentPreferences/{preferenceId} {
+        allow read, write: if isPassengerOwner() || isAdmin();
+      }
+    }
+
+    // --- trips: trips, tripRequests, ratings, reviews ---
+
+    match /trips/{tripId} {
+      allow read: if isSignedIn() && (resource.data.passengerId == request.auth.uid || resource.data.driverId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher', 'support']));
+      allow create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.passengerId == request.auth.uid || resource.data.driverId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
+      allow delete: if false;
+    }
+
+    match /tripRequests/{requestId} {
+      allow read, create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid;
+      allow update, delete: if hasRole(['admin', 'super_admin', 'dispatcher']);
+    }
+
+    // --- trips: rideOffers, dispatchQueue, dispatchEvents, matchingLogs (Sprint 4) ---
+
+    match /rideOffers/{offerId} {
+      allow read: if isSignedIn() && (resource.data.driverId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
+      // Offer creation and accept/decline/expire transitions go through
+      // DispatchService server-side only.
+      allow write: if isAdmin();
+    }
+
+    match /dispatchQueue/{tripRequestId} {
+      // Internal search/expansion state — operational visibility for dispatch staff only.
+      allow read: if hasRole(['admin', 'super_admin', 'dispatcher']);
+      allow write: if isAdmin();
+    }
+
+    match /dispatchEvents/{eventId} {
+      // High-frequency operational log, written exclusively by DispatchService
+      // (analogous to auditLogs, but for dispatch events rather than admin actions).
+      allow read: if hasRole(['admin', 'super_admin', 'dispatcher']);
+      allow write: if false;
+    }
+
+    match /matchingLogs/{logId} {
+      // Scoring-engine debugging/tuning trail, written exclusively by the matching engine.
+      allow read: if hasRole(['admin', 'super_admin', 'dispatcher']);
+      allow write: if false;
+    }
+
+    match /ratings/{ratingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.raterId == request.auth.uid;
+      allow update, delete: if hasRole(['admin', 'super_admin', 'moderator']);
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if hasRole(['admin', 'super_admin', 'moderator']);
+    }
+
+    // --- payments: payments ---
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (resource.data.payerId == request.auth.uid || isAdmin());
+      // Captures/refunds are backend-authoritative (PaymentsRepository).
+      allow write: if isAdmin();
+    }
+
+    // --- wallet: wallets, commissions, transactions ---
+
+    match /wallets/{walletId} {
+      allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /commissions/{commissionId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- reports ---
+
+    match /reports/{reportId} {
+      allow read: if isSignedIn() && (resource.data.reporterId == request.auth.uid || hasRole(['admin', 'super_admin', 'moderator', 'support']));
+      allow create: if isSignedIn() && request.resource.data.reporterId == request.auth.uid;
+      allow update: if hasRole(['admin', 'super_admin', 'moderator']);
+      allow delete: if false;
+    }
+
+    // --- support: supportTickets ---
+
+    match /supportTickets/{ticketId} {
+      allow read: if isSignedIn() && (resource.data.requesterId == request.auth.uid || hasRole(['admin', 'super_admin', 'support']));
+      allow create: if isSignedIn() && request.resource.data.requesterId == request.auth.uid;
+      allow update: if hasRole(['admin', 'super_admin', 'support']);
+      allow delete: if false;
+    }
+
+    // --- settings ---
+
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if hasRole(['admin', 'super_admin']);
+    }
+
+    // --- emergency: emergencyContacts ---
+
+    match /emergencyContacts/{contactId} {
+      allow read, write: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if hasRole(['admin', 'super_admin', 'dispatcher', 'support']);
+    }
+
+    // --- notifications ---
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Sending notifications is backend-only (notification.send permission).
+      allow create: if isAdmin();
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "name": "the-ride",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The Ride — production-grade ride-hailing platform monorepo.",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=@the-ride/web",
+    "build:admin": "turbo run build --filter=@the-ride/admin",
+    "build:driver": "turbo run build --filter=@the-ride/driver-app",
+    "build:passenger": "turbo run build --filter=@the-ride/passenger-app",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --fix",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "type-check": "turbo run type-check",
+    "typecheck": "turbo run type-check",
+    "clean": "turbo run clean && rimraf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx}\"",
+    "version:show": "node scripts/version.mjs show",
+    "version:bump": "node scripts/version.mjs bump",
+    "release": "node scripts/generate-release.mjs",
+    "staging": "node scripts/deploy-hosting.mjs staging",
+    "production": "node scripts/deploy-hosting.mjs production",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.0",
+    "prettier": "^3.3.0",
+    "prettier-plugin-tailwindcss": "^0.6.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
+    "rimraf": "^6.0.0",
+    "eslint": "^9.10.0"
+  },
+  "lint-staged": {
+    "**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ],
+    "**/*.{ts,tsx,js,jsx,json,md,mdx}": [
+      "prettier --write"
+    ]
+  }
+}

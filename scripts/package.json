@@ -1,0 +1,20 @@
+{
+  "name": "@the-ride/scripts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "One-off operational scripts (DEV seeding, release tooling) that need real workspace package resolution — see docs/release-process.md, docs/authentication.md.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "seed:dev": "node --experimental-transform-types seed-dev.ts"
+  },
+  "dependencies": {
+    "@the-ride/firebase": "workspace:*",
+    "@the-ride/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@the-ride/config": "workspace:*",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "The Ride",
+    "slug": "the-ride-passenger",
+    "scheme": "theride",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F62FE"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.theride.passenger"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F62FE"
+      },
+      "package": "com.theride.passenger",
+      "versionCode": 1
+    },
+    "owner": "clauspp",
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "75f5a5e1-4e65-49ca-9f47-135d313376bf"
+      }
+    }
+  }
+}

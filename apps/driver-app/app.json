@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "The Ride — Driver",
+    "slug": "the-ride-driver",
+    "scheme": "theridedriver",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F62FE"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.theride.driver"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F62FE"
+      },
+      "package": "com.theride.driver",
+      "versionCode": 1
+    },
+    "owner": "clauspp",
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "42d0f777-f6a9-4ec5-835e-7d86e9554344"
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"exit code: $?\")",
+      "Bash(eas project:init --non-interactive)",
+      "Bash(eas project:init --non-interactive --force)"
+    ]
+  }
+}

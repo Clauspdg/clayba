@@ -1,0 +1,62 @@
+name: Android Release (EAS)
+
+# Manual dispatch only — triggers an EAS Build for one native app against
+# one build profile (Sprint 4.6, Part 4). Requires an EXPO_TOKEN repository
+# secret (placeholder here, never a real value) generated via
+# `eas login` + `eas whoami --json` on an account with access to both
+# apps' EAS projects. See docs/android-build.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Which app to build"
+        required: true
+        type: choice
+        options:
+          - driver-app
+          - passenger-app
+      profile:
+        description: "EAS build profile (see apps/<app>/eas.json)"
+        required: true
+        type: choice
+        options:
+          - preview
+          - production
+          - production-apk
+
+jobs:
+  build:
+    name: EAS Build (${{ github.event.inputs.app }}, ${{ github.event.inputs.profile }})
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Type-check + lint the app being built
+        run: |
+          pnpm turbo run type-check --filter=@the-ride/${{ github.event.inputs.app }}
+          pnpm turbo run lint --filter=@the-ride/${{ github.event.inputs.app }}
+
+      - name: Run EAS Build
+        working-directory: apps/${{ github.event.inputs.app }}
+        run: eas build --platform android --profile ${{ github.event.inputs.profile }} --non-interactive --no-wait
