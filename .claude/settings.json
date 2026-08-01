@@ -24,7 +24,8 @@
       "Bash(npx expo-doctor *)",
       "Bash(export ANDROID_HOME=\"C:\\\\Users\\\\CLAUS_PDG\\\\AppData\\\\Local\\\\Android\\\\Sdk\")",
       "Bash(export JAVA_HOME=\"C:\\\\Users\\\\CLAUS_PDG\\\\AppData\\\\Local\\\\Programs\\\\Eclipse Adoptium\\\\jdk-17.0.19.10-hotspot\")",
-      "Bash(./gradlew.bat bundleRelease --console=plain)"
+      "Bash(./gradlew.bat bundleRelease --console=plain)",
+      "Bash(curl -sL https://expo.dev/artifacts/eas/n6S1yCjvDXf1_XaSmy9Ps-j1L1HEs8r-zOW9cd5LY8k.aab -o 'C:\\\\Users\\\\CLAUS_PDG\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-CLAUS-PDG-the-ride\\\\a6b96cb4-1fd0-4f40-9a0d-330afdba5574\\\\scratchpad/release-artifacts/Driver.aab' -w 'STATUS:%{http_code} SIZE:%{size_download}\\\\n' -m 60)"
     ]
   }
 }

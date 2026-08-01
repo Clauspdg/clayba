@@ -23,7 +23,7 @@
  */
 export const RELEASE_VERSION = {
   major: 0,
-  minor: 1,
+  minor: 2,
   patch: 0,
 } as const;
 
@@ -35,11 +35,17 @@ export const RELEASE_VERSION_STRING = `${RELEASE_VERSION.major}.${RELEASE_VERSIO
 /**
  * Android `versionCode` per app (Part 4) — the Play Store requires a
  * monotonically increasing integer per package, and driver/passenger are
- * two independent listings with independent sequences.
+ * two independent listings with independent sequences. Kept in sync with
+ * `apps/{driver-app,passenger-app}/app.json`'s real values — EAS's
+ * `autoIncrement: true` (`eas.json`) bumps those directly on every real
+ * build (including failed attempts, which still consume a versionCode),
+ * so this constant is reconciled by hand after a release rather than by
+ * `scripts/version.mjs bump`, which would otherwise blindly add +1 to a
+ * stale value and silently regress app.json's real, already-higher count.
  */
 export const ANDROID_VERSION_CODES = {
-  driver: 1,
-  passenger: 1,
+  driver: 7,
+  passenger: 4,
 } as const;
 
 export interface BuildInfo {
@@ -60,7 +66,12 @@ export interface BuildInfo {
  * local dev build (no build-time env injection) still renders a sensible
  * Build Info screen instead of `undefined`.
  */
-export function resolveBuildInfo(params: { environment?: string; firebaseProjectId?: string; commit?: string; buildDate?: string }): BuildInfo {
+export function resolveBuildInfo(params: {
+  environment?: string;
+  firebaseProjectId?: string;
+  commit?: string;
+  buildDate?: string;
+}): BuildInfo {
   return {
     version: RELEASE_VERSION_STRING,
     major: RELEASE_VERSION.major,

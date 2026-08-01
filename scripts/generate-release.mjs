@@ -16,7 +16,12 @@
 // for why that distinction matters.
 //
 // Usage:
-//   node scripts/generate-release.mjs [--artifacts-dir <path>] [--notes <path>]
+//   node scripts/generate-release.mjs [--artifacts-dir <path>] [--notes <path>] [--known-issues <path>] [--release-name <name>]
+//
+// --release-name overrides the default "v{version}" folder name (e.g.
+// "Sprint-05") — the folder name and the version inside it are
+// independent; a release is still versioned via version.json regardless
+// of what its folder is called.
 // -----------------------------------------------------------------------------
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync, copyFileSync } from "node:fs";
@@ -28,10 +33,12 @@ import { getBuildDate, getCommit, getVersion } from "./version.mjs";
 const root = path.resolve(fileURLToPath(import.meta.url), "..", "..");
 
 function parseArgs(argv) {
-  const args = { artifactsDir: null, notes: null };
+  const args = { artifactsDir: null, notes: null, knownIssues: null, releaseName: null };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--artifacts-dir") args.artifactsDir = argv[++i];
     if (argv[i] === "--notes") args.notes = argv[++i];
+    if (argv[i] === "--known-issues") args.knownIssues = argv[++i];
+    if (argv[i] === "--release-name") args.releaseName = argv[++i];
   }
   return args;
 }
@@ -132,7 +139,7 @@ function main() {
   const commit = getCommit();
   const buildDate = getBuildDate();
 
-  const releaseDir = path.join(root, "release", `v${versionString}`);
+  const releaseDir = path.join(root, "release", args.releaseName ?? `v${versionString}`);
   mkdirSync(releaseDir, { recursive: true });
 
   const artifactStatus = [];
@@ -151,11 +158,15 @@ function main() {
   }
 
   writeFileSync(path.join(releaseDir, "release-notes.md"), renderReleaseNotes(version, versionString, args.notes));
-  writeFileSync(path.join(releaseDir, "known-issues.md"), renderKnownIssues(artifactStatus));
+  writeFileSync(path.join(releaseDir, "known-issues.md"), args.knownIssues ? readFileSync(args.knownIssues, "utf8") : renderKnownIssues(artifactStatus));
   writeFileSync(path.join(releaseDir, "version.json"), renderVersionJson(version, versionString, commit, buildDate));
 
   const checksumLines = artifactStatus.map((a) => `${sha256(path.join(releaseDir, a.name))}  ${a.name}`);
-  writeFileSync(path.join(releaseDir, "checksum.txt"), `${checksumLines.join("\n")}\n`);
+  const checksumContent = `${checksumLines.join("\n")}\n`;
+  // Written under both names — Sprint 4.6 established "checksum.txt";
+  // Sprint 5 asked for "checksums.txt". Same content either way.
+  writeFileSync(path.join(releaseDir, "checksum.txt"), checksumContent);
+  writeFileSync(path.join(releaseDir, "checksums.txt"), checksumContent);
 
   console.log(`Release folder generated: ${path.relative(root, releaseDir)}`);
   for (const a of artifactStatus) {

@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "major": 0,
+  "minor": 2,
+  "patch": 0,
+  "sprint": "5",
+  "androidVersionCodes": {
+    "driver": 7,
+    "passenger": 4
+  },
+  "commit": "6e170fa",
+  "buildDate": "2026-08-01T04:09:39.766Z"
+}

@@ -24,7 +24,7 @@
         "backgroundColor": "#0F62FE"
       },
       "package": "com.theride.driver",
-      "versionCode": 5
+      "versionCode": 7
     },
     "owner": "clauspp",
     "plugins": ["expo-router"],

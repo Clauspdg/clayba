@@ -21,6 +21,14 @@ web-build/
 *.mobileprovision
 *.orig.*
 
+# Release artifacts — the release-notes.md/version.json/known-issues.md/
+# checksums.txt manifest files under release/*/ are small and worth
+# tracking in git history; the real .apk/.aab binaries (tens of MB each)
+# are not — they belong in Play Store / GitHub Releases / artifact
+# storage, not the git repo itself.
+release/**/*.apk
+release/**/*.aab
+
 # Build outputs
 build/
 # Cloud Functions' tsc output only — NOT a blanket match, which previously
