@@ -13,9 +13,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#0F62FE"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.theride.driver"
@@ -26,12 +24,10 @@
         "backgroundColor": "#0F62FE"
       },
       "package": "com.theride.driver",
-      "versionCode": 2
+      "versionCode": 5
     },
     "owner": "clauspp",
-    "plugins": [
-      "expo-router"
-    ],
+    "plugins": ["expo-router"],
     "extra": {
       "router": {
         "origin": false

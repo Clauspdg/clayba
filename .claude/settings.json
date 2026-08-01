@@ -16,7 +16,15 @@
       "Bash(git clone *)",
       "Bash(echo \"--- exit code: $? \\(0 = still ignored, 1 = not ignored anymore\\) ---\")",
       "Bash(git status *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(eas build:list --limit 1 --non-interactive --json)",
+      "Bash(eas build:view 55752862-f6a7-40bf-86ff-1ea656fa9ec8 --help)",
+      "Bash(eas build *)",
+      "Bash(echo \"EXIT_CODE:$?\")",
+      "Bash(npx expo-doctor *)",
+      "Bash(export ANDROID_HOME=\"C:\\\\Users\\\\CLAUS_PDG\\\\AppData\\\\Local\\\\Android\\\\Sdk\")",
+      "Bash(export JAVA_HOME=\"C:\\\\Users\\\\CLAUS_PDG\\\\AppData\\\\Local\\\\Programs\\\\Eclipse Adoptium\\\\jdk-17.0.19.10-hotspot\")",
+      "Bash(./gradlew.bat bundleRelease --console=plain)"
     ]
   }
 }

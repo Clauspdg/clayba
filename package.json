@@ -40,7 +40,9 @@
     "husky": "^9.1.0",
     "lint-staged": "^15.2.0",
     "rimraf": "^6.0.0",
-    "eslint": "^9.10.0"
+    "eslint": "^9.10.0",
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx}": [
