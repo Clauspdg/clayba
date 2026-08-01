@@ -28,7 +28,7 @@ export const RELEASE_VERSION = {
 } as const;
 
 /** Current sprint label, shown on every Build Info screen (Part 7). */
-export const RELEASE_SPRINT = "4.6";
+export const RELEASE_SPRINT = "5";
 
 export const RELEASE_VERSION_STRING = `${RELEASE_VERSION.major}.${RELEASE_VERSION.minor}.${RELEASE_VERSION.patch}`;
 

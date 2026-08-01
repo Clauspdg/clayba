@@ -3,7 +3,20 @@
     "allow": [
       "Bash(echo \"exit code: $?\")",
       "Bash(eas project:init --non-interactive)",
-      "Bash(eas project:init --non-interactive --force)"
+      "Bash(eas project:init --non-interactive --force)",
+      "Bash(eas build:list --limit 4 --non-interactive --json)",
+      "Bash(jq --version)",
+      "Bash(node -e ' *)",
+      "Bash(gunzip -c 'C:\\\\Users\\\\CLAUS_PDG\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-CLAUS-PDG-the-ride\\\\a6b96cb4-1fd0-4f40-9a0d-330afdba5574\\\\scratchpad/driver-build-full.log')",
+      "Bash(eas build:view 30268d75-9bb8-41f0-aef6-289033a6d07d)",
+      "Bash(npx expo *)",
+      "Bash(mv .env.local .env.local.bak)",
+      "Bash(APP_ENV=production npx expo export:embed --platform android --dev false --entry-file node_modules/expo-router/entry.js --bundle-output /tmp/out2.bundle --reset-cache)",
+      "Bash(xxd 'C:\\\\Users\\\\CLAUS_PDG\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-CLAUS-PDG-the-ride\\\\a6b96cb4-1fd0-4f40-9a0d-330afdba5574\\\\scratchpad/latest.log')",
+      "Bash(git clone *)",
+      "Bash(echo \"--- exit code: $? \\(0 = still ignored, 1 = not ignored anymore\\) ---\")",
+      "Bash(git status *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

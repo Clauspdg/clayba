@@ -23,7 +23,11 @@ web-build/
 
 # Build outputs
 build/
-lib/
+# Cloud Functions' tsc output only — NOT a blanket match, which previously
+# (and silently) excluded every app's real apps/*/src/lib/ source folder
+# from git entirely (Sprint 5 bug: EAS builds only see git-tracked files,
+# so this made every app's firebase-client.ts invisible to real builds).
+/functions/lib/
 *.tsbuildinfo
 
 # Testing / coverage
