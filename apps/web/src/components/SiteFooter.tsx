@@ -1,24 +1,31 @@
 "use client";
 
+import { useFooterContent } from "@/hooks/useSiteContent";
 import { Button, Divider, Icon, Input, Logo, useTranslation, type IconName } from "@the-ride/ui";
 import { RELEASE_VERSION_STRING } from "@the-ride/types";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
-const SOCIAL_LINKS: { icon: IconName; label: string; href: string }[] = [
+const DEFAULT_SOCIAL_LINKS: { icon: IconName; label: string; href: string }[] = [
   { icon: "globe", label: "Website", href: "https://the-ride.app" },
   { icon: "mail", label: "Email", href: "mailto:support@theride.app" },
   { icon: "phone", label: "Phone", href: "tel:+18005550123" },
 ];
 
 /**
- * Premium footer (Sprint 7). The newsletter form is UI-only — there's no
- * newsletter backend in this environment and the brief says not to add
- * new Firebase/business logic this sprint, so "subscribing" just shows a
- * local success state rather than writing anywhere, disclosed here.
+ * Premium footer (Sprint 7, made partly CMS-configurable in Sprint 7.1 —
+ * tagline/newsletter copy/social links can be published from Content
+ * Management → Footer; the nav-link columns below stay hardcoded since
+ * they're site navigation, not marketing copy). The newsletter form is
+ * still UI-only — there's no newsletter backend in this environment and
+ * the brief says not to add new Firebase/business logic this sprint, so
+ * "subscribing" just shows a local success state rather than writing
+ * anywhere, disclosed here.
  */
 export function SiteFooter() {
   const { t } = useTranslation();
+  const footer = useFooterContent();
+  const socialLinks = footer.socialLinks ?? DEFAULT_SOCIAL_LINKS;
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
@@ -57,16 +64,16 @@ export function SiteFooter() {
         <div className="laptop:grid-cols-[1.3fr_1fr_1fr_1fr_1.2fr] grid gap-10">
           <div className="flex flex-col gap-3">
             <Logo withWordmark className="text-neutral-900 dark:text-neutral-50" />
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("footer.tagline")}</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">{footer.tagline}</p>
             <div className="mt-2 flex gap-2">
-              {SOCIAL_LINKS.map((social) => (
+              {socialLinks.map((social) => (
                 <a
-                  key={social.label}
+                  key={social.href}
                   href={social.href}
                   aria-label={social.label}
                   className="hover:bg-brand flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition-colors hover:text-white dark:bg-neutral-800 dark:text-neutral-300"
                 >
-                  <Icon name={social.icon} size={16} />
+                  <Icon name={social.icon as IconName} size={16} />
                 </a>
               ))}
             </div>
@@ -76,36 +83,38 @@ export function SiteFooter() {
           <FooterColumn title={t("footer.servicesColumn")} links={serviceLinks} />
           <FooterColumn title={t("footer.support")} links={supportLinks} />
 
-          <div>
-            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
-              {t("footer.newsletterTitle")}
-            </p>
-            <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-              {t("footer.newsletterBody")}
-            </p>
-            {subscribed ? (
-              <p className="text-success mt-3 flex items-center gap-2 text-sm font-medium">
-                <Icon name="checkCircle" size={16} />
-                {t("footer.newsletterSuccess")}
+          {footer.showNewsletter && (
+            <div>
+              <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+                {footer.newsletterTitle}
               </p>
-            ) : (
-              <form onSubmit={handleSubscribe} className="mt-3 flex gap-2">
-                <Input
-                  label={t("footer.newsletterPlaceholder")}
-                  aria-label={t("footer.newsletterPlaceholder")}
-                  placeholder={t("footer.newsletterPlaceholder")}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  required
-                  className="text-sm"
-                />
-                <Button type="submit" size="sm">
-                  {t("footer.newsletterCta")}
-                </Button>
-              </form>
-            )}
-          </div>
+              <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+                {footer.newsletterBody}
+              </p>
+              {subscribed ? (
+                <p className="text-success mt-3 flex items-center gap-2 text-sm font-medium">
+                  <Icon name="checkCircle" size={16} />
+                  {t("footer.newsletterSuccess")}
+                </p>
+              ) : (
+                <form onSubmit={handleSubscribe} className="mt-3 flex gap-2">
+                  <Input
+                    label={t("footer.newsletterPlaceholder")}
+                    aria-label={t("footer.newsletterPlaceholder")}
+                    placeholder={t("footer.newsletterPlaceholder")}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    required
+                    className="text-sm"
+                  />
+                  <Button type="submit" size="sm">
+                    {t("footer.newsletterCta")}
+                  </Button>
+                </form>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mt-10">

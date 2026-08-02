@@ -14,9 +14,19 @@ import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { StatsSection } from "@/components/marketing/StatsSection";
 import { TestimonialsSection } from "@/components/marketing/TestimonialsSection";
 import { VehicleTypeGrid } from "@/components/marketing/VehicleTypeGrid";
+import {
+  useHomepageContent,
+  useSectionsContent,
+  useTestimonials,
+  type ResolvedTestimonial,
+} from "@/hooks/useSiteContent";
+import type { SectionKey } from "@the-ride/types";
+import type { ReactNode } from "react";
 
 export default function HomePage() {
   const { t } = useTranslation();
+  const homepage = useHomepageContent();
+  const sectionOrder = useSectionsContent();
 
   const stats = [
     { value: "250K+", label: t("website.landing.stat1") },
@@ -25,7 +35,7 @@ export default function HomePage() {
     { value: "12M+", label: t("website.landing.stat4") },
   ];
 
-  const testimonials = [
+  const DEFAULT_TESTIMONIALS: ResolvedTestimonial[] = [
     {
       name: "Amara Johnson",
       role: t("website.landing.testimonialRolePassenger"),
@@ -51,6 +61,7 @@ export default function HomePage() {
       rating: 4,
     },
   ];
+  const testimonials = useTestimonials(DEFAULT_TESTIMONIALS);
 
   const steps = [
     {
@@ -88,54 +99,15 @@ export default function HomePage() {
     },
   ];
 
-  return (
-    <div>
-      {/* Hero + booking widget */}
-      <Hero parallax className="tablet:pb-28 tablet:pt-44 -mt-16 px-6 pb-20 pt-36">
-        <div className="laptop:grid-cols-[1.1fr_0.9fr] laptop:items-center mx-auto grid max-w-6xl gap-12">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-start gap-6 text-left"
-          >
-            <Badge tone="brand" className="bg-brand/15 text-brand-200">
-              {t("website.landing.heroEyebrow")}
-            </Badge>
-            <Heading level={1} className="text-white">
-              {t("website.landing.heroTitle")}
-            </Heading>
-            <Text size="lg" className="max-w-xl text-neutral-300">
-              {t("website.landing.heroSubtitle")}
-            </Text>
-            <div className="flex flex-wrap gap-3">
-              <Button size="lg" asChild>
-                <Link href="/services">{t("website.landing.ctaPassenger")}</Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 hover:text-white"
-                asChild
-              >
-                <Link href="/become-a-driver">{t("website.landing.ctaDriver")}</Link>
-              </Button>
-            </div>
-          </motion.div>
-          <div className="laptop:justify-end flex justify-center">
-            <BookingCard />
-          </div>
-        </div>
-      </Hero>
-
-      {/* Stats */}
+  const sectionRenderers: Record<SectionKey, ReactNode> = {
+    stats: (
       <section className="mx-auto -mt-10 max-w-6xl px-6">
         <Reveal variant="scale">
           <StatsSection stats={stats} />
         </Reveal>
       </section>
-
-      {/* Vehicle types */}
+    ),
+    vehicleTypes: (
       <section className="mx-auto max-w-6xl px-6 py-24">
         <Reveal>
           <SectionHeading
@@ -147,8 +119,8 @@ export default function HomePage() {
         </Reveal>
         <VehicleTypeGrid />
       </section>
-
-      {/* Map preview */}
+    ),
+    mapPreview: (
       <section className="bg-neutral-50 py-24 dark:bg-neutral-900/40">
         <div className="laptop:grid-cols-2 mx-auto grid max-w-6xl items-center gap-12 px-6">
           <MapPreview />
@@ -174,8 +146,8 @@ export default function HomePage() {
           </Reveal>
         </div>
       </section>
-
-      {/* How it works */}
+    ),
+    howItWorks: (
       <section className="mx-auto max-w-6xl px-6 py-24">
         <Reveal>
           <SectionHeading
@@ -186,8 +158,8 @@ export default function HomePage() {
         </Reveal>
         <ProcessSteps steps={steps} />
       </section>
-
-      {/* Safety */}
+    ),
+    safety: (
       <section className="relative overflow-hidden bg-neutral-900 py-24">
         <div className="bg-brand/20 pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl" />
         <div className="bg-brand/10 pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full blur-3xl" />
@@ -232,8 +204,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Testimonials */}
+    ),
+    testimonials: (
       <section className="mx-auto max-w-6xl px-6 py-24">
         <Reveal>
           <SectionHeading
@@ -244,11 +216,9 @@ export default function HomePage() {
         </Reveal>
         <TestimonialsSection testimonials={testimonials} />
       </section>
-
-      {/* Mobile app */}
-      <MobileAppSection />
-
-      {/* Driver CTA */}
+    ),
+    mobileApp: <MobileAppSection />,
+    driverCta: (
       <section className="mx-auto max-w-6xl px-6 py-24">
         <Reveal variant="scale">
           <div className="to-brand-900 shadow-elevation4 flex flex-col items-center gap-6 rounded-3xl bg-gradient-to-br from-neutral-900 px-8 py-16 text-center">
@@ -264,6 +234,61 @@ export default function HomePage() {
           </div>
         </Reveal>
       </section>
+    ),
+  };
+
+  return (
+    <div>
+      {/* Hero + booking widget */}
+      <Hero
+        parallax
+        className="tablet:pb-28 tablet:pt-44 -mt-16 px-6 pb-20 pt-36"
+        backgroundImageUrl={
+          homepage.backgroundType !== "gradient" ? homepage.backgroundImageUrl : undefined
+        }
+        backgroundVideoUrl={
+          homepage.backgroundType === "video" ? homepage.backgroundVideoUrl : undefined
+        }
+      >
+        <div className="laptop:grid-cols-[1.1fr_0.9fr] laptop:items-center mx-auto grid max-w-6xl gap-12">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col items-start gap-6 text-left"
+          >
+            <Badge tone="brand" className="bg-brand/15 text-brand-200">
+              {homepage.eyebrow}
+            </Badge>
+            <Heading level={1} className="text-white">
+              {homepage.title}
+            </Heading>
+            <Text size="lg" className="max-w-xl text-neutral-300">
+              {homepage.subtitle}
+            </Text>
+            <div className="flex flex-wrap gap-3">
+              <Button size="lg" asChild>
+                <Link href="/services">{homepage.ctaPassengerLabel}</Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 hover:text-white"
+                asChild
+              >
+                <Link href="/become-a-driver">{homepage.ctaDriverLabel}</Link>
+              </Button>
+            </div>
+          </motion.div>
+          <div className="laptop:justify-end flex justify-center">
+            <BookingCard />
+          </div>
+        </div>
+      </Hero>
+
+      {sectionOrder.map((key) => (
+        <div key={key}>{sectionRenderers[key]}</div>
+      ))}
     </div>
   );
 }

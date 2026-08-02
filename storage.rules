@@ -29,6 +29,22 @@ service firebase.storage {
       return request.resource.size < 5 * 1024 * 1024;
     }
 
+    // --- siteContent CMS (Sprint 7.1) ---
+    // First admin-role check in this file — Storage rules see the same
+    // Firebase Auth token claims firestore.rules's isAdmin() already keys
+    // off of, so this is a direct port of that same mechanism, not a new one.
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role in ['admin', 'super_admin'];
+    }
+
+    function isVideo() {
+      return request.resource.contentType.matches('video/.*');
+    }
+
+    function isUnder20MB() {
+      return request.resource.size < 20 * 1024 * 1024;
+    }
+
     match /drivers/{uid}/profile-photo.jpg {
       allow read: if isSignedIn();
       allow write: if isOwner(uid) && isImage() && isUnder5MB();
@@ -54,6 +70,46 @@ service firebase.storage {
     match /passengers/{uid}/avatar.jpg {
       allow read: if isSignedIn();
       allow write: if isOwner(uid) && isImage() && isUnder5MB();
+    }
+
+    // Public marketing site media, uploaded via the admin Content Management
+    // CMS. Path convention: site/{category}/{mediaId}.{ext}, where mediaId
+    // is the same id as the corresponding siteContentMedia/{mediaId}
+    // Firestore doc (generated client-side before upload), so the catalog
+    // entry and the Storage object are always trivially paired.
+    match /site/hero/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && (isImage() || isVideo()) && isUnder20MB();
+    }
+
+    match /site/videos/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isVideo() && isUnder20MB();
+    }
+
+    match /site/sections/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnder5MB();
+    }
+
+    match /site/testimonials/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnder5MB();
+    }
+
+    match /site/downloads/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnder5MB();
+    }
+
+    match /site/logos/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnder5MB();
+    }
+
+    match /site/backgrounds/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnder5MB();
     }
 
     match /{allPaths=**} {

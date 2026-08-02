@@ -57,8 +57,19 @@ service cloud.firestore {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       // Status transitions (approve/reject/activate) go through
-      // DriversRepository server-side only.
-      allow update: if isAdmin();
+      // DriversRepository server-side only. Owners may otherwise keep
+      // editing their own application data (Web Phase W1, Part 4: draft
+      // save, multi-step submission) while it's still in their hands —
+      // `status`/`reviewedBy`/`rejectionReason` must stay untouched by
+      // that write, which is what the review workflow actually owns.
+      allow update: if isAdmin()
+        || (isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && resource.data.status in ['draft', 'submitted']
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.reviewedBy == resource.data.reviewedBy
+          && request.resource.data.rejectionReason == resource.data.rejectionReason);
       allow delete: if false;
     }
 
@@ -141,8 +152,19 @@ service cloud.firestore {
     }
 
     match /tripRequests/{requestId} {
-      allow read, create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid;
-      allow update, delete: if hasRole(['admin', 'super_admin', 'dispatcher']);
+      // Fixed (Sprint 6): the read condition previously referenced
+      // `request.resource.data`, which is only populated on writes — for a
+      // get/list read `request.resource` doesn't exist, so this silently
+      // denied every passenger read, including their own requests. `resource`
+      // (the existing document) is the correct reference for reads, matching
+      // the `trips` rule above.
+      allow read: if isSignedIn() && (resource.data.passengerId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
+      allow create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid;
+      // Owners may cancel their own request (status -> cancelled only);
+      // every other transition (matched/assigned/etc.) is dispatch-engine-only.
+      allow update: if hasRole(['admin', 'super_admin', 'dispatcher'])
+        || (isSignedIn() && resource.data.passengerId == request.auth.uid && request.resource.data.status == 'cancelled');
+      allow delete: if hasRole(['admin', 'super_admin', 'dispatcher']);
     }
 
     // --- trips: rideOffers, dispatchQueue, dispatchEvents, matchingLogs (Sprint 4) ---
@@ -205,7 +227,13 @@ service cloud.firestore {
     }
 
     match /transactions/{transactionId} {
-      allow read, write: if isAdmin();
+      // Owners may read their own transaction history (Sprint 6, Wallet page)
+      // via a lookup on the referenced wallet's `ownerId` — transactions
+      // carry no `ownerId` of their own, only `walletId`. Writes remain
+      // backend-authoritative (WalletService), same as `wallets` above.
+      allow read: if isAdmin()
+        || (isSignedIn() && get(/databases/$(database)/documents/wallets/$(resource.data.walletId)).data.ownerId == request.auth.uid);
+      allow write: if isAdmin();
     }
 
     // --- reports ---
@@ -222,6 +250,23 @@ service cloud.firestore {
     match /supportTickets/{ticketId} {
       allow read: if isSignedIn() && (resource.data.requesterId == request.auth.uid || hasRole(['admin', 'super_admin', 'support']));
       allow create: if isSignedIn() && request.resource.data.requesterId == request.auth.uid;
+      allow update: if hasRole(['admin', 'super_admin', 'support']);
+      allow delete: if false;
+    }
+
+    // --- support: contactSubmissions (Web Phase W1, Part 1) ---
+    // The public marketing site's "Contact us" form — deliberately open to
+    // anonymous, unauthenticated visitors (a real contact form has no
+    // account to require), constrained to exactly the shape/size a
+    // legitimate submission has. Never client-readable (only admin/support
+    // staff triage these) or updatable/deletable by the submitter.
+    match /contactSubmissions/{submissionId} {
+      allow read: if hasRole(['admin', 'super_admin', 'support']);
+      allow create: if request.resource.data.keys().hasOnly(['name', 'email', 'message', 'status', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 200
+        && request.resource.data.email is string && request.resource.data.email.size() <= 320
+        && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 5000
+        && request.resource.data.status == 'new';
       allow update: if hasRole(['admin', 'super_admin', 'support']);
       allow delete: if false;
     }
@@ -246,6 +291,49 @@ service cloud.firestore {
       allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       // Sending notifications is backend-only (notification.send permission).
       allow create: if isAdmin();
+    }
+
+    // --- siteContent: public marketing site CMS (Sprint 7.1) ---
+    // Two parallel trees, not one doc with an embedded draft+published pair:
+    // Firestore rules are per-document, so a single doc holding both would
+    // let any visitor's `allow read: if true` download the unpublished
+    // draft too. Keeping them as separate collections makes "public sees
+    // only published content" true by construction — siteContentDrafts is
+    // never public-readable at all.
+
+    match /siteContent/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /siteContent/testimonials/items/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /siteContent/faq/items/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /siteContentDrafts/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /siteContentDrafts/testimonials/items/{itemId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /siteContentDrafts/faq/items/{itemId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Media catalog: admin-only. The public site only ever reads a URL that
+    // an admin already pasted into published content — it never queries
+    // this collection, so there's no reason to expose the full upload
+    // inventory (including unused assets) publicly.
+    match /siteContentMedia/{mediaId} {
+      allow read, write: if isAdmin();
     }
 
     // Deny everything else by default.
