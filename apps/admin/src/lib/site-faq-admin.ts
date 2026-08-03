@@ -23,11 +23,15 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 
+import { recordHistory } from "./site-content-history-admin";
+
 /**
  * Admin-dashboard FAQ CRUD (Sprint 7.1 Site Content CMS). Identical
  * draft/published split and whole-list publish semantics as
  * `site-testimonials-admin.ts` — see that file's comment for the rationale.
  */
+
+const HISTORY_AREA = "faq";
 
 const META_FIELDS = ["createdAt", "updatedAt", "updatedBy", "publishedAt", "publishedBy"] as const;
 
@@ -124,11 +128,26 @@ export function toCreateFaqInput(item: FaqItem): CreateFaqItemInput {
   return rest;
 }
 
-export async function publishFaq(db: Firestore, publishedBy: string): Promise<void> {
+/** Snapshots the previous published list into `siteContentHistory` first (Sprint 7.2), skipped when nothing was published yet — see `publishTestimonials`'s comment for the rationale. */
+export async function publishFaq(
+  db: Firestore,
+  publishedBy: string,
+  publishedByEmail: string,
+): Promise<void> {
   const [draftSnap, publishedSnap] = await Promise.all([
     getDocs(query(draftCollection(db), orderBy("order", "asc"))),
-    getDocs(publishedCollection(db)),
+    getDocs(query(publishedCollection(db), orderBy("order", "asc"))),
   ]);
+  if (!publishedSnap.empty) {
+    await recordHistory(
+      db,
+      HISTORY_AREA,
+      "publish",
+      publishedSnap.docs.map((d) => stripMeta(d.data())),
+      publishedBy,
+      publishedByEmail,
+    );
+  }
   const draftIds = new Set(draftSnap.docs.map((d) => d.id));
   const batch = writeBatch(db);
   publishedSnap.docs.forEach((d) => {
@@ -141,6 +160,22 @@ export async function publishFaq(db: Firestore, publishedBy: string): Promise<vo
       publishedBy,
       updatedAt: serverTimestamp(),
     });
+  });
+  await batch.commit();
+}
+
+/** Restores a past `siteContentHistory` snapshot (a full item list) back into the draft, replacing whatever's there — never straight to published. */
+export async function restoreFaqFromHistory(
+  db: Firestore,
+  snapshot: Record<string, unknown>[],
+  updatedBy: string,
+): Promise<void> {
+  const draftSnap = await getDocs(draftCollection(db));
+  const batch = writeBatch(db);
+  draftSnap.docs.forEach((d) => batch.delete(d.ref));
+  snapshot.forEach((item) => {
+    const id = String(item.id);
+    batch.set(doc(draftCollection(db), id), { ...item, updatedBy, updatedAt: serverTimestamp() });
   });
   await batch.commit();
 }

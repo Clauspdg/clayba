@@ -3,12 +3,16 @@ import type { SectionConfig } from "./site-content.schemas";
 export const SITE_CONTENT_COLLECTION = "siteContent";
 export const SITE_CONTENT_DRAFTS_COLLECTION = "siteContentDrafts";
 export const SITE_CONTENT_MEDIA_COLLECTION = "siteContentMedia";
+export const SITE_CONTENT_HISTORY_COLLECTION = "siteContentHistory";
 
 export const HOMEPAGE_CONTENT_DOC_ID = "homepage";
 export const SECTIONS_CONTENT_DOC_ID = "sections";
 export const FOOTER_CONTENT_DOC_ID = "footer";
 export const SEO_CONTENT_DOC_ID = "seo";
 export const DOWNLOADS_CONTENT_DOC_ID = "downloads";
+export const HOW_IT_WORKS_CONTENT_DOC_ID = "howItWorks";
+export const SAFETY_CONTENT_DOC_ID = "safety";
+export const DRIVER_CTA_CONTENT_DOC_ID = "driverCta";
 
 export const TESTIMONIALS_SUBCOLLECTION = "testimonials/items";
 export const FAQ_SUBCOLLECTION = "faq/items";

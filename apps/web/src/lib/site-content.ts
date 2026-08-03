@@ -1,17 +1,32 @@
 import {
+  DRIVER_CTA_CONTENT_DOC_ID,
   FAQ_SUBCOLLECTION,
   FOOTER_CONTENT_DOC_ID,
   HOMEPAGE_CONTENT_DOC_ID,
+  HOW_IT_WORKS_CONTENT_DOC_ID,
+  SAFETY_CONTENT_DOC_ID,
   SECTIONS_CONTENT_DOC_ID,
   SITE_CONTENT_COLLECTION,
   TESTIMONIALS_SUBCOLLECTION,
+  type DriverCtaContent,
   type FaqItem,
   type FooterContent,
   type HomepageContent,
+  type HowItWorksContent,
+  type SafetyContent,
   type SectionsContent,
   type TestimonialItem,
+  type VehicleCategory,
 } from "@the-ride/types";
-import { collection, doc, onSnapshot, orderBy, query, type Unsubscribe } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+  type Unsubscribe,
+} from "firebase/firestore";
 
 import { webFirestore } from "./firebase-client";
 
@@ -70,6 +85,55 @@ export function subscribeFaqItems(onNext: (items: FaqItem[]) => void): Unsubscri
       orderBy("order", "asc"),
     ),
     (snapshot) => onNext(snapshot.docs.map((d) => d.data() as FaqItem)),
+    () => onNext([]),
+  );
+}
+
+export function subscribeHowItWorksContent(
+  onNext: (data: HowItWorksContent | null) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(webFirestore, SITE_CONTENT_COLLECTION, HOW_IT_WORKS_CONTENT_DOC_ID),
+    (snapshot) => onNext(snapshot.exists() ? (snapshot.data() as HowItWorksContent) : null),
+    () => onNext(null),
+  );
+}
+
+export function subscribeSafetyContent(onNext: (data: SafetyContent | null) => void): Unsubscribe {
+  return onSnapshot(
+    doc(webFirestore, SITE_CONTENT_COLLECTION, SAFETY_CONTENT_DOC_ID),
+    (snapshot) => onNext(snapshot.exists() ? (snapshot.data() as SafetyContent) : null),
+    () => onNext(null),
+  );
+}
+
+export function subscribeDriverCtaContent(
+  onNext: (data: DriverCtaContent | null) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(webFirestore, SITE_CONTENT_COLLECTION, DRIVER_CTA_CONTENT_DOC_ID),
+    (snapshot) => onNext(snapshot.exists() ? (snapshot.data() as DriverCtaContent) : null),
+    () => onNext(null),
+  );
+}
+
+/**
+ * Ride Categories (Sprint 7.2) — the real `vehicleCategories` collection,
+ * already public-read and already the fare-calculation source of truth
+ * (see `packages/types/src/settings/settings.schemas.ts`). The marketing
+ * site reads it directly rather than a second, CMS-only copy, so displayed
+ * pricing never drifts from what booking actually charges.
+ */
+export function subscribeVehicleCategories(
+  onNext: (items: VehicleCategory[]) => void,
+): Unsubscribe {
+  return onSnapshot(
+    query(
+      collection(webFirestore, "vehicleCategories"),
+      where("isActive", "==", true),
+      orderBy("sortOrder", "asc"),
+    ),
+    (snapshot) => onNext(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as VehicleCategory)),
     () => onNext([]),
   );
 }

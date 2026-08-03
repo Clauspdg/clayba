@@ -17,10 +17,13 @@ export type BilingualText = z.infer<typeof bilingualTextSchema>;
 
 /**
  * `siteContent/homepage` / `siteContentDrafts/homepage` — the Hero singleton.
- * `backgroundType: "gradient"` (the default) means "use the existing
+ * Leaving every `background*Url` field unset means "use the existing
  * hand-crafted animated treatment," matching what `Hero.tsx` renders today
- * with zero CMS data — an admin has to deliberately opt into an
- * image/video background to replace it.
+ * with zero CMS data — an admin has to deliberately upload a background to
+ * replace it (Sprint 7.2 note: fields below replaced the Sprint 7.1
+ * single `backgroundType`/`backgroundImageUrl`/`backgroundVideoUrl` trio
+ * with per-breakpoint variants — safe to redefine since no homepage doc
+ * had ever been published in the live project).
  */
 export const homepageContentSchema = z.object({
   eyebrow: bilingualTextSchema,
@@ -28,9 +31,22 @@ export const homepageContentSchema = z.object({
   subtitle: bilingualTextSchema,
   ctaPassengerLabel: bilingualTextSchema,
   ctaDriverLabel: bilingualTextSchema,
-  backgroundType: z.enum(["gradient", "image", "video"]).default("gradient"),
-  backgroundImageUrl: z.string().url().optional(),
-  backgroundVideoUrl: z.string().url().optional(),
+  ctaPassengerEnabled: z.boolean().default(true),
+  ctaPassengerHref: z.string().default("/services"),
+  ctaDriverEnabled: z.boolean().default(true),
+  ctaDriverHref: z.string().default("/become-a-driver"),
+  /**
+   * Per-breakpoint Hero background (Sprint 7.2). Falls back from
+   * mobile -> tablet -> desktop when a smaller breakpoint's asset isn't
+   * set, then to the existing hand-crafted gradient treatment when nothing
+   * at all is configured — see `apps/web/src/components/marketing/Hero.tsx`.
+   */
+  backgroundDesktopImageUrl: z.string().url().optional(),
+  backgroundTabletImageUrl: z.string().url().optional(),
+  backgroundMobileImageUrl: z.string().url().optional(),
+  backgroundDesktopVideoUrl: z.string().url().optional(),
+  backgroundMobileVideoUrl: z.string().url().optional(),
+  backgroundPosterImageUrl: z.string().url().optional(),
   updatedAt: z.date(),
   updatedBy: z.string().min(1),
   createdAt: z.date(),
@@ -77,6 +93,87 @@ export const sectionsContentSchema = z.object({
 });
 
 export type SectionsContent = z.infer<typeof sectionsContentSchema>;
+
+/**
+ * `siteContent/howItWorks` — the "How it works" step list (Sprint 7.2).
+ * Same singleton-doc-holding-an-ordered-array shape as `sectionsContentSchema`,
+ * feeding `apps/web/src/components/marketing/ProcessSteps.tsx`.
+ */
+export const howItWorksStepSchema = z.object({
+  id: z.string().min(1),
+  /** `@the-ride/ui` icon registry key — plain string, same rationale as `socialLinkSchema.icon`. */
+  icon: z.string().min(1),
+  title: bilingualTextSchema,
+  description: bilingualTextSchema,
+  order: z.number().int().min(0),
+});
+
+export type HowItWorksStep = z.infer<typeof howItWorksStepSchema>;
+
+export const howItWorksContentSchema = z.object({
+  eyebrow: bilingualTextSchema,
+  title: bilingualTextSchema,
+  items: z.array(howItWorksStepSchema),
+  updatedAt: z.date(),
+  updatedBy: z.string().min(1),
+  createdAt: z.date(),
+  publishedAt: z.date().optional(),
+  publishedBy: z.string().min(1).optional(),
+});
+
+export type HowItWorksContent = z.infer<typeof howItWorksContentSchema>;
+
+/**
+ * `siteContent/safety` — the Safety section's cards + single CTA
+ * (Sprint 7.2). Feeds the inline safety-section JSX in `apps/web/src/app/page.tsx`.
+ */
+export const safetyCardSchema = z.object({
+  id: z.string().min(1),
+  icon: z.string().min(1),
+  title: bilingualTextSchema,
+  description: bilingualTextSchema,
+  badgeText: bilingualTextSchema,
+  order: z.number().int().min(0),
+});
+
+export type SafetyCard = z.infer<typeof safetyCardSchema>;
+
+export const safetyContentSchema = z.object({
+  eyebrow: bilingualTextSchema,
+  title: bilingualTextSchema,
+  subtitle: bilingualTextSchema,
+  ctaLabel: bilingualTextSchema,
+  ctaHref: z.string().default("/safety"),
+  items: z.array(safetyCardSchema),
+  updatedAt: z.date(),
+  updatedBy: z.string().min(1),
+  createdAt: z.date(),
+  publishedAt: z.date().optional(),
+  publishedBy: z.string().min(1).optional(),
+});
+
+export type SafetyContent = z.infer<typeof safetyContentSchema>;
+
+/**
+ * `siteContent/driverCta` — the "become a driver" call-to-action banner
+ * (Sprint 7.2). Background image/video use the same show-video-with-
+ * image-fallback behavior as the Hero.
+ */
+export const driverCtaContentSchema = z.object({
+  title: bilingualTextSchema,
+  subtitle: bilingualTextSchema,
+  buttonLabel: bilingualTextSchema,
+  buttonHref: z.string().default("/become-a-driver"),
+  backgroundImageUrl: z.string().url().optional(),
+  backgroundVideoUrl: z.string().url().optional(),
+  updatedAt: z.date(),
+  updatedBy: z.string().min(1),
+  createdAt: z.date(),
+  publishedAt: z.date().optional(),
+  publishedBy: z.string().min(1).optional(),
+});
+
+export type DriverCtaContent = z.infer<typeof driverCtaContentSchema>;
 
 /** `siteContent/testimonials/items/{itemId}` */
 export const testimonialItemSchema = z.object({
@@ -137,10 +234,9 @@ export const createFaqItemInputSchema = faqItemSchema.omit({
 export type CreateFaqItemInput = z.infer<typeof createFaqItemInputSchema>;
 
 /**
- * `siteContent/footer` — deliberately narrow: only tagline, newsletter
- * copy/toggle, and social links are CMS-editable. The four nav-link columns
- * (Company/Services/Support/Legal) stay hardcoded — they're site
- * navigation, not marketing copy.
+ * `siteContent/footer`. Sprint 7.1 shipped tagline/newsletter/social only;
+ * Sprint 7.2 adds the four nav-link columns (Company/Services/Support/
+ * Legal) as CMS-editable arrays too.
  */
 export const socialLinkSchema = z.object({
   /** `@the-ride/ui` icon registry key (see `packages/ui/src/tokens/icons.ts`) — kept as a plain string here since `@the-ride/types` doesn't depend on `@the-ride/ui`. */
@@ -151,12 +247,23 @@ export const socialLinkSchema = z.object({
 
 export type SocialLink = z.infer<typeof socialLinkSchema>;
 
+export const footerLinkSchema = z.object({
+  label: bilingualTextSchema,
+  href: z.string().min(1),
+});
+
+export type FooterLink = z.infer<typeof footerLinkSchema>;
+
 export const footerContentSchema = z.object({
   tagline: bilingualTextSchema,
   newsletterTitle: bilingualTextSchema,
   newsletterBody: bilingualTextSchema,
   showNewsletter: z.boolean().default(true),
   socialLinks: z.array(socialLinkSchema),
+  companyLinks: z.array(footerLinkSchema).default([]),
+  serviceLinks: z.array(footerLinkSchema).default([]),
+  supportLinks: z.array(footerLinkSchema).default([]),
+  legalLinks: z.array(footerLinkSchema).default([]),
   updatedAt: z.date(),
   updatedBy: z.string().min(1),
   createdAt: z.date(),
@@ -221,6 +328,7 @@ export const siteMediaCategorySchema = z.enum([
   "logos",
   "videos",
   "backgrounds",
+  "vehicles",
 ]);
 export type SiteMediaCategory = z.infer<typeof siteMediaCategorySchema>;
 
@@ -241,3 +349,34 @@ export type SiteMediaItem = z.infer<typeof siteMediaItemSchema>;
 
 export const createSiteMediaItemInputSchema = siteMediaItemSchema.omit({ createdAt: true });
 export type CreateSiteMediaItemInput = z.infer<typeof createSiteMediaItemInputSchema>;
+
+/**
+ * `siteContentHistory/{historyId}` — version history (Sprint 7.2).
+ * Admin-only, never read by the public site. Written automatically by
+ * `publish()`/`restore()` in `apps/admin/src/lib/site-content-*-admin.ts`:
+ * every publish snapshots what it's about to overwrite, and every restore
+ * copies a chosen snapshot back into the draft (never straight to
+ * published — an admin still reviews and re-publishes). `snapshot` holds
+ * either a full singleton document or a full list (for testimonials/faq),
+ * whichever `area` denotes.
+ */
+export const siteContentHistoryActionSchema = z.enum(["publish", "restore"]);
+export type SiteContentHistoryAction = z.infer<typeof siteContentHistoryActionSchema>;
+
+export const siteContentHistorySchema = z.object({
+  id: z.string().min(1),
+  area: z.string().min(1),
+  action: siteContentHistoryActionSchema,
+  snapshot: z.unknown(),
+  actorId: z.string().min(1),
+  actorEmail: z.string().min(1),
+  createdAt: z.date(),
+});
+
+export type SiteContentHistoryEntry = z.infer<typeof siteContentHistorySchema>;
+
+export const createSiteContentHistoryInputSchema = siteContentHistorySchema.omit({
+  id: true,
+  createdAt: true,
+});
+export type CreateSiteContentHistoryInput = z.infer<typeof createSiteContentHistoryInputSchema>;

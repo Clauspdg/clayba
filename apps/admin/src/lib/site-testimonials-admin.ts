@@ -23,6 +23,8 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 
+import { recordHistory } from "./site-content-history-admin";
+
 /**
  * Admin-dashboard Testimonials CRUD (Sprint 7.1 Site Content CMS). Same
  * draft/published split as `site-content-admin.ts`'s singleton areas, but
@@ -30,6 +32,8 @@ import {
  * `publishTestimonials` is the only path that ever writes
  * `siteContent/testimonials/items` (public-read).
  */
+
+const HISTORY_AREA = "testimonials";
 
 const META_FIELDS = ["createdAt", "updatedAt", "updatedBy", "publishedAt", "publishedBy"] as const;
 
@@ -127,12 +131,32 @@ export function toCreateTestimonialInput(item: TestimonialItem): CreateTestimoni
   return rest;
 }
 
-/** Replaces the entire published list with the current draft list — testimonials are swapped whole-list, not merged item-by-item (there's no natural "field" to merge a list on). */
-export async function publishTestimonials(db: Firestore, publishedBy: string): Promise<void> {
+/**
+ * Replaces the entire published list with the current draft list —
+ * testimonials are swapped whole-list, not merged item-by-item (there's no
+ * natural "field" to merge a list on). Snapshots the previous published
+ * list into `siteContentHistory` first (Sprint 7.2), skipped when nothing
+ * was published yet.
+ */
+export async function publishTestimonials(
+  db: Firestore,
+  publishedBy: string,
+  publishedByEmail: string,
+): Promise<void> {
   const [draftSnap, publishedSnap] = await Promise.all([
     getDocs(query(draftCollection(db), orderBy("order", "asc"))),
-    getDocs(publishedCollection(db)),
+    getDocs(query(publishedCollection(db), orderBy("order", "asc"))),
   ]);
+  if (!publishedSnap.empty) {
+    await recordHistory(
+      db,
+      HISTORY_AREA,
+      "publish",
+      publishedSnap.docs.map((d) => stripMeta(d.data())),
+      publishedBy,
+      publishedByEmail,
+    );
+  }
   const draftIds = new Set(draftSnap.docs.map((d) => d.id));
   const batch = writeBatch(db);
   publishedSnap.docs.forEach((d) => {
@@ -145,6 +169,22 @@ export async function publishTestimonials(db: Firestore, publishedBy: string): P
       publishedBy,
       updatedAt: serverTimestamp(),
     });
+  });
+  await batch.commit();
+}
+
+/** Restores a past `siteContentHistory` snapshot (a full item list) back into the draft, replacing whatever's there — never straight to published. */
+export async function restoreTestimonialsFromHistory(
+  db: Firestore,
+  snapshot: Record<string, unknown>[],
+  updatedBy: string,
+): Promise<void> {
+  const draftSnap = await getDocs(draftCollection(db));
+  const batch = writeBatch(db);
+  draftSnap.docs.forEach((d) => batch.delete(d.ref));
+  snapshot.forEach((item) => {
+    const id = String(item.id);
+    batch.set(doc(draftCollection(db), id), { ...item, updatedBy, updatedAt: serverTimestamp() });
   });
   await batch.commit();
 }

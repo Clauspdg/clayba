@@ -12,10 +12,11 @@ import {
   useToast,
   type IconName,
 } from "@the-ride/ui";
-import type { BilingualText, FooterContent, SocialLink } from "@the-ride/types";
+import type { BilingualText, FooterContent, FooterLink, SocialLink } from "@the-ride/types";
 import { useEffect, useState } from "react";
 
 import { BilingualTextField } from "../shared/BilingualTextField";
+import { HistoryPanel } from "../shared/HistoryPanel";
 import { PublishBar } from "../shared/PublishBar";
 import { useSingletonContentArea } from "../shared/useSingletonContentArea";
 
@@ -27,6 +28,10 @@ interface FooterForm {
   newsletterBody: BilingualText;
   showNewsletter: boolean;
   socialLinks: SocialLink[];
+  companyLinks: FooterLink[];
+  serviceLinks: FooterLink[];
+  supportLinks: FooterLink[];
+  legalLinks: FooterLink[];
 }
 
 const EMPTY_FORM: FooterForm = {
@@ -35,6 +40,10 @@ const EMPTY_FORM: FooterForm = {
   newsletterBody: EMPTY_TEXT,
   showNewsletter: true,
   socialLinks: [],
+  companyLinks: [],
+  serviceLinks: [],
+  supportLinks: [],
+  legalLinks: [],
 };
 
 function toForm(content: FooterContent | null | undefined): FooterForm {
@@ -45,15 +54,19 @@ function toForm(content: FooterContent | null | undefined): FooterForm {
     newsletterBody: content.newsletterBody ?? EMPTY_TEXT,
     showNewsletter: content.showNewsletter ?? true,
     socialLinks: content.socialLinks ?? [],
+    companyLinks: content.companyLinks ?? [],
+    serviceLinks: content.serviceLinks ?? [],
+    supportLinks: content.supportLinks ?? [],
+    legalLinks: content.legalLinks ?? [],
   };
 }
 
 /**
- * Content Management → Footer editor (Sprint 7.1 Site Content CMS).
- * Deliberately narrow: only tagline, newsletter copy/toggle, and social
- * links are CMS-editable. The four nav-link columns (Company/Services/
- * Support/Legal) stay hardcoded — they're site navigation, not marketing
- * copy.
+ * Content Management → Footer editor. Sprint 7.1 shipped tagline/
+ * newsletter/social only; Sprint 7.2 adds the four nav-link columns
+ * (Company/Services/Support/Legal) as CMS-editable lists too — each falls
+ * back to today's hardcoded links on the public site until an admin
+ * publishes a non-empty list (see `apps/web/src/components/SiteFooter.tsx`).
  */
 export function FooterContentPage() {
   const { toast } = useToast();
@@ -86,6 +99,28 @@ export function FooterContentPage() {
     setForm((prev) => ({ ...prev, socialLinks: prev.socialLinks.filter((_, i) => i !== index) }));
   }
 
+  function updateColumnLink(
+    column: "companyLinks" | "serviceLinks" | "supportLinks" | "legalLinks",
+    index: number,
+    patch: Partial<FooterLink>,
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      [column]: prev[column].map((link, i) => (i === index ? { ...link, ...patch } : link)),
+    }));
+  }
+
+  function addColumnLink(column: "companyLinks" | "serviceLinks" | "supportLinks" | "legalLinks") {
+    setForm((prev) => ({ ...prev, [column]: [...prev[column], { label: EMPTY_TEXT, href: "" }] }));
+  }
+
+  function removeColumnLink(
+    column: "companyLinks" | "serviceLinks" | "supportLinks" | "legalLinks",
+    index: number,
+  ) {
+    setForm((prev) => ({ ...prev, [column]: prev[column].filter((_, i) => i !== index) }));
+  }
+
   async function handleSave() {
     try {
       await area.save(form);
@@ -114,6 +149,16 @@ export function FooterContentPage() {
     }
   }
 
+  async function handleRestore(snapshot: Record<string, unknown> | Record<string, unknown>[]) {
+    try {
+      await area.restoreFromHistory(snapshot as Record<string, unknown>);
+      setHydrated(false);
+      toast({ variant: "success", title: "Draft restored from history" });
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : "Restore failed" });
+    }
+  }
+
   if (area.error) return <ErrorState title="Something went wrong" description={area.error} />;
   if (area.loading) return <LoadingState title="Loading…" />;
 
@@ -132,6 +177,8 @@ export function FooterContentPage() {
         onPublish={() => void handlePublish()}
         onDiscardDraft={() => void handleDiscard()}
       />
+
+      <HistoryPanel area="footer" onRestore={handleRestore} />
 
       <div className="flex flex-col gap-5 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <BilingualTextField
@@ -205,6 +252,88 @@ export function FooterContentPage() {
           </div>
         ))}
       </div>
+
+      <ColumnLinkEditor
+        title="Company column"
+        links={form.companyLinks}
+        onAdd={() => addColumnLink("companyLinks")}
+        onUpdate={(i, patch) => updateColumnLink("companyLinks", i, patch)}
+        onRemove={(i) => removeColumnLink("companyLinks", i)}
+      />
+      <ColumnLinkEditor
+        title="Services column"
+        links={form.serviceLinks}
+        onAdd={() => addColumnLink("serviceLinks")}
+        onUpdate={(i, patch) => updateColumnLink("serviceLinks", i, patch)}
+        onRemove={(i) => removeColumnLink("serviceLinks", i)}
+      />
+      <ColumnLinkEditor
+        title="Support column"
+        links={form.supportLinks}
+        onAdd={() => addColumnLink("supportLinks")}
+        onUpdate={(i, patch) => updateColumnLink("supportLinks", i, patch)}
+        onRemove={(i) => removeColumnLink("supportLinks", i)}
+      />
+      <ColumnLinkEditor
+        title="Legal column"
+        links={form.legalLinks}
+        onAdd={() => addColumnLink("legalLinks")}
+        onUpdate={(i, patch) => updateColumnLink("legalLinks", i, patch)}
+        onRemove={(i) => removeColumnLink("legalLinks", i)}
+      />
+    </div>
+  );
+}
+
+function ColumnLinkEditor({
+  title,
+  links,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  title: string;
+  links: FooterLink[];
+  onAdd: () => void;
+  onUpdate: (index: number, patch: Partial<FooterLink>) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="flex items-center justify-between">
+        <Heading level={3}>{title}</Heading>
+        <Button size="sm" variant="outline" onClick={onAdd}>
+          Add link
+        </Button>
+      </div>
+      {links.length === 0 && (
+        <Text size="sm" tone="muted">
+          Using the site's default links until this column has at least one entry.
+        </Text>
+      )}
+      {links.map((link, index) => (
+        <div
+          key={index}
+          className="flex items-end gap-3 rounded-lg border border-neutral-100 p-3 dark:border-neutral-800"
+        >
+          <div className="flex-1">
+            <BilingualTextField
+              label="Label"
+              value={link.label}
+              onChange={(label) => onUpdate(index, { label })}
+            />
+          </div>
+          <Input
+            label="URL"
+            value={link.href}
+            onChange={(e) => onUpdate(index, { href: e.target.value })}
+            className="max-w-[240px]"
+          />
+          <Button size="sm" variant="destructive" onClick={() => onRemove(index)}>
+            Remove
+          </Button>
+        </div>
+      ))}
     </div>
   );
 }

@@ -33,8 +33,9 @@ export interface ListContentAreaOps<T extends { id: string }> {
     onNext: (items: T[]) => void,
     onError: (message: string) => void,
   ) => () => void;
-  publish: (publishedBy: string) => Promise<void>;
+  publish: (publishedBy: string, publishedByEmail: string) => Promise<void>;
   discardDraft: (updatedBy: string) => Promise<void>;
+  restoreFromHistory: (snapshot: Record<string, unknown>[], updatedBy: string) => Promise<void>;
 }
 
 /**
@@ -48,6 +49,7 @@ export interface ListContentAreaOps<T extends { id: string }> {
 export function useListContentArea<T extends { id: string }>(ops: ListContentAreaOps<T>) {
   const { session } = useAuth();
   const uid = session?.uid ?? "";
+  const email = session?.email ?? uid;
 
   const [draftItems, setDraftItems] = useState<T[] | undefined>(undefined);
   const [publishedItems, setPublishedItems] = useState<T[] | undefined>(undefined);
@@ -73,7 +75,7 @@ export function useListContentArea<T extends { id: string }>(ops: ListContentAre
   async function publish(): Promise<void> {
     setPublishing(true);
     try {
-      await ops.publish(uid);
+      await ops.publish(uid, email);
     } finally {
       setPublishing(false);
     }
@@ -88,6 +90,10 @@ export function useListContentArea<T extends { id: string }>(ops: ListContentAre
     }
   }
 
+  async function restoreFromHistory(snapshot: Record<string, unknown>[]): Promise<void> {
+    await ops.restoreFromHistory(snapshot, uid);
+  }
+
   return {
     draftItems,
     publishedItems,
@@ -99,5 +105,6 @@ export function useListContentArea<T extends { id: string }>(ops: ListContentAre
     publishedAt: publishedItems ? latestTimestamp(publishedItems, "publishedAt") : undefined,
     publish,
     discardDraft,
+    restoreFromHistory,
   };
 }

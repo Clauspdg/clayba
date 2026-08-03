@@ -1,5 +1,6 @@
 "use client";
 
+import { useBreakpoint } from "@the-ride/hooks";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useState, type ReactNode } from "react";
 
@@ -8,20 +9,31 @@ export interface HeroProps {
   className?: string;
   /** Sprint 7: subtle scroll-parallax on the background layer. Off by default so the smaller Heroes on About/Safety/etc. stay simple. */
   parallax?: boolean;
-  /** Sprint 7.1 Site Content CMS: an admin-uploaded still image, used either as the background itself or as the video's fallback if it fails to load/play. */
-  backgroundImageUrl?: string;
-  /** Sprint 7.1 Site Content CMS: an admin-uploaded background video (validated 3-10s MP4 at upload time). Falls back to `backgroundImageUrl`, then the default animated treatment, on any load/playback error. */
-  backgroundVideoUrl?: string;
+  /**
+   * Sprint 7.2 Site Content CMS: per-breakpoint admin-uploaded backgrounds.
+   * Resolution falls back from the current breakpoint down toward desktop
+   * when a smaller breakpoint's asset isn't set (e.g. no mobile image ->
+   * tablet image -> desktop image), then to the default animated
+   * treatment when nothing at all is configured. A video always falls
+   * back to whichever image is resolved if it fails to load/play.
+   */
+  backgroundDesktopImageUrl?: string;
+  backgroundTabletImageUrl?: string;
+  backgroundMobileImageUrl?: string;
+  backgroundDesktopVideoUrl?: string;
+  backgroundMobileVideoUrl?: string;
+  backgroundPosterImageUrl?: string;
 }
 
 /**
  * Premium hero backdrop (Sprint 6, animated further in Sprint 7, made
- * CMS-configurable in Sprint 7.1).
+ * CMS-configurable in Sprint 7.1 and given per-breakpoint backgrounds in
+ * Sprint 7.2).
  *
  * When no admin-uploaded background exists, this is a crafted,
  * continuously-animated CSS/SVG treatment — slow-panning gradient blobs
  * plus a drifting dot grid — standing in for the "fond vidéo" the original
- * brief asked for for. Once a real image/video is published, it renders
+ * brief asked for. Once a real image/video is published, it renders
  * instead (the crafted treatment would visually clash layered under real
  * media, so it steps aside rather than compositing with it).
  */
@@ -29,8 +41,12 @@ export function Hero({
   children,
   className,
   parallax = false,
-  backgroundImageUrl,
-  backgroundVideoUrl,
+  backgroundDesktopImageUrl,
+  backgroundTabletImageUrl,
+  backgroundMobileImageUrl,
+  backgroundDesktopVideoUrl,
+  backgroundMobileVideoUrl,
+  backgroundPosterImageUrl,
 }: HeroProps) {
   const ref = useRef<HTMLElement>(null);
   const [videoFailed, setVideoFailed] = useState(false);
@@ -39,8 +55,20 @@ export function Hero({
   const contentY = useTransform(scrollYProgress, [0, 1], [0, parallax ? 80 : 0]);
   const contentOpacity = useTransform(scrollYProgress, [0, 1], [1, parallax ? 0.3 : 1]);
 
-  const showVideo = Boolean(backgroundVideoUrl) && !videoFailed;
-  const showImage = !showVideo && Boolean(backgroundImageUrl);
+  const breakpoint = useBreakpoint();
+  const imageUrl =
+    breakpoint === "mobile"
+      ? (backgroundMobileImageUrl ?? backgroundTabletImageUrl ?? backgroundDesktopImageUrl)
+      : breakpoint === "tablet"
+        ? (backgroundTabletImageUrl ?? backgroundDesktopImageUrl)
+        : backgroundDesktopImageUrl;
+  const videoUrl =
+    breakpoint === "mobile"
+      ? (backgroundMobileVideoUrl ?? backgroundDesktopVideoUrl)
+      : backgroundDesktopVideoUrl;
+
+  const showVideo = Boolean(videoUrl) && !videoFailed;
+  const showImage = !showVideo && Boolean(imageUrl);
   const hasCustomBackground = showVideo || showImage;
 
   return (
@@ -49,7 +77,8 @@ export function Hero({
         {showVideo && (
           // Decorative background video — muted, looping, non-informational; no captions track needed.
           <video
-            src={backgroundVideoUrl}
+            src={videoUrl}
+            poster={backgroundPosterImageUrl}
             className="absolute inset-0 h-full w-full object-cover"
             autoPlay
             muted
@@ -60,11 +89,7 @@ export function Hero({
           />
         )}
         {showImage && (
-          <img
-            src={backgroundImageUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
         )}
         {!hasCustomBackground && (
           <>

@@ -1,7 +1,10 @@
 import {
   DOWNLOADS_CONTENT_DOC_ID,
+  DRIVER_CTA_CONTENT_DOC_ID,
   FOOTER_CONTENT_DOC_ID,
   HOMEPAGE_CONTENT_DOC_ID,
+  HOW_IT_WORKS_CONTENT_DOC_ID,
+  SAFETY_CONTENT_DOC_ID,
   SECTIONS_CONTENT_DOC_ID,
   SEO_CONTENT_DOC_ID,
   SITE_CONTENT_COLLECTION,
@@ -18,6 +21,8 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 
+import { recordHistory } from "./site-content-history-admin";
+
 /**
  * Admin-dashboard Site Content CMS (Sprint 7.1) — singleton content areas
  * (Homepage/Hero, Sections config, Footer, SEO, Downloads). Mirrors the
@@ -30,7 +35,8 @@ import {
  * a plain draft edit never touches it.
  */
 
-export type SingletonArea = "homepage" | "sections" | "footer" | "seo" | "downloads";
+export type SingletonArea =
+  "homepage" | "sections" | "footer" | "seo" | "downloads" | "howItWorks" | "safety" | "driverCta";
 
 const DOC_ID_BY_AREA: Record<SingletonArea, string> = {
   homepage: HOMEPAGE_CONTENT_DOC_ID,
@@ -38,6 +44,9 @@ const DOC_ID_BY_AREA: Record<SingletonArea, string> = {
   footer: FOOTER_CONTENT_DOC_ID,
   seo: SEO_CONTENT_DOC_ID,
   downloads: DOWNLOADS_CONTENT_DOC_ID,
+  howItWorks: HOW_IT_WORKS_CONTENT_DOC_ID,
+  safety: SAFETY_CONTENT_DOC_ID,
+  driverCta: DRIVER_CTA_CONTENT_DOC_ID,
 };
 
 /** Version/bookkeeping fields every content doc carries — stripped before copying content between the draft and published trees so each side's own history stays independent. */
@@ -103,23 +112,56 @@ export async function saveSingletonDraft(
   );
 }
 
-/** Copies `siteContentDrafts/{area}` → `siteContent/{area}`, stamping publish metadata. This is the only write path into the public-read tree. */
+/**
+ * Copies `siteContentDrafts/{area}` → `siteContent/{area}`, stamping publish
+ * metadata. This is the only write path into the public-read tree. Before
+ * overwriting, snapshots whatever was previously published into
+ * `siteContentHistory` (Sprint 7.2) — skipped on an area's first-ever
+ * publish, since there's nothing meaningful to restore back to yet.
+ */
 export async function publishSingletonArea(
   db: Firestore,
   area: SingletonArea,
   publishedBy: string,
+  publishedByEmail: string,
 ): Promise<void> {
   const draftSnap = await getDoc(draftRef(db, area));
   if (!draftSnap.exists()) {
     throw new Error("Nothing to publish yet — save a draft first.");
   }
   const publishedSnap = await getDoc(publishedRef(db, area));
+  if (publishedSnap.exists()) {
+    await recordHistory(
+      db,
+      area,
+      "publish",
+      stripMeta(publishedSnap.data()),
+      publishedBy,
+      publishedByEmail,
+    );
+  }
   await setDoc(publishedRef(db, area), {
     ...stripMeta(draftSnap.data()),
     createdAt: publishedSnap.exists() ? publishedSnap.data().createdAt : serverTimestamp(),
     updatedAt: serverTimestamp(),
     publishedAt: serverTimestamp(),
     publishedBy,
+  });
+}
+
+/** Copies a past `siteContentHistory` snapshot back into the draft (never straight to published) so an admin can review before re-publishing. */
+export async function restoreSingletonFromHistory(
+  db: Firestore,
+  area: SingletonArea,
+  snapshot: Record<string, unknown>,
+  updatedBy: string,
+): Promise<void> {
+  const draftSnap = await getDoc(draftRef(db, area));
+  await setDoc(draftRef(db, area), {
+    ...stripMeta(snapshot),
+    createdAt: draftSnap.exists() ? draftSnap.data().createdAt : serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    updatedBy,
   });
 }
 

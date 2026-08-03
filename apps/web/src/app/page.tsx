@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Heading, Icon, Text, useTranslation } from "@the-ride/ui";
+import { Badge, Button, Heading, Icon, Text, useTranslation, type IconName } from "@the-ride/ui";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -15,13 +15,18 @@ import { StatsSection } from "@/components/marketing/StatsSection";
 import { TestimonialsSection } from "@/components/marketing/TestimonialsSection";
 import { VehicleTypeGrid } from "@/components/marketing/VehicleTypeGrid";
 import {
+  useDriverCtaContent,
   useHomepageContent,
+  useHowItWorksContent,
+  useSafetyContent,
   useSectionsContent,
   useTestimonials,
+  type ResolvedProcessStep,
+  type ResolvedSafetyCard,
   type ResolvedTestimonial,
 } from "@/hooks/useSiteContent";
 import type { SectionKey } from "@the-ride/types";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -63,41 +68,50 @@ export default function HomePage() {
   ];
   const testimonials = useTestimonials(DEFAULT_TESTIMONIALS);
 
-  const steps = [
+  const DEFAULT_STEPS: ResolvedProcessStep[] = [
     {
-      icon: "mapPin" as const,
+      icon: "mapPin",
       title: t("website.landing.step1Title"),
       description: t("website.landing.step1Body"),
     },
     {
-      icon: "car" as const,
+      icon: "car",
       title: t("website.landing.step2Title"),
       description: t("website.landing.step2Body"),
     },
     {
-      icon: "checkCircle" as const,
+      icon: "checkCircle",
       title: t("website.landing.step3Title"),
       description: t("website.landing.step3Body"),
     },
   ];
+  const howItWorks = useHowItWorksContent(DEFAULT_STEPS);
 
-  const safetyFeatures = [
+  const DEFAULT_SAFETY_CARDS: ResolvedSafetyCard[] = [
     {
-      icon: "shieldCheck" as const,
+      icon: "shieldCheck",
       title: t("website.landing.safety1Title"),
       description: t("website.landing.safety1Body"),
+      badgeText: t("website.landing.safetyBadge"),
     },
     {
-      icon: "mapPin" as const,
+      icon: "mapPin",
       title: t("website.landing.safety2Title"),
       description: t("website.landing.safety2Body"),
+      badgeText: t("website.landing.safetyBadge"),
     },
     {
-      icon: "alertCircle" as const,
+      icon: "alertCircle",
       title: t("website.landing.safety3Title"),
       description: t("website.landing.safety3Body"),
+      badgeText: t("website.landing.safetyBadge"),
     },
   ];
+  const safety = useSafetyContent(DEFAULT_SAFETY_CARDS);
+  const driverCta = useDriverCtaContent();
+  const [driverVideoFailed, setDriverVideoFailed] = useState(false);
+  const showDriverVideo = Boolean(driverCta.backgroundVideoUrl) && !driverVideoFailed;
+  const showDriverImage = !showDriverVideo && Boolean(driverCta.backgroundImageUrl);
 
   const sectionRenderers: Record<SectionKey, ReactNode> = {
     stats: (
@@ -150,13 +164,11 @@ export default function HomePage() {
     howItWorks: (
       <section className="mx-auto max-w-6xl px-6 py-24">
         <Reveal>
-          <SectionHeading
-            eyebrow={t("website.landing.howItWorksEyebrow")}
-            title={t("website.landing.howItWorksTitle")}
-            className="mb-14"
-          />
+          <SectionHeading eyebrow={howItWorks.eyebrow} title={howItWorks.title} className="mb-14" />
         </Reveal>
-        <ProcessSteps steps={steps} />
+        <ProcessSteps
+          steps={howItWorks.steps.map((step) => ({ ...step, icon: step.icon as IconName }))}
+        />
       </section>
     ),
     safety: (
@@ -166,28 +178,28 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-6xl px-6">
           <Reveal>
             <SectionHeading
-              eyebrow={t("website.landing.safetyEyebrow")}
-              title={t("website.landing.safetyTitle")}
-              subtitle={t("website.landing.safetySubtitle")}
+              eyebrow={safety.eyebrow}
+              title={safety.title}
+              subtitle={safety.subtitle}
               className="mb-12 [&_h2]:text-white [&_p]:text-neutral-300"
             />
           </Reveal>
           <div className="tablet:grid-cols-3 grid gap-6">
-            {safetyFeatures.map((feature, index) => (
-              <Reveal key={feature.title} delay={index * 0.1}>
+            {safety.cards.map((card, index) => (
+              <Reveal key={card.title} delay={index * 0.1}>
                 <motion.div
                   whileHover={{ y: -4 }}
                   transition={{ type: "spring", stiffness: 300, damping: 22 }}
                   className="duration-normal group relative h-full rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-shadow hover:shadow-[0_0_40px_-8px_rgba(232,106,47,0.45)]"
                 >
                   <span className="bg-brand/20 text-brand-300 group-hover:bg-brand/30 mb-3 flex h-11 w-11 items-center justify-center rounded-xl transition-colors">
-                    <Icon name={feature.icon} size={20} />
+                    <Icon name={card.icon as IconName} size={20} />
                   </span>
-                  <h3 className="mb-2 font-semibold text-white">{feature.title}</h3>
-                  <p className="mb-3 text-sm text-neutral-400">{feature.description}</p>
+                  <h3 className="mb-2 font-semibold text-white">{card.title}</h3>
+                  <p className="mb-3 text-sm text-neutral-400">{card.description}</p>
                   <Badge tone="brand" className="bg-brand/15 text-brand-200">
                     <Icon name="shieldCheck" size={12} />
-                    {t("website.landing.safetyBadge")}
+                    {card.badgeText}
                   </Badge>
                 </motion.div>
               </Reveal>
@@ -199,7 +211,7 @@ export default function HomePage() {
               className="border-white/30 text-white hover:bg-white/10 hover:text-white"
               asChild
             >
-              <Link href="/safety">{t("website.landing.safetyCta")}</Link>
+              <Link href={safety.ctaHref}>{safety.ctaLabel}</Link>
             </Button>
           </div>
         </div>
@@ -221,15 +233,37 @@ export default function HomePage() {
     driverCta: (
       <section className="mx-auto max-w-6xl px-6 py-24">
         <Reveal variant="scale">
-          <div className="to-brand-900 shadow-elevation4 flex flex-col items-center gap-6 rounded-3xl bg-gradient-to-br from-neutral-900 px-8 py-16 text-center">
-            <Heading level={2} className="text-white">
-              {t("website.landing.driverCtaTitle")}
+          <div className="to-brand-900 shadow-elevation4 relative flex flex-col items-center gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 px-8 py-16 text-center">
+            {showDriverVideo && (
+              <video
+                src={driverCta.backgroundVideoUrl}
+                className="absolute inset-0 h-full w-full object-cover"
+                autoPlay
+                muted
+                loop
+                playsInline
+                onError={() => setDriverVideoFailed(true)}
+                onStalled={() => setDriverVideoFailed(true)}
+              />
+            )}
+            {showDriverImage && (
+              <img
+                src={driverCta.backgroundImageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+            {(showDriverVideo || showDriverImage) && (
+              <div className="absolute inset-0 bg-neutral-900/60" />
+            )}
+            <Heading level={2} className="relative text-white">
+              {driverCta.title}
             </Heading>
-            <Text size="lg" className="max-w-xl text-neutral-300">
-              {t("website.landing.driverCtaBody")}
+            <Text size="lg" className="relative max-w-xl text-neutral-300">
+              {driverCta.subtitle}
             </Text>
-            <Button size="lg" asChild>
-              <Link href="/become-a-driver">{t("website.landing.driverCtaButton")}</Link>
+            <Button size="lg" className="relative" asChild>
+              <Link href={driverCta.buttonHref}>{driverCta.buttonLabel}</Link>
             </Button>
           </div>
         </Reveal>
@@ -243,12 +277,12 @@ export default function HomePage() {
       <Hero
         parallax
         className="tablet:pb-28 tablet:pt-44 -mt-16 px-6 pb-20 pt-36"
-        backgroundImageUrl={
-          homepage.backgroundType !== "gradient" ? homepage.backgroundImageUrl : undefined
-        }
-        backgroundVideoUrl={
-          homepage.backgroundType === "video" ? homepage.backgroundVideoUrl : undefined
-        }
+        backgroundDesktopImageUrl={homepage.backgroundDesktopImageUrl}
+        backgroundTabletImageUrl={homepage.backgroundTabletImageUrl}
+        backgroundMobileImageUrl={homepage.backgroundMobileImageUrl}
+        backgroundDesktopVideoUrl={homepage.backgroundDesktopVideoUrl}
+        backgroundMobileVideoUrl={homepage.backgroundMobileVideoUrl}
+        backgroundPosterImageUrl={homepage.backgroundPosterImageUrl}
       >
         <div className="laptop:grid-cols-[1.1fr_0.9fr] laptop:items-center mx-auto grid max-w-6xl gap-12">
           <motion.div
@@ -267,17 +301,21 @@ export default function HomePage() {
               {homepage.subtitle}
             </Text>
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" asChild>
-                <Link href="/services">{homepage.ctaPassengerLabel}</Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 hover:text-white"
-                asChild
-              >
-                <Link href="/become-a-driver">{homepage.ctaDriverLabel}</Link>
-              </Button>
+              {homepage.ctaPassengerEnabled && (
+                <Button size="lg" asChild>
+                  <Link href={homepage.ctaPassengerHref}>{homepage.ctaPassengerLabel}</Link>
+                </Button>
+              )}
+              {homepage.ctaDriverEnabled && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10 hover:text-white"
+                  asChild
+                >
+                  <Link href={homepage.ctaDriverHref}>{homepage.ctaDriverLabel}</Link>
+                </Button>
+              )}
             </div>
           </motion.div>
           <div className="laptop:justify-end flex justify-center">

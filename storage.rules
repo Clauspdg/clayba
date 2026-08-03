@@ -112,6 +112,11 @@ service firebase.storage {
       allow write: if isAdmin() && isImage() && isUnder5MB();
     }
 
+    match /site/vehicles/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnder5MB();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

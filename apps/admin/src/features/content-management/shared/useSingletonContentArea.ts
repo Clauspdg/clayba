@@ -2,6 +2,7 @@ import { adminFirestore } from "@/lib/firebase-client";
 import {
   discardSingletonDraft,
   publishSingletonArea,
+  restoreSingletonFromHistory,
   saveSingletonDraft,
   subscribeSingletonDraft,
   subscribeSingletonPublished,
@@ -42,6 +43,7 @@ function toDate(value: unknown): Date | undefined {
 export function useSingletonContentArea<T extends Record<string, unknown>>(area: SingletonArea) {
   const { session } = useAuth();
   const uid = session?.uid ?? "";
+  const email = session?.email ?? uid;
 
   const [draft, setDraft] = useState<T | null | undefined>(undefined);
   const [published, setPublished] = useState<T | null | undefined>(undefined);
@@ -81,7 +83,7 @@ export function useSingletonContentArea<T extends Record<string, unknown>>(area:
   async function publish(): Promise<void> {
     setPublishing(true);
     try {
-      await publishSingletonArea(adminFirestore, area, uid);
+      await publishSingletonArea(adminFirestore, area, uid, email);
     } finally {
       setPublishing(false);
     }
@@ -94,6 +96,10 @@ export function useSingletonContentArea<T extends Record<string, unknown>>(area:
     } finally {
       setDiscarding(false);
     }
+  }
+
+  async function restoreFromHistory(snapshot: Record<string, unknown>): Promise<void> {
+    await restoreSingletonFromHistory(adminFirestore, area, snapshot, uid);
   }
 
   return {
@@ -109,5 +115,6 @@ export function useSingletonContentArea<T extends Record<string, unknown>>(area:
     save,
     publish,
     discardDraft,
+    restoreFromHistory,
   };
 }

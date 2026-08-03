@@ -13,14 +13,14 @@ const DEFAULT_SOCIAL_LINKS: { icon: IconName; label: string; href: string }[] = 
 ];
 
 /**
- * Premium footer (Sprint 7, made partly CMS-configurable in Sprint 7.1 —
- * tagline/newsletter copy/social links can be published from Content
- * Management → Footer; the nav-link columns below stay hardcoded since
- * they're site navigation, not marketing copy). The newsletter form is
- * still UI-only — there's no newsletter backend in this environment and
- * the brief says not to add new Firebase/business logic this sprint, so
- * "subscribing" just shows a local success state rather than writing
- * anywhere, disclosed here.
+ * Premium footer (Sprint 7, made CMS-configurable in Sprints 7.1-7.2 —
+ * tagline/newsletter copy/social links/nav-link columns can all be
+ * published from Content Management → Footer, each falling back to
+ * today's hardcoded defaults until an admin publishes a non-empty list).
+ * The newsletter form is still UI-only — there's no newsletter backend in
+ * this environment and the brief says not to add new Firebase/business
+ * logic this sprint, so "subscribing" just shows a local success state
+ * rather than writing anywhere, disclosed here.
  */
 export function SiteFooter() {
   const { t } = useTranslation();
@@ -29,24 +29,24 @@ export function SiteFooter() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
-  const companyLinks = [
+  const companyLinks = footer.companyLinks ?? [
     { label: t("nav.about"), href: "/about" },
     { label: t("nav.safety"), href: "/safety" },
     { label: t("nav.becomeDriver"), href: "/become-a-driver" },
   ];
 
-  const serviceLinks = [
+  const serviceLinks = footer.serviceLinks ?? [
     { label: t("nav.services"), href: "/services" },
     { label: t("website.services.airportTitle"), href: "/services" },
     { label: t("website.services.corporateTitle"), href: "/services" },
   ];
 
-  const supportLinks = [
+  const supportLinks = footer.supportLinks ?? [
     { label: t("nav.faq"), href: "/faq" },
     { label: t("nav.contact"), href: "/contact" },
   ];
 
-  const legalLinks = [
+  const legalLinks = footer.legalLinks ?? [
     { label: t("nav.privacy"), href: "/privacy-policy" },
     { label: t("nav.terms"), href: "/terms-of-service" },
     { label: t("nav.cookies"), href: "/cookies" },

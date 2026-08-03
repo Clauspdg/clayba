@@ -1,23 +1,32 @@
 "use client";
 
 import {
+  subscribeDriverCtaContent,
   subscribeFaqItems,
   subscribeFooterContent,
   subscribeHomepageContent,
+  subscribeHowItWorksContent,
+  subscribeSafetyContent,
   subscribeSectionsContent,
   subscribeTestimonials,
+  subscribeVehicleCategories,
 } from "@/lib/site-content";
 import type { Locale } from "@the-ride/hooks";
 import { useTranslation } from "@the-ride/ui";
 import {
   DEFAULT_SECTIONS_ORDER,
   type BilingualText,
+  type DriverCtaContent,
   type FaqCategory,
   type FaqItem,
   type FooterContent,
+  type FooterLink,
   type HomepageContent,
+  type HowItWorksContent,
+  type SafetyContent,
   type SectionKey,
   type SocialLink,
+  type VehicleCategory,
   type TestimonialItem,
 } from "@the-ride/types";
 import { useEffect, useState } from "react";
@@ -52,9 +61,16 @@ export interface HomepageContentResolved {
   subtitle: string;
   ctaPassengerLabel: string;
   ctaDriverLabel: string;
-  backgroundType: "gradient" | "image" | "video";
-  backgroundImageUrl?: string;
-  backgroundVideoUrl?: string;
+  ctaPassengerEnabled: boolean;
+  ctaPassengerHref: string;
+  ctaDriverEnabled: boolean;
+  ctaDriverHref: string;
+  backgroundDesktopImageUrl?: string;
+  backgroundTabletImageUrl?: string;
+  backgroundMobileImageUrl?: string;
+  backgroundDesktopVideoUrl?: string;
+  backgroundMobileVideoUrl?: string;
+  backgroundPosterImageUrl?: string;
 }
 
 export function useHomepageContent(): HomepageContentResolved {
@@ -74,9 +90,16 @@ export function useHomepageContent(): HomepageContentResolved {
       "website.landing.ctaPassenger",
     ),
     ctaDriverLabel: pickText(content?.ctaDriverLabel, locale, t, "website.landing.ctaDriver"),
-    backgroundType: content?.backgroundType ?? "gradient",
-    backgroundImageUrl: content?.backgroundImageUrl,
-    backgroundVideoUrl: content?.backgroundVideoUrl,
+    ctaPassengerEnabled: content?.ctaPassengerEnabled ?? true,
+    ctaPassengerHref: content?.ctaPassengerHref ?? "/services",
+    ctaDriverEnabled: content?.ctaDriverEnabled ?? true,
+    ctaDriverHref: content?.ctaDriverHref ?? "/become-a-driver",
+    backgroundDesktopImageUrl: content?.backgroundDesktopImageUrl,
+    backgroundTabletImageUrl: content?.backgroundTabletImageUrl,
+    backgroundMobileImageUrl: content?.backgroundMobileImageUrl,
+    backgroundDesktopVideoUrl: content?.backgroundDesktopVideoUrl,
+    backgroundMobileVideoUrl: content?.backgroundMobileVideoUrl,
+    backgroundPosterImageUrl: content?.backgroundPosterImageUrl,
   };
 }
 
@@ -101,12 +124,30 @@ export interface ResolvedSocialLink {
   href: string;
 }
 
+export interface ResolvedFooterLink {
+  label: string;
+  href: string;
+}
+
 export interface FooterContentResolved {
   tagline: string;
   newsletterTitle: string;
   newsletterBody: string;
   showNewsletter: boolean;
   socialLinks?: ResolvedSocialLink[];
+  companyLinks?: ResolvedFooterLink[];
+  serviceLinks?: ResolvedFooterLink[];
+  supportLinks?: ResolvedFooterLink[];
+  legalLinks?: ResolvedFooterLink[];
+}
+
+function resolveLinkList(
+  links: FooterLink[] | undefined,
+  locale: Locale,
+): ResolvedFooterLink[] | undefined {
+  return links && links.length > 0
+    ? links.map((link) => ({ label: pickRawText(link.label, locale), href: link.href }))
+    : undefined;
 }
 
 export function useFooterContent(): FooterContentResolved {
@@ -128,6 +169,10 @@ export function useFooterContent(): FooterContentResolved {
             href: link.href,
           }))
         : undefined,
+    companyLinks: resolveLinkList(content?.companyLinks, locale),
+    serviceLinks: resolveLinkList(content?.serviceLinks, locale),
+    supportLinks: resolveLinkList(content?.supportLinks, locale),
+    legalLinks: resolveLinkList(content?.legalLinks, locale),
   };
 }
 
@@ -177,4 +222,124 @@ export function useFaqItems(fallback: ResolvedFaqItem[]): ResolvedFaqItem[] {
     question: pickRawText(item.question, locale),
     answer: pickRawText(item.answer, locale),
   }));
+}
+
+export interface ResolvedProcessStep {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export interface HowItWorksContentResolved {
+  eyebrow: string;
+  title: string;
+  steps: ResolvedProcessStep[];
+}
+
+/** All-or-nothing on `steps` (a list, same rationale as testimonials/FAQ) — `fallbackSteps` is today's 3 hardcoded steps. */
+export function useHowItWorksContent(
+  fallbackSteps: ResolvedProcessStep[],
+): HowItWorksContentResolved {
+  const { t, locale } = useTranslation();
+  const [content, setContent] = useState<HowItWorksContent | null>(null);
+
+  useEffect(() => subscribeHowItWorksContent(setContent), []);
+
+  const steps =
+    content && content.items.length > 0
+      ? content.items.map((step) => ({
+          icon: step.icon,
+          title: pickRawText(step.title, locale),
+          description: pickRawText(step.description, locale),
+        }))
+      : fallbackSteps;
+
+  return {
+    eyebrow: pickText(content?.eyebrow, locale, t, "website.landing.howItWorksEyebrow"),
+    title: pickText(content?.title, locale, t, "website.landing.howItWorksTitle"),
+    steps,
+  };
+}
+
+export interface ResolvedSafetyCard {
+  icon: string;
+  title: string;
+  description: string;
+  badgeText: string;
+}
+
+export interface SafetyContentResolved {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  ctaLabel: string;
+  ctaHref: string;
+  cards: ResolvedSafetyCard[];
+}
+
+/** All-or-nothing on `cards` (a list) — `fallbackCards` is today's 3 hardcoded safety features. */
+export function useSafetyContent(fallbackCards: ResolvedSafetyCard[]): SafetyContentResolved {
+  const { t, locale } = useTranslation();
+  const [content, setContent] = useState<SafetyContent | null>(null);
+
+  useEffect(() => subscribeSafetyContent(setContent), []);
+
+  const cards =
+    content && content.items.length > 0
+      ? content.items.map((card) => ({
+          icon: card.icon,
+          title: pickRawText(card.title, locale),
+          description: pickRawText(card.description, locale),
+          badgeText: pickRawText(card.badgeText, locale),
+        }))
+      : fallbackCards;
+
+  return {
+    eyebrow: pickText(content?.eyebrow, locale, t, "website.landing.safetyEyebrow"),
+    title: pickText(content?.title, locale, t, "website.landing.safetyTitle"),
+    subtitle: pickText(content?.subtitle, locale, t, "website.landing.safetySubtitle"),
+    ctaLabel: pickText(content?.ctaLabel, locale, t, "website.landing.safetyCta"),
+    ctaHref: content?.ctaHref ?? "/safety",
+    cards,
+  };
+}
+
+export interface DriverCtaContentResolved {
+  title: string;
+  subtitle: string;
+  buttonLabel: string;
+  buttonHref: string;
+  backgroundImageUrl?: string;
+  backgroundVideoUrl?: string;
+}
+
+export function useDriverCtaContent(): DriverCtaContentResolved {
+  const { t, locale } = useTranslation();
+  const [content, setContent] = useState<DriverCtaContent | null>(null);
+
+  useEffect(() => subscribeDriverCtaContent(setContent), []);
+
+  return {
+    title: pickText(content?.title, locale, t, "website.landing.driverCtaTitle"),
+    subtitle: pickText(content?.subtitle, locale, t, "website.landing.driverCtaBody"),
+    buttonLabel: pickText(content?.buttonLabel, locale, t, "website.landing.driverCtaButton"),
+    buttonHref: content?.buttonHref ?? "/become-a-driver",
+    backgroundImageUrl: content?.backgroundImageUrl,
+    backgroundVideoUrl: content?.backgroundVideoUrl,
+  };
+}
+
+/**
+ * Ride Categories (Sprint 7.2) — reads the real `vehicleCategories`
+ * collection (see `apps/web/src/lib/site-content.ts`'s comment for why
+ * there's no separate CMS-only copy). `name`/`description` on that schema
+ * are plain strings, not bilingual — shown as-is regardless of locale.
+ * All-or-nothing fallback like the other lists here.
+ */
+export function useVehicleCategories(fallback: VehicleCategory[]): VehicleCategory[] {
+  const [items, setItems] = useState<VehicleCategory[]>([]);
+
+  useEffect(() => subscribeVehicleCategories(setItems), []);
+
+  return items.length > 0 ? items : fallback;
 }

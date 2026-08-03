@@ -87,6 +87,8 @@ export const vehicleCategorySchema = z.object({
   icon: z.string().min(1),
   /** Hex color used for badges and map markers. */
   color: z.string().min(1),
+  /** Marketing-site card photo (Sprint 7.2 Site Content CMS) — purely cosmetic, no effect on fare/dispatch logic. Falls back to an illustrated SVG when unset. */
+  imageUrl: z.string().url().optional(),
   baseFare: z.number().min(0),
   perKmRate: z.number().min(0),
   perMinuteRate: z.number().min(0),
@@ -100,5 +102,9 @@ export const vehicleCategorySchema = z.object({
 
 export type VehicleCategory = z.infer<typeof vehicleCategorySchema>;
 
-export const createVehicleCategoryInputSchema = vehicleCategorySchema.omit({ id: true, createdAt: true, updatedAt: true });
+export const createVehicleCategoryInputSchema = vehicleCategorySchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type CreateVehicleCategoryInput = z.infer<typeof createVehicleCategoryInputSchema>;

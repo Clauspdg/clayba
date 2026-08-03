@@ -7,6 +7,7 @@ import {
   discardFaqDraft,
   publishFaq,
   reorderFaqDraft,
+  restoreFaqFromHistory,
   subscribeFaqDraft,
   subscribeFaqPublished,
   toCreateFaqInput,
@@ -47,6 +48,7 @@ import {
 import type { CreateFaqItemInput, FaqItem } from "@the-ride/types";
 import { useCallback, useState } from "react";
 
+import { HistoryPanel } from "../shared/HistoryPanel";
 import { PublishBar } from "../shared/PublishBar";
 import { useListContentArea } from "../shared/useListContentArea";
 import { FaqFormDialog } from "./FaqFormDialog";
@@ -77,8 +79,11 @@ export function FaqCmsPage() {
   const area = useListContentArea<FaqItem>({
     subscribeDraft,
     subscribePublished,
-    publish: (publishedBy) => publishFaq(adminFirestore, publishedBy),
+    publish: (publishedBy, publishedByEmail) =>
+      publishFaq(adminFirestore, publishedBy, publishedByEmail),
     discardDraft: (updatedBy) => discardFaqDraft(adminFirestore, updatedBy),
+    restoreFromHistory: (snapshot, updatedBy) =>
+      restoreFaqFromHistory(adminFirestore, snapshot, updatedBy),
   });
 
   const [editing, setEditing] = useState<FaqItem | "new" | null>(null);
@@ -142,6 +147,15 @@ export function FaqCmsPage() {
     }
   }
 
+  async function handleRestore(snapshot: Record<string, unknown> | Record<string, unknown>[]) {
+    try {
+      await area.restoreFromHistory(snapshot as Record<string, unknown>[]);
+      toast({ variant: "success", title: "Draft restored from history" });
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : "Restore failed" });
+    }
+  }
+
   if (area.error) return <ErrorState title="Something went wrong" description={area.error} />;
   if (area.loading) return <LoadingState title="Loading…" />;
 
@@ -160,6 +174,8 @@ export function FaqCmsPage() {
         onPublish={() => void handlePublish()}
         onDiscardDraft={() => void handleDiscard()}
       />
+
+      <HistoryPanel area="faq" onRestore={handleRestore} />
 
       {items.length === 0 ? (
         <EmptyState

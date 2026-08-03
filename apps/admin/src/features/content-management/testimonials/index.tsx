@@ -7,6 +7,7 @@ import {
   discardTestimonialsDraft,
   publishTestimonials,
   reorderTestimonialsDraft,
+  restoreTestimonialsFromHistory,
   subscribeTestimonialsDraft,
   subscribeTestimonialsPublished,
   toCreateTestimonialInput,
@@ -47,6 +48,7 @@ import {
 import type { CreateTestimonialItemInput, TestimonialItem } from "@the-ride/types";
 import { useCallback, useState } from "react";
 
+import { HistoryPanel } from "../shared/HistoryPanel";
 import { PublishBar } from "../shared/PublishBar";
 import { useListContentArea } from "../shared/useListContentArea";
 import { TestimonialFormDialog } from "./TestimonialFormDialog";
@@ -80,8 +82,11 @@ export function TestimonialsCmsPage() {
   const area = useListContentArea<TestimonialItem>({
     subscribeDraft,
     subscribePublished,
-    publish: (publishedBy) => publishTestimonials(adminFirestore, publishedBy),
+    publish: (publishedBy, publishedByEmail) =>
+      publishTestimonials(adminFirestore, publishedBy, publishedByEmail),
     discardDraft: (updatedBy) => discardTestimonialsDraft(adminFirestore, updatedBy),
+    restoreFromHistory: (snapshot, updatedBy) =>
+      restoreTestimonialsFromHistory(adminFirestore, snapshot, updatedBy),
   });
 
   const [editing, setEditing] = useState<TestimonialItem | "new" | null>(null);
@@ -145,6 +150,15 @@ export function TestimonialsCmsPage() {
     }
   }
 
+  async function handleRestore(snapshot: Record<string, unknown> | Record<string, unknown>[]) {
+    try {
+      await area.restoreFromHistory(snapshot as Record<string, unknown>[]);
+      toast({ variant: "success", title: "Draft restored from history" });
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : "Restore failed" });
+    }
+  }
+
   if (area.error) return <ErrorState title="Something went wrong" description={area.error} />;
   if (area.loading) return <LoadingState title="Loading…" />;
 
@@ -163,6 +177,8 @@ export function TestimonialsCmsPage() {
         onPublish={() => void handlePublish()}
         onDiscardDraft={() => void handleDiscard()}
       />
+
+      <HistoryPanel area="testimonials" onRestore={handleRestore} />
 
       {items.length === 0 ? (
         <EmptyState

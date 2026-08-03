@@ -7,6 +7,9 @@ import { useState } from "react";
 const SUB_ITEMS = [
   { href: "/content-homepage", labelKey: "admin.sidebar.contentHomepage" },
   { href: "/content-sections", labelKey: "admin.sidebar.contentSections" },
+  { href: "/content-how-it-works", labelKey: "admin.sidebar.contentHowItWorks" },
+  { href: "/content-safety", labelKey: "admin.sidebar.contentSafety" },
+  { href: "/content-driver-cta", labelKey: "admin.sidebar.contentDriverCta" },
   { href: "/content-media", labelKey: "admin.sidebar.contentMedia" },
   { href: "/content-testimonials", labelKey: "admin.sidebar.contentTestimonials" },
   { href: "/content-faq", labelKey: "admin.sidebar.contentFaq" },
