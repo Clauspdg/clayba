@@ -1,6 +1,7 @@
 "use client";
 
 import { useBreakpoint } from "@the-ride/hooks";
+import { cn } from "@the-ride/ui";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useState, type ReactNode } from "react";
 
@@ -30,6 +31,21 @@ export interface HeroProps {
  * Premium hero backdrop (Sprint 6, animated further in Sprint 7, made
  * CMS-configurable in Sprint 7.1 and given per-breakpoint backgrounds in
  * Sprint 7.2).
+ *
+ * Defaults to `px-6 pt-24 pb-24` (Sprint 8.4b — equivalent to `py-24`, but
+ * spelled out as separate `pt`/`pb` so `tailwind-merge` reliably strips
+ * both when a caller overrides with `pt-*`/`pb-*` values instead of `py-*`;
+ * `tailwind-merge`'s conflict resolution only recognizes same-axis-group
+ * overrides, not shorthand-vs-single-side in every direction) so every
+ * simple content page gets identical spacing without hand-rolling its own
+ * padding. `className` is merged via `cn`, so a caller overriding padding
+ * (e.g. Home's asymmetric top/bottom values for its fixed transparent
+ * header) cleanly replaces the default instead of both classes coexisting
+ * and silently depending on Tailwind's internal utility ordering to "win".
+ * The section's height is otherwise fully content-driven — no min-height
+ * here, and no negative margin on this component or any of its callers
+ * should ever be used to adjust the gap to the next section; give that
+ * section its own normal top padding instead.
  *
  * When no admin-uploaded background exists, this is a crafted,
  * continuously-animated CSS/SVG treatment — slow-panning gradient blobs
@@ -79,7 +95,10 @@ export function Hero({
   const hasCustomBackground = showVideo || showImage;
 
   return (
-    <section ref={ref} className={`relative overflow-hidden bg-neutral-900 ${className ?? ""}`}>
+    <section
+      ref={ref}
+      className={cn("relative overflow-hidden bg-neutral-900 px-6 pb-24 pt-24", className)}
+    >
       <motion.div style={{ y: backgroundY }} className="absolute inset-0">
         {showVideo && (
           // Decorative background video — muted, looping, non-informational; no captions track needed.

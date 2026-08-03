@@ -132,7 +132,7 @@ export default function HomePage() {
 
   const sectionRenderers: Record<SectionKey, ReactNode> = {
     stats: (
-      <section className="mx-auto -mt-10 max-w-6xl px-6">
+      <section className="mx-auto max-w-6xl px-6 pt-16">
         <Reveal variant="scale">
           <StatsSection stats={stats} />
         </Reveal>
@@ -290,7 +290,7 @@ export default function HomePage() {
       {homepage.visible && (
         <Hero
           parallax
-          className="tablet:pb-28 tablet:pt-44 -mt-16 px-6 pb-20 pt-36"
+          className="tablet:pb-28 tablet:pt-44 px-6 pb-20 pt-36"
           backgroundDesktopImageUrl={homepage.backgroundDesktopImageUrl}
           backgroundLaptopImageUrl={homepage.backgroundLaptopImageUrl}
           backgroundTabletImageUrl={homepage.backgroundTabletImageUrl}

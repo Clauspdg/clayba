@@ -115,7 +115,7 @@ export default function FaqPage() {
 
   return (
     <div>
-      <Hero className="px-6 py-20">
+      <Hero>
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="tablet:text-5xl text-4xl font-bold text-white">
             {t("website.faq.title")}
