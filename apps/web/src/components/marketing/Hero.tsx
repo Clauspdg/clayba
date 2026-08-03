@@ -18,6 +18,7 @@ export interface HeroProps {
    * back to whichever image is resolved if it fails to load/play.
    */
   backgroundDesktopImageUrl?: string;
+  backgroundLaptopImageUrl?: string;
   backgroundTabletImageUrl?: string;
   backgroundMobileImageUrl?: string;
   backgroundDesktopVideoUrl?: string;
@@ -42,6 +43,7 @@ export function Hero({
   className,
   parallax = false,
   backgroundDesktopImageUrl,
+  backgroundLaptopImageUrl,
   backgroundTabletImageUrl,
   backgroundMobileImageUrl,
   backgroundDesktopVideoUrl,
@@ -58,10 +60,15 @@ export function Hero({
   const breakpoint = useBreakpoint();
   const imageUrl =
     breakpoint === "mobile"
-      ? (backgroundMobileImageUrl ?? backgroundTabletImageUrl ?? backgroundDesktopImageUrl)
+      ? (backgroundMobileImageUrl ??
+        backgroundTabletImageUrl ??
+        backgroundLaptopImageUrl ??
+        backgroundDesktopImageUrl)
       : breakpoint === "tablet"
-        ? (backgroundTabletImageUrl ?? backgroundDesktopImageUrl)
-        : backgroundDesktopImageUrl;
+        ? (backgroundTabletImageUrl ?? backgroundLaptopImageUrl ?? backgroundDesktopImageUrl)
+        : breakpoint === "laptop"
+          ? (backgroundLaptopImageUrl ?? backgroundDesktopImageUrl)
+          : backgroundDesktopImageUrl;
   const videoUrl =
     breakpoint === "mobile"
       ? (backgroundMobileVideoUrl ?? backgroundDesktopVideoUrl)

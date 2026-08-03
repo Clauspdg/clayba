@@ -1,5 +1,8 @@
 "use client";
 
+import { adminFirestore } from "@/lib/firebase-client";
+import { uploadAndCatalogSiteMedia } from "@/lib/site-media-admin";
+import { useAuth } from "@the-ride/hooks";
 import {
   Button,
   ErrorState,
@@ -23,6 +26,9 @@ import { useSingletonContentArea } from "../shared/useSingletonContentArea";
 const EMPTY_TEXT: BilingualText = { fr: "", en: "" };
 
 interface FooterForm {
+  logoImageUrl?: string;
+  logoText: string;
+  copyrightText: BilingualText;
   tagline: BilingualText;
   newsletterTitle: BilingualText;
   newsletterBody: BilingualText;
@@ -35,6 +41,8 @@ interface FooterForm {
 }
 
 const EMPTY_FORM: FooterForm = {
+  logoText: "",
+  copyrightText: EMPTY_TEXT,
   tagline: EMPTY_TEXT,
   newsletterTitle: EMPTY_TEXT,
   newsletterBody: EMPTY_TEXT,
@@ -49,6 +57,9 @@ const EMPTY_FORM: FooterForm = {
 function toForm(content: FooterContent | null | undefined): FooterForm {
   if (!content) return EMPTY_FORM;
   return {
+    logoImageUrl: content.logoImageUrl,
+    logoText: content.logoText ?? "",
+    copyrightText: content.copyrightText ?? EMPTY_TEXT,
     tagline: content.tagline ?? EMPTY_TEXT,
     newsletterTitle: content.newsletterTitle ?? EMPTY_TEXT,
     newsletterBody: content.newsletterBody ?? EMPTY_TEXT,
@@ -70,9 +81,11 @@ function toForm(content: FooterContent | null | undefined): FooterForm {
  */
 export function FooterContentPage() {
   const { toast } = useToast();
+  const { session } = useAuth();
   const area = useSingletonContentArea<FooterContent>("footer");
   const [form, setForm] = useState<FooterForm>(EMPTY_FORM);
   const [hydrated, setHydrated] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (!hydrated && area.draft !== undefined) {
@@ -80,6 +93,23 @@ export function FooterContentPage() {
       setHydrated(true);
     }
   }, [area.draft, hydrated]);
+
+  async function handleLogoUpload(file: File) {
+    setUploadingLogo(true);
+    try {
+      const item = await uploadAndCatalogSiteMedia(
+        adminFirestore,
+        "logos",
+        session?.uid ?? "",
+        file,
+      );
+      setForm((prev) => ({ ...prev, logoImageUrl: item.url }));
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : "Upload failed" });
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   function updateSocialLink(index: number, patch: Partial<SocialLink>) {
     setForm((prev) => ({
@@ -181,6 +211,36 @@ export function FooterContentPage() {
       <HistoryPanel area="footer" onRestore={handleRestore} />
 
       <div className="flex flex-col gap-5 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+            Logo image
+          </span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/svg+xml"
+            aria-label="Logo image"
+            className="text-sm"
+            disabled={uploadingLogo}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleLogoUpload(file);
+            }}
+          />
+          {form.logoImageUrl && (
+            <img src={form.logoImageUrl} alt="" className="h-12 w-auto rounded-lg object-contain" />
+          )}
+        </div>
+        <Input
+          label="Logo text"
+          value={form.logoText}
+          onChange={(e) => setForm({ ...form, logoText: e.target.value })}
+          placeholder="The Ride"
+        />
+        <BilingualTextField
+          label="Copyright text"
+          value={form.copyrightText}
+          onChange={(copyrightText) => setForm({ ...form, copyrightText })}
+        />
         <BilingualTextField
           label="Tagline"
           value={form.tagline}

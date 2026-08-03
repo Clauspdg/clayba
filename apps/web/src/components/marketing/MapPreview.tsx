@@ -13,7 +13,12 @@ const ROUTE_PATH = "M60 220 C 140 220, 140 100, 220 100 S 320 60, 340 60";
  * clearly presented as a preview with simulated distance/ETA data, not a
  * working map widget.
  */
-export function MapPreview() {
+export interface MapPreviewProps {
+  distanceValue?: string;
+  etaValue?: string;
+}
+
+export function MapPreview({ distanceValue = "12.4 km", etaValue = "18 min" }: MapPreviewProps) {
   const { t } = useTranslation();
 
   return (
@@ -64,11 +69,13 @@ export function MapPreview() {
       <div className="shadow-elevation2 absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 backdrop-blur dark:bg-neutral-900/90">
         <div>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("map.distance")}</p>
-          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">12.4 km</p>
+          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+            {distanceValue}
+          </p>
         </div>
         <div>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("map.eta")}</p>
-          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">18 min</p>
+          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">{etaValue}</p>
         </div>
       </div>
     </div>

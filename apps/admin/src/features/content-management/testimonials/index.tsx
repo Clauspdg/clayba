@@ -61,6 +61,7 @@ const EMPTY_INPUT: CreateTestimonialItemInput = {
   quote: { fr: "", en: "" },
   rating: 5,
   order: 0,
+  active: true,
 };
 
 export function TestimonialsCmsPage() {
@@ -264,10 +265,25 @@ function SortableTestimonialRow({
         >
           <Icon name="chevronsUpDown" size={18} />
         </button>
+        {item.photoUrl ? (
+          <img
+            src={item.photoUrl}
+            alt=""
+            className="h-10 w-10 shrink-0 rounded-full object-cover"
+          />
+        ) : null}
         <div>
           <p className="font-medium text-neutral-900 dark:text-neutral-50">{item.name}</p>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            {item.city} · {item.trips}+ trips · <Badge tone="neutral">{item.rating}★</Badge>
+            {item.city}
+            {item.country ? `, ${item.country}` : ""} · {item.trips}+ trips ·{" "}
+            <Badge tone="neutral">{item.rating}★</Badge>
+            {item.active === false && (
+              <>
+                {" "}
+                · <Badge tone="warning">Inactive</Badge>
+              </>
+            )}
           </p>
         </div>
       </div>

@@ -13,6 +13,9 @@ export const DOWNLOADS_CONTENT_DOC_ID = "downloads";
 export const HOW_IT_WORKS_CONTENT_DOC_ID = "howItWorks";
 export const SAFETY_CONTENT_DOC_ID = "safety";
 export const DRIVER_CTA_CONTENT_DOC_ID = "driverCta";
+export const STATISTICS_CONTENT_DOC_ID = "statistics";
+export const TRACKING_CONTENT_DOC_ID = "tracking";
+export const NAVIGATION_CONTENT_DOC_ID = "navigation";
 
 export const TESTIMONIALS_SUBCOLLECTION = "testimonials/items";
 export const FAQ_SUBCOLLECTION = "faq/items";

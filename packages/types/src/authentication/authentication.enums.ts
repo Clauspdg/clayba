@@ -11,6 +11,15 @@ export enum Role {
   MODERATOR = "moderator",
   ADMIN = "admin",
   SUPER_ADMIN = "super_admin",
+  /**
+   * Sprint 8.3 permissions groundwork — code-level only. `firestore.rules`/
+   * `storage.rules`'s `isAdmin()` still only recognizes `admin`/
+   * `super_admin`, so a content_manager user can reach the Admin dashboard
+   * shell (see `RoleGuard.tsx`) but every Site Content Firestore write is
+   * still denied by rules until a future rules change adds this role to
+   * the relevant `match` blocks. Not wired to enforce anything yet.
+   */
+  CONTENT_MANAGER = "content_manager",
 }
 
 export const ROLES = Object.values(Role);

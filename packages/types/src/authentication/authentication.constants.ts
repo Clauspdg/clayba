@@ -14,6 +14,7 @@ export const ROLE_HIERARCHY: Record<Role, number> = {
   [Role.DRIVER]: 0,
   [Role.SUPPORT]: 1,
   [Role.MODERATOR]: 1,
+  [Role.CONTENT_MANAGER]: 1,
   [Role.DISPATCHER]: 2,
   [Role.ADMIN]: 3,
   [Role.SUPER_ADMIN]: 4,
@@ -56,7 +57,22 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports.read",
     "emergency.read",
   ],
-  [Role.MODERATOR]: ["rating.read", "rating.moderate", "review.moderate", "reports.read", "reports.review", "user.read", "driver.read"],
+  [Role.MODERATOR]: [
+    "rating.read",
+    "rating.moderate",
+    "review.moderate",
+    "reports.read",
+    "reports.review",
+    "user.read",
+    "driver.read",
+  ],
+  /**
+   * Sprint 8.3 groundwork — no `content.*` permission constants exist yet
+   * (Site Content CMS access is currently gated by `firestore.rules`'s
+   * `isAdmin()`, not this matrix), so this is intentionally minimal rather
+   * than inventing a parallel, unenforced permission system.
+   */
+  [Role.CONTENT_MANAGER]: ["settings.read"],
   [Role.ADMIN]: [
     "trip.read",
     "trip.assign",

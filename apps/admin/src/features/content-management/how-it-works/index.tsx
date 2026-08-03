@@ -1,5 +1,7 @@
 "use client";
 
+import { adminFirestore } from "@/lib/firebase-client";
+import { uploadAndCatalogSiteMedia } from "@/lib/site-media-admin";
 import {
   DndContext,
   closestCenter,
@@ -15,6 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAuth } from "@the-ride/hooks";
 import {
   Button,
   ErrorState,
@@ -71,9 +74,11 @@ function newStep(order: number): HowItWorksStep {
  */
 export function HowItWorksContentPage() {
   const { toast } = useToast();
+  const { session } = useAuth();
   const area = useSingletonContentArea<HowItWorksContent>("howItWorks");
   const [form, setForm] = useState<HowItWorksForm>(EMPTY_FORM);
   const [hydrated, setHydrated] = useState(false);
+  const [uploadingStepId, setUploadingStepId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   useEffect(() => {
@@ -96,6 +101,23 @@ export function HowItWorksContentPage() {
 
   function removeStep(id: string) {
     setForm((prev) => ({ ...prev, items: prev.items.filter((step) => step.id !== id) }));
+  }
+
+  async function handleImageUpload(id: string, file: File) {
+    setUploadingStepId(id);
+    try {
+      const item = await uploadAndCatalogSiteMedia(
+        adminFirestore,
+        "sections",
+        session?.uid ?? "",
+        file,
+      );
+      updateStep(id, { imageUrl: item.url });
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : "Upload failed" });
+    } finally {
+      setUploadingStepId(null);
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -205,6 +227,8 @@ export function HowItWorksContentPage() {
                 step={step}
                 onUpdate={(patch) => updateStep(step.id, patch)}
                 onRemove={() => removeStep(step.id)}
+                onImageUpload={(file) => void handleImageUpload(step.id, file)}
+                uploading={uploadingStepId === step.id}
               />
             ))}
           </ul>
@@ -218,10 +242,14 @@ function SortableStepRow({
   step,
   onUpdate,
   onRemove,
+  onImageUpload,
+  uploading,
 }: {
   step: HowItWorksStep;
   onUpdate: (patch: Partial<HowItWorksStep>) => void;
   onRemove: () => void;
+  onImageUpload: (file: File) => void;
+  uploading: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: step.id,
@@ -266,6 +294,25 @@ function SortableStepRow({
         multiline
         rows={2}
       />
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+          Image (optional)
+        </span>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          aria-label="Step image"
+          className="text-sm"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onImageUpload(file);
+          }}
+        />
+        {step.imageUrl && (
+          <img src={step.imageUrl} alt="" className="h-20 w-32 rounded-lg object-cover" />
+        )}
+      </div>
     </li>
   );
 }

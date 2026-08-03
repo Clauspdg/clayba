@@ -6,8 +6,22 @@ import { useAuth, useHasRole } from "@the-ride/hooks";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
-/** Roles allowed into the admin dashboard shell at all — page-level permission checks (Part 2, RBAC) come in a later sprint. */
-const ADMIN_DASHBOARD_ROLES: Role[] = [Role.ADMIN, Role.SUPER_ADMIN, Role.DISPATCHER, Role.SUPPORT, Role.MODERATOR];
+/**
+ * Roles allowed into the admin dashboard shell at all — page-level
+ * permission checks (Part 2, RBAC) come in a later sprint.
+ * `Role.CONTENT_MANAGER` (Sprint 8.3) can reach this shell, but every Site
+ * Content Firestore write is still denied by `firestore.rules`'s
+ * `isAdmin()` until a future rules change recognizes the role — see that
+ * enum member's doc comment.
+ */
+const ADMIN_DASHBOARD_ROLES: Role[] = [
+  Role.ADMIN,
+  Role.SUPER_ADMIN,
+  Role.DISPATCHER,
+  Role.SUPPORT,
+  Role.MODERATOR,
+  Role.CONTENT_MANAGER,
+];
 
 export function RoleGuard({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -32,7 +46,11 @@ export function RoleGuard({ children }: { children: ReactNode }) {
   if (!isAllowedRole) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <EmptyState icon={<Illustration name="error" size={100} />} title={t("admin.accessDenied.title")} description={t("admin.accessDenied.body")} />
+        <EmptyState
+          icon={<Illustration name="error" size={100} />}
+          title={t("admin.accessDenied.title")}
+          description={t("admin.accessDenied.body")}
+        />
       </div>
     );
   }

@@ -29,6 +29,8 @@ export const homepageContentSchema = z.object({
   eyebrow: bilingualTextSchema,
   title: bilingualTextSchema,
   subtitle: bilingualTextSchema,
+  /** "Texte d'introduction" (Sprint 8.3) — optional, renders below the subtitle when set. */
+  introText: bilingualTextSchema.optional(),
   ctaPassengerLabel: bilingualTextSchema,
   ctaDriverLabel: bilingualTextSchema,
   ctaPassengerEnabled: z.boolean().default(true),
@@ -36,17 +38,26 @@ export const homepageContentSchema = z.object({
   ctaDriverEnabled: z.boolean().default(true),
   ctaDriverHref: z.string().default("/become-a-driver"),
   /**
-   * Per-breakpoint Hero background (Sprint 7.2). Falls back from
-   * mobile -> tablet -> desktop when a smaller breakpoint's asset isn't
-   * set, then to the existing hand-crafted gradient treatment when nothing
-   * at all is configured — see `apps/web/src/components/marketing/Hero.tsx`.
+   * Per-breakpoint Hero background (Sprint 7.2, extended with a laptop
+   * tier in Sprint 8.3 to match the real Tailwind/`useBreakpoint` scale
+   * apps/web already uses elsewhere). Falls back from
+   * mobile -> tablet -> laptop -> desktop when a smaller breakpoint's
+   * asset isn't set, then to the existing hand-crafted gradient treatment
+   * when nothing at all is configured — see
+   * `apps/web/src/components/marketing/Hero.tsx`.
    */
   backgroundDesktopImageUrl: z.string().url().optional(),
+  backgroundLaptopImageUrl: z.string().url().optional(),
   backgroundTabletImageUrl: z.string().url().optional(),
   backgroundMobileImageUrl: z.string().url().optional(),
   backgroundDesktopVideoUrl: z.string().url().optional(),
   backgroundMobileVideoUrl: z.string().url().optional(),
   backgroundPosterImageUrl: z.string().url().optional(),
+  /** Optional accent color override (hex) for the Hero's badge/button — falls back to the site's default brand color when unset (Sprint 8.3). */
+  accentColor: z.string().optional(),
+  textAlign: z.enum(["left", "center"]).default("left"),
+  /** Whole-Hero show/hide (Sprint 8.3) — distinct from `sectionsContentSchema`, which never included the Hero. */
+  visible: z.boolean().default(true),
   updatedAt: z.date(),
   updatedBy: z.string().min(1),
   createdAt: z.date(),
@@ -95,6 +106,63 @@ export const sectionsContentSchema = z.object({
 export type SectionsContent = z.infer<typeof sectionsContentSchema>;
 
 /**
+ * `siteContent/statistics` — the four homepage stat callouts (Sprint 8.3).
+ * `value` stays a plain string (e.g. "250K+") since it's a styled label,
+ * not a number to compute with; feeds
+ * `apps/web/src/components/marketing/StatsSection.tsx`.
+ */
+export const statisticItemSchema = z.object({
+  id: z.string().min(1),
+  value: z.string().min(1),
+  label: bilingualTextSchema,
+  order: z.number().int().min(0),
+});
+
+export type StatisticItem = z.infer<typeof statisticItemSchema>;
+
+export const statisticsContentSchema = z.object({
+  items: z.array(statisticItemSchema),
+  updatedAt: z.date(),
+  updatedBy: z.string().min(1),
+  createdAt: z.date(),
+  publishedAt: z.date().optional(),
+  publishedBy: z.string().min(1).optional(),
+});
+
+export type StatisticsContent = z.infer<typeof statisticsContentSchema>;
+
+/**
+ * `siteContent/tracking` — the GPS/live-tracking section (Sprint 8.3).
+ * `distanceValue`/`etaValue` stay plain strings (e.g. "12.4 km"), mirroring
+ * the simulated-data disclosure already established in
+ * `apps/web/src/components/marketing/MapPreview.tsx` (no real Maps API in
+ * this environment) — now editable instead of hardcoded.
+ */
+export const trackingPointSchema = z.object({
+  id: z.string().min(1),
+  text: bilingualTextSchema,
+  order: z.number().int().min(0),
+});
+
+export type TrackingPoint = z.infer<typeof trackingPointSchema>;
+
+export const trackingContentSchema = z.object({
+  eyebrow: bilingualTextSchema,
+  title: bilingualTextSchema,
+  subtitle: bilingualTextSchema,
+  distanceValue: z.string().default("12.4 km"),
+  etaValue: z.string().default("18 min"),
+  points: z.array(trackingPointSchema),
+  updatedAt: z.date(),
+  updatedBy: z.string().min(1),
+  createdAt: z.date(),
+  publishedAt: z.date().optional(),
+  publishedBy: z.string().min(1).optional(),
+});
+
+export type TrackingContent = z.infer<typeof trackingContentSchema>;
+
+/**
  * `siteContent/howItWorks` — the "How it works" step list (Sprint 7.2).
  * Same singleton-doc-holding-an-ordered-array shape as `sectionsContentSchema`,
  * feeding `apps/web/src/components/marketing/ProcessSteps.tsx`.
@@ -105,6 +173,8 @@ export const howItWorksStepSchema = z.object({
   icon: z.string().min(1),
   title: bilingualTextSchema,
   description: bilingualTextSchema,
+  /** Optional per-step illustration (Sprint 8.3) — rendered as a small thumbnail alongside the icon when set. */
+  imageUrl: z.string().url().optional(),
   order: z.number().int().min(0),
 });
 
@@ -181,10 +251,16 @@ export const testimonialItemSchema = z.object({
   name: z.string(),
   role: bilingualTextSchema,
   city: z.string(),
+  /** Optional (Sprint 8.3) — shown alongside city when set. */
+  country: z.string().optional(),
+  /** Optional (Sprint 8.3) — falls back to the existing initials-avatar treatment when unset. */
+  photoUrl: z.string().url().optional(),
   trips: z.number().int().min(0),
   quote: bilingualTextSchema,
   rating: z.number().int().min(1).max(5),
   order: z.number().int().min(0),
+  /** The public site's `useTestimonials` hook filters out `active: false` items on read — publishing still copies the whole list, so a testimonial can be hidden and later re-shown without losing its content (Sprint 8.3). */
+  active: z.boolean().default(true),
   updatedAt: z.date(),
   updatedBy: z.string().min(1),
   createdAt: z.date(),
@@ -256,6 +332,10 @@ export type FooterLink = z.infer<typeof footerLinkSchema>;
 
 export const footerContentSchema = z.object({
   tagline: bilingualTextSchema,
+  /** Optional (Sprint 8.3) — falls back to `@the-ride/ui`'s shared `<Logo>` component when unset. */
+  logoImageUrl: z.string().url().optional(),
+  logoText: z.string().optional(),
+  copyrightText: bilingualTextSchema.optional(),
   newsletterTitle: bilingualTextSchema,
   newsletterBody: bilingualTextSchema,
   showNewsletter: z.boolean().default(true),
@@ -272,6 +352,35 @@ export const footerContentSchema = z.object({
 });
 
 export type FooterContent = z.infer<typeof footerContentSchema>;
+
+/**
+ * `siteContent/navigation` — the public site's main nav menu + logo
+ * (Sprint 8.3). Feeds `apps/web/src/components/SiteHeader.tsx`. An empty
+ * `items` array means "use today's 5 hardcoded nav links" — same
+ * empty-list-means-fallback convention as every other list here.
+ */
+export const navigationItemSchema = z.object({
+  id: z.string().min(1),
+  label: bilingualTextSchema,
+  href: z.string().min(1),
+  visible: z.boolean().default(true),
+  order: z.number().int().min(0),
+});
+
+export type NavigationItem = z.infer<typeof navigationItemSchema>;
+
+export const navigationContentSchema = z.object({
+  logoImageUrl: z.string().url().optional(),
+  logoText: z.string().optional(),
+  items: z.array(navigationItemSchema),
+  updatedAt: z.date(),
+  updatedBy: z.string().min(1),
+  createdAt: z.date(),
+  publishedAt: z.date().optional(),
+  publishedBy: z.string().min(1).optional(),
+});
+
+export type NavigationContent = z.infer<typeof navigationContentSchema>;
 
 /**
  * `siteContent/seo` — schema defined now per the CMS's data-model

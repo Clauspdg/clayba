@@ -8,6 +8,8 @@ export interface Testimonial {
   name: string;
   role: string;
   city: string;
+  country?: string;
+  photoUrl?: string;
   trips: number;
   quote: string;
   rating: number;
@@ -71,6 +73,7 @@ export function TestimonialsSection({ testimonials }: { testimonials: Testimonia
             <div className="flex items-center gap-3">
               <span className="from-brand to-brand-700 rounded-full bg-gradient-to-br p-0.5">
                 <Avatar
+                  src={testimonial.photoUrl}
                   alt={testimonial.name}
                   fallback={testimonial.name.charAt(0)}
                   className="bg-white dark:bg-neutral-900"
@@ -81,7 +84,9 @@ export function TestimonialsSection({ testimonials }: { testimonials: Testimonia
                   {testimonial.name}
                 </p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {testimonial.role} · {testimonial.city} · {testimonial.trips}+ trips
+                  {testimonial.role} · {testimonial.city}
+                  {testimonial.country ? `, ${testimonial.country}` : ""} · {testimonial.trips}+
+                  trips
                 </p>
               </div>
             </div>

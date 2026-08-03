@@ -4,11 +4,14 @@ import {
   FOOTER_CONTENT_DOC_ID,
   HOMEPAGE_CONTENT_DOC_ID,
   HOW_IT_WORKS_CONTENT_DOC_ID,
+  NAVIGATION_CONTENT_DOC_ID,
   SAFETY_CONTENT_DOC_ID,
   SECTIONS_CONTENT_DOC_ID,
   SEO_CONTENT_DOC_ID,
   SITE_CONTENT_COLLECTION,
   SITE_CONTENT_DRAFTS_COLLECTION,
+  STATISTICS_CONTENT_DOC_ID,
+  TRACKING_CONTENT_DOC_ID,
 } from "@the-ride/types";
 import {
   doc,
@@ -36,7 +39,17 @@ import { recordHistory } from "./site-content-history-admin";
  */
 
 export type SingletonArea =
-  "homepage" | "sections" | "footer" | "seo" | "downloads" | "howItWorks" | "safety" | "driverCta";
+  | "homepage"
+  | "sections"
+  | "footer"
+  | "seo"
+  | "downloads"
+  | "howItWorks"
+  | "safety"
+  | "driverCta"
+  | "statistics"
+  | "tracking"
+  | "navigation";
 
 const DOC_ID_BY_AREA: Record<SingletonArea, string> = {
   homepage: HOMEPAGE_CONTENT_DOC_ID,
@@ -47,6 +60,9 @@ const DOC_ID_BY_AREA: Record<SingletonArea, string> = {
   howItWorks: HOW_IT_WORKS_CONTENT_DOC_ID,
   safety: SAFETY_CONTENT_DOC_ID,
   driverCta: DRIVER_CTA_CONTENT_DOC_ID,
+  statistics: STATISTICS_CONTENT_DOC_ID,
+  tracking: TRACKING_CONTENT_DOC_ID,
+  navigation: NAVIGATION_CONTENT_DOC_ID,
 };
 
 /** Version/bookkeeping fields every content doc carries — stripped before copying content between the draft and published trees so each side's own history stays independent. */

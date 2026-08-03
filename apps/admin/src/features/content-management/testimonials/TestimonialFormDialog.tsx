@@ -1,3 +1,6 @@
+import { adminFirestore } from "@/lib/firebase-client";
+import { uploadAndCatalogSiteMedia } from "@/lib/site-media-admin";
+import { useAuth } from "@the-ride/hooks";
 import {
   Button,
   Dialog,
@@ -6,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Switch,
+  useToast,
 } from "@the-ride/ui";
 import type { CreateTestimonialItemInput } from "@the-ride/types";
 import { useState } from "react";
@@ -28,8 +33,28 @@ export function TestimonialFormDialog({
   onSave,
   title,
 }: TestimonialFormDialogProps) {
+  const { session } = useAuth();
+  const { toast } = useToast();
   const [form, setForm] = useState(initialValue);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  async function handlePhotoUpload(file: File) {
+    setUploadingPhoto(true);
+    try {
+      const item = await uploadAndCatalogSiteMedia(
+        adminFirestore,
+        "testimonials",
+        session?.uid ?? "",
+        file,
+      );
+      setForm((prev) => ({ ...prev, photoUrl: item.url }));
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : "Upload failed" });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -48,6 +73,11 @@ export function TestimonialFormDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
+          <Switch
+            label="Active (shown on the public site)"
+            checked={form.active}
+            onCheckedChange={(active) => setForm({ ...form, active })}
+          />
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Name"
@@ -59,6 +89,30 @@ export function TestimonialFormDialog({
               value={form.city}
               onChange={(e) => setForm({ ...form, city: e.target.value })}
             />
+          </div>
+          <Input
+            label="Country (optional)"
+            value={form.country ?? ""}
+            onChange={(e) => setForm({ ...form, country: e.target.value })}
+          />
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+              Photo (optional)
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Testimonial photo"
+              className="text-sm"
+              disabled={uploadingPhoto}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handlePhotoUpload(file);
+              }}
+            />
+            {form.photoUrl && (
+              <img src={form.photoUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
+            )}
           </div>
           <BilingualTextField
             label="Role"

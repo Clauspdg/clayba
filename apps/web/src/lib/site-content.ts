@@ -4,18 +4,24 @@ import {
   FOOTER_CONTENT_DOC_ID,
   HOMEPAGE_CONTENT_DOC_ID,
   HOW_IT_WORKS_CONTENT_DOC_ID,
+  NAVIGATION_CONTENT_DOC_ID,
   SAFETY_CONTENT_DOC_ID,
   SECTIONS_CONTENT_DOC_ID,
   SITE_CONTENT_COLLECTION,
+  STATISTICS_CONTENT_DOC_ID,
   TESTIMONIALS_SUBCOLLECTION,
+  TRACKING_CONTENT_DOC_ID,
   type DriverCtaContent,
   type FaqItem,
   type FooterContent,
   type HomepageContent,
   type HowItWorksContent,
+  type NavigationContent,
   type SafetyContent,
   type SectionsContent,
+  type StatisticsContent,
   type TestimonialItem,
+  type TrackingContent,
   type VehicleCategory,
 } from "@the-ride/types";
 import {
@@ -113,6 +119,36 @@ export function subscribeDriverCtaContent(
   return onSnapshot(
     doc(webFirestore, SITE_CONTENT_COLLECTION, DRIVER_CTA_CONTENT_DOC_ID),
     (snapshot) => onNext(snapshot.exists() ? (snapshot.data() as DriverCtaContent) : null),
+    () => onNext(null),
+  );
+}
+
+export function subscribeStatisticsContent(
+  onNext: (data: StatisticsContent | null) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(webFirestore, SITE_CONTENT_COLLECTION, STATISTICS_CONTENT_DOC_ID),
+    (snapshot) => onNext(snapshot.exists() ? (snapshot.data() as StatisticsContent) : null),
+    () => onNext(null),
+  );
+}
+
+export function subscribeTrackingContent(
+  onNext: (data: TrackingContent | null) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(webFirestore, SITE_CONTENT_COLLECTION, TRACKING_CONTENT_DOC_ID),
+    (snapshot) => onNext(snapshot.exists() ? (snapshot.data() as TrackingContent) : null),
+    () => onNext(null),
+  );
+}
+
+export function subscribeNavigationContent(
+  onNext: (data: NavigationContent | null) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(webFirestore, SITE_CONTENT_COLLECTION, NAVIGATION_CONTENT_DOC_ID),
+    (snapshot) => onNext(snapshot.exists() ? (snapshot.data() as NavigationContent) : null),
     () => onNext(null),
   );
 }

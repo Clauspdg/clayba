@@ -7,6 +7,7 @@ export interface ProcessStep {
   icon: IconName;
   title: string;
   description: string;
+  imageUrl?: string;
 }
 
 export function ProcessSteps({ steps }: { steps: ProcessStep[] }) {
@@ -37,6 +38,13 @@ export function ProcessSteps({ steps }: { steps: ProcessStep[] }) {
               {index + 1}
             </span>
           </div>
+          {step.imageUrl && (
+            <img
+              src={step.imageUrl}
+              alt=""
+              className="h-24 w-full max-w-[200px] rounded-xl object-cover"
+            />
+          )}
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
             {step.title}
           </h3>

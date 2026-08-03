@@ -15,6 +15,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useScrolled } from "@/hooks/useScrolled";
+import { useNavigationContent } from "@/hooks/useSiteContent";
 
 /**
  * Only the landing page gets the floating transparent-over-hero navbar
@@ -32,18 +33,21 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { status } = useAuth();
   const scrolled = useScrolled();
+  const navigation = useNavigationContent();
 
   const isHome = pathname === HOME_PATH;
   const isTransparent = isHome && !scrolled;
 
-  const items = [
-    { label: t("nav.about"), href: "/about" },
-    { label: t("nav.safety"), href: "/safety" },
-    { label: t("nav.services"), href: "/services" },
-    { label: t("nav.becomeDriver"), href: "/become-a-driver" },
-    { label: t("nav.faq"), href: "/faq" },
-    { label: t("nav.contact"), href: "/contact" },
-  ].map((item) => ({ ...item, active: pathname === item.href }));
+  const items = (
+    navigation.items ?? [
+      { label: t("nav.about"), href: "/about" },
+      { label: t("nav.safety"), href: "/safety" },
+      { label: t("nav.services"), href: "/services" },
+      { label: t("nav.becomeDriver"), href: "/become-a-driver" },
+      { label: t("nav.faq"), href: "/faq" },
+      { label: t("nav.contact"), href: "/contact" },
+    ]
+  ).map((item) => ({ ...item, active: pathname === item.href }));
 
   return (
     <TopNavigation
@@ -60,7 +64,16 @@ export function SiteHeader() {
             href="/"
             className={isTransparent ? "text-white" : "text-neutral-900 dark:text-neutral-50"}
           >
-            <Logo withWordmark />
+            {navigation.logoImageUrl ? (
+              <span className="flex items-center gap-2">
+                <img src={navigation.logoImageUrl} alt="" className="h-8 w-auto object-contain" />
+                {navigation.logoText && (
+                  <span className="text-lg font-semibold">{navigation.logoText}</span>
+                )}
+              </span>
+            ) : (
+              <Logo withWordmark />
+            )}
           </Link>
         </motion.div>
       }

@@ -63,7 +63,18 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-6 py-16">
         <div className="laptop:grid-cols-[1.3fr_1fr_1fr_1fr_1.2fr] grid gap-10">
           <div className="flex flex-col gap-3">
-            <Logo withWordmark className="text-neutral-900 dark:text-neutral-50" />
+            {footer.logoImageUrl ? (
+              <span className="flex items-center gap-2">
+                <img src={footer.logoImageUrl} alt="" className="h-8 w-auto object-contain" />
+                {footer.logoText && (
+                  <span className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+                    {footer.logoText}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <Logo withWordmark className="text-neutral-900 dark:text-neutral-50" />
+            )}
             <p className="text-sm text-neutral-500 dark:text-neutral-400">{footer.tagline}</p>
             <div className="mt-2 flex gap-2">
               {socialLinks.map((social) => (
@@ -137,7 +148,8 @@ export function SiteFooter() {
       <Divider />
       <div className="tablet:flex-row mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-xs text-neutral-400 dark:text-neutral-500">
         <p>
-          © {new Date().getFullYear()} {t("common.appName")} — {t("footer.rights")}
+          {footer.copyrightText ||
+            `© ${new Date().getFullYear()} ${t("common.appName")} — ${t("footer.rights")}`}
         </p>
         <p>v{RELEASE_VERSION_STRING}</p>
       </div>

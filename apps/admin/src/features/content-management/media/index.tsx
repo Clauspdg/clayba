@@ -20,11 +20,12 @@ import {
   Heading,
   Illustration,
   LoadingState,
+  SearchBar,
   Select,
   useToast,
 } from "@the-ride/ui";
 import type { SiteMediaCategory, SiteMediaItem } from "@the-ride/types";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const CATEGORY_OPTIONS: { value: SiteMediaCategory; label: string }[] = [
   { value: "hero", label: "Hero" },
@@ -34,13 +35,22 @@ const CATEGORY_OPTIONS: { value: SiteMediaCategory; label: string }[] = [
   { value: "logos", label: "Logos" },
   { value: "videos", label: "Videos" },
   { value: "backgrounds", label: "Backgrounds" },
+  { value: "vehicles", label: "Vehicles" },
+];
+
+const FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "All categories" },
+  ...CATEGORY_OPTIONS,
 ];
 
 /**
- * Content Management → Media Library (Sprint 7.1 Site Content CMS) — a
- * simple catalog this sprint: upload, list, delete, copy URL. No
- * search/filter and no "replace in place" yet (an admin re-uploads instead
- * of editing an existing item) — those are a fast-follow, not built here.
+ * Content Management → Media Library. Sprint 7.1 shipped a simple catalog
+ * (upload, list, delete, copy URL); Sprint 8.3 adds a filename search and a
+ * display-category filter (distinct from the upload-category picker below,
+ * which stays as-is) and fixes a found bug — `"vehicles"` was a valid
+ * `SiteMediaCategory` missing from this UI's category dropdown. No
+ * "replace in place" yet — an admin re-uploads instead of editing an
+ * existing item.
  */
 export function MediaLibraryPage() {
   const { session } = useAuth();
@@ -51,8 +61,19 @@ export function MediaLibraryPage() {
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<SiteMediaItem | null>(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
 
   useEffect(() => subscribeSiteMedia(adminFirestore, setItems, setError), []);
+
+  const filteredItems = useMemo(() => {
+    if (!items) return items;
+    return items.filter((item) => {
+      const matchesCategory = filterCategory === "all" || item.category === filterCategory;
+      const matchesSearch = item.fileName.toLowerCase().includes(search.trim().toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [items, filterCategory, search]);
 
   async function handleUpload(file: File) {
     setUploading(true);
@@ -95,7 +116,7 @@ export function MediaLibraryPage() {
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <Select
-          label="Category"
+          label="Upload category"
           value={category}
           onValueChange={(value) => setCategory(value as SiteMediaCategory)}
           options={CATEGORY_OPTIONS}
@@ -116,13 +137,33 @@ export function MediaLibraryPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-end gap-3">
+        <SearchBar
+          label="Search"
+          placeholder="Search by filename…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Select
+          label="Filter by category"
+          value={filterCategory}
+          onValueChange={setFilterCategory}
+          options={FILTER_OPTIONS}
+        />
+      </div>
+
       {items === null ? (
         <LoadingState title="Loading…" />
       ) : items.length === 0 ? (
         <EmptyState icon={<Illustration name="empty" size={80} />} title="No media uploaded yet" />
+      ) : filteredItems && filteredItems.length === 0 ? (
+        <EmptyState
+          icon={<Illustration name="empty" size={80} />}
+          title="No media matches your search"
+        />
       ) : (
         <div className="tablet:grid-cols-3 laptop:grid-cols-4 grid grid-cols-2 gap-4">
-          {items.map((item) => (
+          {(filteredItems ?? []).map((item) => (
             <div
               key={item.id}
               className="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900"

@@ -20,9 +20,12 @@ import {
   useHowItWorksContent,
   useSafetyContent,
   useSectionsContent,
+  useStatisticsContent,
   useTestimonials,
+  useTrackingContent,
   type ResolvedProcessStep,
   type ResolvedSafetyCard,
+  type ResolvedStatistic,
   type ResolvedTestimonial,
 } from "@/hooks/useSiteContent";
 import type { SectionKey } from "@the-ride/types";
@@ -33,12 +36,13 @@ export default function HomePage() {
   const homepage = useHomepageContent();
   const sectionOrder = useSectionsContent();
 
-  const stats = [
+  const DEFAULT_STATS: ResolvedStatistic[] = [
     { value: "250K+", label: t("website.landing.stat1") },
     { value: "40+", label: t("website.landing.stat2") },
     { value: "4.9/5", label: t("website.landing.stat3") },
     { value: "12M+", label: t("website.landing.stat4") },
   ];
+  const stats = useStatisticsContent(DEFAULT_STATS);
 
   const DEFAULT_TESTIMONIALS: ResolvedTestimonial[] = [
     {
@@ -109,6 +113,19 @@ export default function HomePage() {
   ];
   const safety = useSafetyContent(DEFAULT_SAFETY_CARDS);
   const driverCta = useDriverCtaContent();
+
+  const tracking = useTrackingContent({
+    eyebrow: t("website.landing.mapEyebrow"),
+    title: t("website.landing.mapTitle"),
+    subtitle: t("website.landing.mapSubtitle"),
+    distanceValue: "12.4 km",
+    etaValue: "18 min",
+    points: [
+      t("website.landing.mapPoint1"),
+      t("website.landing.mapPoint2"),
+      t("website.landing.mapPoint3"),
+    ],
+  });
   const [driverVideoFailed, setDriverVideoFailed] = useState(false);
   const showDriverVideo = Boolean(driverCta.backgroundVideoUrl) && !driverVideoFailed;
   const showDriverImage = !showDriverVideo && Boolean(driverCta.backgroundImageUrl);
@@ -137,20 +154,16 @@ export default function HomePage() {
     mapPreview: (
       <section className="bg-neutral-50 py-24 dark:bg-neutral-900/40">
         <div className="laptop:grid-cols-2 mx-auto grid max-w-6xl items-center gap-12 px-6">
-          <MapPreview />
+          <MapPreview distanceValue={tracking.distanceValue} etaValue={tracking.etaValue} />
           <Reveal className="flex flex-col gap-4">
             <SectionHeading
               align="left"
-              eyebrow={t("website.landing.mapEyebrow")}
-              title={t("website.landing.mapTitle")}
-              subtitle={t("website.landing.mapSubtitle")}
+              eyebrow={tracking.eyebrow}
+              title={tracking.title}
+              subtitle={tracking.subtitle}
             />
             <ul className="flex flex-col gap-3">
-              {[
-                t("website.landing.mapPoint1"),
-                t("website.landing.mapPoint2"),
-                t("website.landing.mapPoint3"),
-              ].map((point) => (
+              {tracking.points.map((point) => (
                 <li key={point} className="flex items-start gap-3">
                   <Icon name="checkCircle" size={18} className="text-brand mt-0.5 shrink-0" />
                   <span className="text-neutral-600 dark:text-neutral-300">{point}</span>
@@ -274,55 +287,79 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero + booking widget */}
-      <Hero
-        parallax
-        className="tablet:pb-28 tablet:pt-44 -mt-16 px-6 pb-20 pt-36"
-        backgroundDesktopImageUrl={homepage.backgroundDesktopImageUrl}
-        backgroundTabletImageUrl={homepage.backgroundTabletImageUrl}
-        backgroundMobileImageUrl={homepage.backgroundMobileImageUrl}
-        backgroundDesktopVideoUrl={homepage.backgroundDesktopVideoUrl}
-        backgroundMobileVideoUrl={homepage.backgroundMobileVideoUrl}
-        backgroundPosterImageUrl={homepage.backgroundPosterImageUrl}
-      >
-        <div className="laptop:grid-cols-[1.1fr_0.9fr] laptop:items-center mx-auto grid max-w-6xl gap-12">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-start gap-6 text-left"
-          >
-            <Badge tone="brand" className="bg-brand/15 text-brand-200">
-              {homepage.eyebrow}
-            </Badge>
-            <Heading level={1} className="text-white">
-              {homepage.title}
-            </Heading>
-            <Text size="lg" className="max-w-xl text-neutral-300">
-              {homepage.subtitle}
-            </Text>
-            <div className="flex flex-wrap gap-3">
-              {homepage.ctaPassengerEnabled && (
-                <Button size="lg" asChild>
-                  <Link href={homepage.ctaPassengerHref}>{homepage.ctaPassengerLabel}</Link>
-                </Button>
+      {homepage.visible && (
+        <Hero
+          parallax
+          className="tablet:pb-28 tablet:pt-44 -mt-16 px-6 pb-20 pt-36"
+          backgroundDesktopImageUrl={homepage.backgroundDesktopImageUrl}
+          backgroundLaptopImageUrl={homepage.backgroundLaptopImageUrl}
+          backgroundTabletImageUrl={homepage.backgroundTabletImageUrl}
+          backgroundMobileImageUrl={homepage.backgroundMobileImageUrl}
+          backgroundDesktopVideoUrl={homepage.backgroundDesktopVideoUrl}
+          backgroundMobileVideoUrl={homepage.backgroundMobileVideoUrl}
+          backgroundPosterImageUrl={homepage.backgroundPosterImageUrl}
+        >
+          <div className="laptop:grid-cols-[1.1fr_0.9fr] laptop:items-center mx-auto grid max-w-6xl gap-12">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className={`flex flex-col gap-6 ${homepage.textAlign === "center" ? "items-center text-center" : "items-start text-left"}`}
+            >
+              <Badge
+                tone="brand"
+                className="bg-brand/15 text-brand-200"
+                style={
+                  homepage.accentColor
+                    ? { backgroundColor: `${homepage.accentColor}26`, color: homepage.accentColor }
+                    : undefined
+                }
+              >
+                {homepage.eyebrow}
+              </Badge>
+              <Heading level={1} className="text-white">
+                {homepage.title}
+              </Heading>
+              <Text size="lg" className="max-w-xl text-neutral-300">
+                {homepage.subtitle}
+              </Text>
+              {homepage.introText && (
+                <Text size="base" className="max-w-xl text-neutral-400">
+                  {homepage.introText}
+                </Text>
               )}
-              {homepage.ctaDriverEnabled && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 hover:text-white"
-                  asChild
-                >
-                  <Link href={homepage.ctaDriverHref}>{homepage.ctaDriverLabel}</Link>
-                </Button>
-              )}
+              <div
+                className={`flex flex-wrap gap-3 ${homepage.textAlign === "center" ? "justify-center" : ""}`}
+              >
+                {homepage.ctaPassengerEnabled && (
+                  <Button
+                    size="lg"
+                    asChild
+                    style={
+                      homepage.accentColor ? { backgroundColor: homepage.accentColor } : undefined
+                    }
+                  >
+                    <Link href={homepage.ctaPassengerHref}>{homepage.ctaPassengerLabel}</Link>
+                  </Button>
+                )}
+                {homepage.ctaDriverEnabled && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-white/30 text-white hover:bg-white/10 hover:text-white"
+                    asChild
+                  >
+                    <Link href={homepage.ctaDriverHref}>{homepage.ctaDriverLabel}</Link>
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+            <div className="laptop:justify-end flex justify-center">
+              <BookingCard />
             </div>
-          </motion.div>
-          <div className="laptop:justify-end flex justify-center">
-            <BookingCard />
           </div>
-        </div>
-      </Hero>
+        </Hero>
+      )}
 
       {sectionOrder.map((key) => (
         <div key={key}>{sectionRenderers[key]}</div>

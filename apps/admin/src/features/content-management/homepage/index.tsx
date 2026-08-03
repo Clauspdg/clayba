@@ -10,6 +10,7 @@ import {
   Heading,
   Input,
   LoadingState,
+  Select,
   Switch,
   Text,
   useToast,
@@ -19,13 +20,16 @@ import { useEffect, useState } from "react";
 
 import { BilingualTextField } from "../shared/BilingualTextField";
 import { HistoryPanel } from "../shared/HistoryPanel";
+import { PreviewPane } from "../shared/PreviewPane";
 import { PublishBar } from "../shared/PublishBar";
+import { ResponsivePreviewFrame } from "../shared/ResponsivePreviewFrame";
 import { useSingletonContentArea } from "../shared/useSingletonContentArea";
 
 const EMPTY_TEXT: BilingualText = { fr: "", en: "" };
 
 type BackgroundImageField =
   | "backgroundDesktopImageUrl"
+  | "backgroundLaptopImageUrl"
   | "backgroundTabletImageUrl"
   | "backgroundMobileImageUrl"
   | "backgroundPosterImageUrl";
@@ -35,6 +39,7 @@ interface HomepageForm {
   eyebrow: BilingualText;
   title: BilingualText;
   subtitle: BilingualText;
+  introText: BilingualText;
   ctaPassengerLabel: BilingualText;
   ctaDriverLabel: BilingualText;
   ctaPassengerEnabled: boolean;
@@ -42,23 +47,31 @@ interface HomepageForm {
   ctaDriverEnabled: boolean;
   ctaDriverHref: string;
   backgroundDesktopImageUrl?: string;
+  backgroundLaptopImageUrl?: string;
   backgroundTabletImageUrl?: string;
   backgroundMobileImageUrl?: string;
   backgroundDesktopVideoUrl?: string;
   backgroundMobileVideoUrl?: string;
   backgroundPosterImageUrl?: string;
+  accentColor: string;
+  textAlign: "left" | "center";
+  visible: boolean;
 }
 
 const EMPTY_FORM: HomepageForm = {
   eyebrow: EMPTY_TEXT,
   title: EMPTY_TEXT,
   subtitle: EMPTY_TEXT,
+  introText: EMPTY_TEXT,
   ctaPassengerLabel: EMPTY_TEXT,
   ctaDriverLabel: EMPTY_TEXT,
   ctaPassengerEnabled: true,
   ctaPassengerHref: "/services",
   ctaDriverEnabled: true,
   ctaDriverHref: "/become-a-driver",
+  accentColor: "",
+  textAlign: "left",
+  visible: true,
 };
 
 function toForm(content: HomepageContent | null | undefined): HomepageForm {
@@ -67,6 +80,7 @@ function toForm(content: HomepageContent | null | undefined): HomepageForm {
     eyebrow: content.eyebrow ?? EMPTY_TEXT,
     title: content.title ?? EMPTY_TEXT,
     subtitle: content.subtitle ?? EMPTY_TEXT,
+    introText: content.introText ?? EMPTY_TEXT,
     ctaPassengerLabel: content.ctaPassengerLabel ?? EMPTY_TEXT,
     ctaDriverLabel: content.ctaDriverLabel ?? EMPTY_TEXT,
     ctaPassengerEnabled: content.ctaPassengerEnabled ?? true,
@@ -74,11 +88,15 @@ function toForm(content: HomepageContent | null | undefined): HomepageForm {
     ctaDriverEnabled: content.ctaDriverEnabled ?? true,
     ctaDriverHref: content.ctaDriverHref ?? "/become-a-driver",
     backgroundDesktopImageUrl: content.backgroundDesktopImageUrl,
+    backgroundLaptopImageUrl: content.backgroundLaptopImageUrl,
     backgroundTabletImageUrl: content.backgroundTabletImageUrl,
     backgroundMobileImageUrl: content.backgroundMobileImageUrl,
     backgroundDesktopVideoUrl: content.backgroundDesktopVideoUrl,
     backgroundMobileVideoUrl: content.backgroundMobileVideoUrl,
     backgroundPosterImageUrl: content.backgroundPosterImageUrl,
+    accentColor: content.accentColor ?? "",
+    textAlign: content.textAlign ?? "left",
+    visible: content.visible ?? true,
   };
 }
 
@@ -96,6 +114,7 @@ export function HomepageContentPage() {
   const [form, setForm] = useState<HomepageForm>(EMPTY_FORM);
   const [hydrated, setHydrated] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!hydrated && area.draft !== undefined) {
@@ -185,7 +204,12 @@ export function HomepageContentPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Heading level={2}>Homepage</Heading>
-        <Button onClick={() => void handleSave()}>Save draft</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+            Preview
+          </Button>
+          <Button onClick={() => void handleSave()}>Save draft</Button>
+        </div>
       </div>
 
       <PublishBar
@@ -200,6 +224,11 @@ export function HomepageContentPage() {
       <HistoryPanel area="homepage" onRestore={handleRestore} />
 
       <div className="flex flex-col gap-5 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        <Switch
+          label="Show Hero section"
+          checked={form.visible}
+          onCheckedChange={(visible) => setForm({ ...form, visible })}
+        />
         <BilingualTextField
           label="Eyebrow"
           value={form.eyebrow}
@@ -217,6 +246,34 @@ export function HomepageContentPage() {
           multiline
           rows={2}
         />
+        <BilingualTextField
+          label="Intro text (optional, renders below the subtitle)"
+          value={form.introText}
+          onChange={(introText) => setForm({ ...form, introText })}
+          multiline
+          rows={2}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            label="Text alignment"
+            value={form.textAlign}
+            onValueChange={(textAlign) =>
+              setForm({ ...form, textAlign: textAlign as "left" | "center" })
+            }
+            options={[
+              { value: "left", label: "Left" },
+              { value: "center", label: "Center" },
+            ]}
+          />
+          <Input
+            label="Accent color (hex, optional)"
+            type="text"
+            placeholder="#0F62FE"
+            value={form.accentColor}
+            onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
+          />
+        </div>
 
         <div className="flex flex-col gap-2 rounded-lg border border-neutral-100 p-4 dark:border-neutral-800">
           <Switch
@@ -263,12 +320,18 @@ export function HomepageContentPage() {
           tablet to desktop when a smaller breakpoint isn't set.
         </Text>
 
-        <div className="tablet:grid-cols-3 grid gap-4">
+        <div className="tablet:grid-cols-4 grid gap-4">
           <ImageUploadField
             label="Desktop image"
             value={form.backgroundDesktopImageUrl}
             uploading={uploadingField === "backgroundDesktopImageUrl"}
             onUpload={(file) => handleImageUpload(file, "backgroundDesktopImageUrl")}
+          />
+          <ImageUploadField
+            label="Laptop image"
+            value={form.backgroundLaptopImageUrl}
+            uploading={uploadingField === "backgroundLaptopImageUrl"}
+            onUpload={(file) => handleImageUpload(file, "backgroundLaptopImageUrl")}
           />
           <ImageUploadField
             label="Tablet image"
@@ -309,6 +372,45 @@ export function HomepageContentPage() {
           onUpload={(file) => handleImageUpload(file, "backgroundPosterImageUrl")}
         />
       </div>
+
+      <PreviewPane open={previewOpen} onOpenChange={setPreviewOpen} title="Hero preview">
+        <ResponsivePreviewFrame>
+          <div
+            className="flex flex-col gap-3 rounded-xl border border-neutral-200 bg-neutral-900 p-8 text-white"
+            style={{
+              textAlign: form.textAlign,
+              ...(form.accentColor ? { ["--accent" as string]: form.accentColor } : {}),
+            }}
+          >
+            {form.eyebrow.en && (
+              <span
+                className="inline-block w-fit rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                style={{ backgroundColor: form.accentColor || "#0F62FE" }}
+              >
+                {form.eyebrow.en}
+              </span>
+            )}
+            <h1 className="text-3xl font-bold">{form.title.en || "Hero title"}</h1>
+            <p className="text-neutral-200">{form.subtitle.en}</p>
+            {form.introText.en && <p className="text-sm text-neutral-300">{form.introText.en}</p>}
+            <div className={`flex gap-3 ${form.textAlign === "center" ? "justify-center" : ""}`}>
+              {form.ctaPassengerEnabled && (
+                <span
+                  className="rounded-lg px-4 py-2 text-sm font-semibold"
+                  style={{ backgroundColor: form.accentColor || "#0F62FE" }}
+                >
+                  {form.ctaPassengerLabel.en || "Book a ride"}
+                </span>
+              )}
+              {form.ctaDriverEnabled && (
+                <span className="rounded-lg border border-white/40 px-4 py-2 text-sm font-semibold">
+                  {form.ctaDriverLabel.en || "Become a driver"}
+                </span>
+              )}
+            </div>
+          </div>
+        </ResponsivePreviewFrame>
+      </PreviewPane>
     </div>
   );
 }
