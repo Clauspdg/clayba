@@ -81,7 +81,7 @@ export function SiteHeader() {
       menuLabel={t("common.menu")}
       closeLabel={t("common.close")}
       actions={
-        <>
+        <div className="laptop:flex hidden items-center gap-3">
           <ThemeSwitcher
             lightLabel={t("common.light")}
             darkLabel={t("common.dark")}
@@ -112,6 +112,30 @@ export function SiteHeader() {
             </Button>
           )}
           <Button size="sm" asChild>
+            <Link href="/become-a-driver">{t("website.becomeDriverPage.cta")}</Link>
+          </Button>
+        </div>
+      }
+      mobileExtra={
+        <>
+          <div className="flex items-center gap-3">
+            <ThemeSwitcher
+              lightLabel={t("common.light")}
+              darkLabel={t("common.dark")}
+              systemLabel={t("common.system")}
+            />
+            <LanguageSelector label={t("common.selectLanguage")} />
+          </div>
+          {status === "authenticated" ? (
+            <Button size="sm" variant="outline" fullWidth asChild>
+              <Link href="/dashboard">{t("passengerNav.dashboard")}</Link>
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" fullWidth asChild>
+              <Link href="/login">{t("auth.logIn")}</Link>
+            </Button>
+          )}
+          <Button size="sm" fullWidth asChild>
             <Link href="/become-a-driver">{t("website.becomeDriverPage.cta")}</Link>
           </Button>
         </>

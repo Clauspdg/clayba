@@ -24,6 +24,15 @@ export interface TopNavigationProps {
   /** Accessible label for the mobile menu's close button. */
   closeLabel?: string;
   /**
+   * Extra content shown inside the mobile drawer, below the nav links
+   * (Sprint 8.4c). For callers whose `actions` row has more controls than
+   * fit on a narrow phone screen — hide the overflow-prone ones from
+   * `actions` below `laptop` (e.g. `className="laptop:flex hidden"`) and
+   * pass the same controls here instead, so they stay reachable rather
+   * than silently causing horizontal overflow.
+   */
+  mobileExtra?: ReactNode;
+  /**
    * `"transparent"` (Sprint 7 — premium navbar) renders a see-through bar
    * with white nav text, meant for sitting over a dark hero at the top of
    * a page — the caller is responsible for switching back to `"solid"`
@@ -45,6 +54,7 @@ export function TopNavigation({
   closeLabel = "Close",
   variant = "solid",
   className,
+  mobileExtra,
 }: TopNavigationProps) {
   const [open, setOpen] = useState(false);
   const transparent = variant === "transparent";
@@ -103,6 +113,11 @@ export function TopNavigation({
               <nav aria-label="Mobile" className="flex flex-col gap-5">
                 {navLinks(() => setOpen(false))}
               </nav>
+              {mobileExtra && (
+                <div className="mt-6 flex flex-col gap-4 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+                  {mobileExtra}
+                </div>
+              )}
             </SidePanelContent>
           </SidePanel>
         )}
