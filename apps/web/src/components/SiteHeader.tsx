@@ -78,7 +78,7 @@ export function SiteHeader() {
         </motion.div>
       }
       items={items}
-      menuLabel={t("common.menu")}
+      menuLabel={t("nav.menu")}
       closeLabel={t("common.close")}
       actions={
         <div className="laptop:flex hidden items-center gap-3">
