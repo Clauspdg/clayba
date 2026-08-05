@@ -91,13 +91,13 @@ export function BookingCard() {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -2 }}
-      className="w-full max-w-md rounded-3xl border border-white/10 bg-white/95 p-6 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_32px_70px_-15px_rgba(232,106,47,0.35)] dark:bg-neutral-900/95"
+      className="w-full max-w-md rounded-3xl border border-white/10 bg-white/95 p-5 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_32px_70px_-15px_rgba(232,106,47,0.35)] dark:bg-neutral-900/95"
     >
-      <h3 className="mb-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+      <h3 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
         {t("website.landing.bookingCardTitle")}
       </h3>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <LocationField
           icon="mapPin"
           iconClassName="text-brand"
@@ -170,12 +170,14 @@ export function BookingCard() {
             label={t("website.landing.departureDateLabel")}
             value={date}
             onChange={(e) => setDate(e.target.value)}
+            className="py-2"
           />
           <Input
             type="time"
             label={t("website.landing.departureTimeLabel")}
             value={time}
             onChange={(e) => setTime(e.target.value)}
+            className="py-2"
           />
         </div>
 
@@ -183,7 +185,8 @@ export function BookingCard() {
           label={t("website.landing.notesLabel")}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          rows={2}
+          rows={1}
+          className="py-2"
         />
 
         <motion.div
@@ -191,7 +194,7 @@ export function BookingCard() {
           initial={{ opacity: 0.6 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="bg-brand-50 dark:bg-brand-900 flex items-center justify-between rounded-xl px-4 py-3"
+          className="bg-brand-50 dark:bg-brand-900 flex items-center justify-between rounded-xl px-4 py-2"
         >
           <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
             {t("website.landing.estimatedFareLabel")}
@@ -245,21 +248,21 @@ function LocationField({
       <Icon
         name={icon}
         size={16}
-        className={`pointer-events-none absolute left-3 top-[46px] z-10 -translate-y-1/2 ${iconClassName ?? "text-neutral-400"}`}
+        className={`pointer-events-none absolute left-3 top-[42px] z-10 -translate-y-1/2 ${iconClassName ?? "text-neutral-400"}`}
       />
       <Input
         label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="pl-9 pr-9"
+        className="py-2 pl-9 pr-9"
         errorText={errorText}
       />
       {valid && !errorText && (
         <motion.span
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="text-success absolute right-3 top-[46px] -translate-y-1/2"
+          className="text-success absolute right-3 top-[42px] -translate-y-1/2"
         >
           <Icon name="checkCircle" size={16} />
         </motion.span>

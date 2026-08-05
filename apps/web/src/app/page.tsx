@@ -290,7 +290,7 @@ export default function HomePage() {
       {homepage.visible && (
         <Hero
           parallax
-          className="tablet:pb-28 tablet:pt-44 px-6 pb-20 pt-36"
+          className="tablet:pb-8 tablet:pt-20 px-6 pb-8 pt-24"
           backgroundDesktopImageUrl={homepage.backgroundDesktopImageUrl}
           backgroundLaptopImageUrl={homepage.backgroundLaptopImageUrl}
           backgroundTabletImageUrl={homepage.backgroundTabletImageUrl}
@@ -304,7 +304,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className={`flex flex-col gap-6 ${homepage.textAlign === "center" ? "items-center text-center" : "items-start text-left"}`}
+              className={`flex flex-col gap-4 ${homepage.textAlign === "center" ? "items-center text-center" : "items-start text-left"}`}
             >
               <Badge
                 tone="brand"
