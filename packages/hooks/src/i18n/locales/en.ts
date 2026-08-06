@@ -373,6 +373,8 @@ export const en = {
     applicationSubmitted: "Application submitted",
     applicationSubmittedBody: "Thanks! We're reviewing your application and will be in touch soon.",
     loadErrorTitle: "Couldn't load your application",
+    loadErrorBody:
+      "Something went wrong on our end. Please try again — if this keeps happening, contact support.",
   },
   driverHome: {
     title: "Dashboard",

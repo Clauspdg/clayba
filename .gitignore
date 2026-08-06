@@ -79,3 +79,8 @@ Thumbs.db
 *.pem
 *.tgz
 .eslintcache
+
+# Malformed Claude/ADC scratchpad credential files that can leak into the
+# repo root instead of the OS temp dir (contain OAuth client_secret/refresh_token)
+/*adc-temp*.json
+/application_default_credentials.json

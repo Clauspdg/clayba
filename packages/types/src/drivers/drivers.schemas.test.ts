@@ -26,6 +26,43 @@ describe("driverApplicationSchema", () => {
       }),
     ).toThrow();
   });
+
+  it("parses createdAt/updatedAt/submittedAt as raw Firestore Timestamp-like objects, reproducing the deployed become-a-driver crash", () => {
+    // What findOwnApplication()/getApplication() actually receive from a raw
+    // client-SDK snapshot.data() — before the fix this threw a ZodError
+    // ("createdAt: Expected date, received object") for every existing
+    // application, since Timestamp is not `instanceof Date`.
+    const timestamp = (date: Date) => ({
+      toDate: () => date,
+      seconds: Math.floor(date.getTime() / 1000),
+      nanoseconds: 0,
+    });
+
+    const application = driverApplicationSchema.parse({
+      id: "app-1",
+      userId: "user-1",
+      status: DriverApplicationStatus.SUBMITTED,
+      submittedAt: timestamp(new Date("2026-01-01T00:00:00.000Z")),
+      createdAt: timestamp(new Date("2026-01-01T00:00:00.000Z")),
+      updatedAt: timestamp(new Date("2026-01-02T00:00:00.000Z")),
+    });
+
+    expect(application.createdAt).toBeInstanceOf(Date);
+    expect(application.updatedAt).toBeInstanceOf(Date);
+    expect(application.submittedAt).toBeInstanceOf(Date);
+  });
+
+  it("still rejects createdAt/updatedAt that are neither a Date nor Timestamp-like", () => {
+    expect(() =>
+      driverApplicationSchema.parse({
+        id: "app-1",
+        userId: "user-1",
+        status: DriverApplicationStatus.DRAFT,
+        createdAt: { not: "a date" },
+        updatedAt: new Date(),
+      }),
+    ).toThrow();
+  });
 });
 
 describe("driverSchema", () => {

@@ -386,6 +386,8 @@ export const fr = {
     applicationSubmittedBody:
       "Merci ! Nous examinons votre candidature et vous recontacterons bientôt.",
     loadErrorTitle: "Impossible de charger votre candidature",
+    loadErrorBody:
+      "Une erreur est survenue de notre côté. Veuillez réessayer — si le problème persiste, contactez le support.",
   },
   driverHome: {
     title: "Tableau de bord",

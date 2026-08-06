@@ -1,5 +1,6 @@
 // Barrel export for @the-ride/types. Each domain owns its own types/schemas;
 // this file re-exports them so consumers can `import { X } from "@the-ride/types"`.
+export * from "./common";
 export * from "./authentication";
 export * from "./payments";
 export * from "./maps";
