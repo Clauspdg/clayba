@@ -153,6 +153,12 @@ export function SiteFooter() {
         </p>
         <p>v{RELEASE_VERSION_STRING}</p>
       </div>
+      {process.env.NEXT_PUBLIC_APP_ENV === "development" && (
+        <div className="border-t border-dashed border-neutral-200 bg-neutral-50 py-2 text-center font-mono text-[10px] text-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-600">
+          DEV BUILD {process.env.NEXT_PUBLIC_BUILD_COMMIT ?? "unknown"} —{" "}
+          {(process.env.NEXT_PUBLIC_BUILD_DATE ?? "").replace("T", " ").slice(0, 16)}
+        </div>
+      )}
     </footer>
   );
 }
