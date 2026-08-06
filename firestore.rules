@@ -56,20 +56,29 @@ service cloud.firestore {
     match /driverApplications/{applicationId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      // Status transitions (approve/reject/activate) go through
-      // DriversRepository server-side only. Owners may otherwise keep
-      // editing their own application data (Web Phase W1, Part 4: draft
-      // save, multi-step submission) while it's still in their hands —
-      // `status`/`reviewedBy`/`rejectionReason` must stay untouched by
-      // that write, which is what the review workflow actually owns.
+      // Review-pipeline transitions (approve/reject/activate, i.e. anything
+      // past SUBMITTED — see DRIVER_APPLICATION_TRANSITIONS) go through
+      // DriversRepository server-side only. The one status change an owner
+      // makes themselves is submitting their own draft (DRAFT -> SUBMITTED,
+      // the wizard's "Submit Application" button); every other field stays
+      // editable while it's still in their hands (Web Phase W1, Part 4:
+      // draft save, multi-step submission).
+      //
+      // reviewedBy/rejectionReason are absent on every application until an
+      // admin actually rejects one — direct field access on a missing map
+      // key throws in Firestore Rules, which fails the whole `allow update`
+      // closed (permission-denied) for literally every owner write to a
+      // fresh draft. `.get(key, null)` reads "absent" as null instead of
+      // throwing, so the untouched-by-owner check works for real documents.
       allow update: if isAdmin()
         || (isSignedIn()
           && resource.data.userId == request.auth.uid
           && resource.data.status in ['draft', 'submitted']
           && request.resource.data.userId == request.auth.uid
-          && request.resource.data.status == resource.data.status
-          && request.resource.data.reviewedBy == resource.data.reviewedBy
-          && request.resource.data.rejectionReason == resource.data.rejectionReason);
+          && (request.resource.data.status == resource.data.status
+            || (resource.data.status == 'draft' && request.resource.data.status == 'submitted'))
+          && request.resource.data.get('reviewedBy', null) == resource.data.get('reviewedBy', null)
+          && request.resource.data.get('rejectionReason', null) == resource.data.get('rejectionReason', null));
       allow delete: if false;
     }
 
