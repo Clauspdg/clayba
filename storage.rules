@@ -53,9 +53,11 @@ service firebase.storage {
     // Documents are sensitive (license, insurance, background check) — only
     // the owner may read/write them, never publicly and never any other
     // signed-in user. Admin review tooling reads these via the Admin SDK,
-    // which bypasses these rules entirely.
+    // which bypasses these rules entirely. isImage() rejects arbitrary
+    // executable/content uploads — the wizard only ever sends a photo of
+    // each document (see become-a-driver's PhotoField), never raw PDFs.
     match /drivers/{uid}/documents/{document} {
-      allow read, write: if isOwner(uid) && isUnder5MB();
+      allow read, write: if isOwner(uid) && isImage() && isUnder5MB();
     }
 
     // No client-side ownership check against the `vehicles` Firestore

@@ -820,29 +820,33 @@ function PhotoField({
   const isUploading = status === "uploading";
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-x-hidden">
       <Text size="sm" weight="medium">
         {label}
       </Text>
-      <div className="flex items-center gap-3">
+      <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1">
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
           onChange={handleChange}
           disabled={isUploading}
-          className="text-sm disabled:opacity-50"
+          className="min-w-0 max-w-full flex-shrink text-sm disabled:opacity-50"
           aria-label={label}
         />
-        {isUploading && <Text size="sm">{t("becomeDriver.uploading")}</Text>}
+        {isUploading && (
+          <Text size="sm" className="min-w-0 break-words">
+            {t("becomeDriver.uploading")}
+          </Text>
+        )}
         {status === "success" && !isUploading && (
-          <Text size="sm" tone="success">
+          <Text size="sm" tone="success" className="min-w-0 break-words">
             {t("becomeDriver.uploaded")}
           </Text>
         )}
       </div>
       {status === "error" && errorMessage && (
-        <div className="flex items-center gap-3">
-          <Text size="sm" tone="danger">
+        <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-2">
+          <Text size="sm" tone="danger" className="min-w-0 break-words">
             {errorMessage}
           </Text>
           {lastFile && (
