@@ -1,4 +1,11 @@
-import { createFirebaseAuthAdapter, getClientAuth, initializeClientApp, type ClientAuthAdapter } from "@the-ride/firebase/client";
+import {
+  createFirebaseAuthAdapter,
+  getClientAuth,
+  getClientFirestore,
+  getClientStorage,
+  initializeClientApp,
+  type ClientAuthAdapter,
+} from "@the-ride/firebase/client";
 
 /**
  * Real Firebase connection (Sprint 5, Part 1-2) — reads the public client
@@ -20,3 +27,5 @@ initializeClientApp({
 
 export const adminAuth = getClientAuth();
 export const adminAuthAdapter: ClientAuthAdapter = createFirebaseAuthAdapter(adminAuth);
+export const adminFirestore = getClientFirestore();
+export const adminStorage = getClientStorage();

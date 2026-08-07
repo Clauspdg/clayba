@@ -346,7 +346,13 @@ export const fr = {
     profilePhoto: "Photo de profil",
     upload: "Téléverser",
     uploaded: "Téléversé",
-    uploadFailed: "Échec du téléversement — réessayez",
+    uploading: "Téléversement…",
+    uploadFailed: "Votre photo n'a pas pu être téléversée. Veuillez réessayer.",
+    uploadTooLarge: "Le fichier est trop volumineux. Choisissez une image de moins de 5 Mo.",
+    uploadInvalidType: "Veuillez sélectionner une image JPG, PNG ou WebP.",
+    uploadServiceUnavailable:
+      "Le service de téléversement est temporairement indisponible. Veuillez réessayer sous peu.",
+    photoRequired: "Veuillez téléverser une photo de profil pour continuer.",
     applicationStatusTitle: "État de la candidature",
     applicationStatusSubtitle: "Nous vous informerons de l'avancement de votre candidature.",
     statusDraft: "Brouillon",
@@ -388,6 +394,9 @@ export const fr = {
     loadErrorTitle: "Impossible de charger votre candidature",
     loadErrorBody:
       "Une erreur est survenue de notre côté. Veuillez réessayer — si le problème persiste, contactez le support.",
+    saveErrorPermission:
+      "Nous n'avons pas pu enregistrer vos modifications — déconnectez-vous puis reconnectez-vous et réessayez.",
+    saveErrorGeneric: "Nous n'avons pas pu enregistrer vos modifications. Veuillez réessayer.",
   },
   driverHome: {
     title: "Tableau de bord",

@@ -1,11 +1,23 @@
 /**
- * System font stack — a placeholder until a brand typeface is licensed
- * (see Part 10, "Branding"). Using the system stack keeps every app fast
- * and legible with zero font-loading cost in the meantime.
+ * Brand typeface: Poppins (Sprint UI 1.0 — see docs/design-system.md).
+ * Web apps load the real font via `next/font/google` (see each app's root
+ * layout) and expose it as the `--font-poppins` CSS variable that
+ * `packages/config/tailwind/base.ts`'s `fontFamily.sans` references first,
+ * falling back to the system stack below. Native apps load it via
+ * `expo-font`/`@expo-google-fonts/poppins` (see each app's root layout)
+ * and reference the family name directly — see `PoppinsFontFamily` below.
  */
 export const fontFamily = {
-  sans: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  sans: "'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
   mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+} as const;
+
+/** Native (Expo) font family names, once `@expo-google-fonts/poppins` is loaded via `useFonts()`. */
+export const nativeFontFamily = {
+  regular: "Poppins_400Regular",
+  medium: "Poppins_500Medium",
+  semibold: "Poppins_600SemiBold",
+  bold: "Poppins_700Bold",
 } as const;
 
 export const fontSize = {

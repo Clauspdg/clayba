@@ -12,6 +12,10 @@ export interface AuthProviderProps {
   adapter: AuthAdapter;
 }
 
+function notSupported(method: string): never {
+  throw new Error(`This app's auth adapter does not support ${method}().`);
+}
+
 export function AuthProvider({ children, adapter }: AuthProviderProps) {
   const [session, setSession] = useState<SessionUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
@@ -25,27 +29,51 @@ export function AuthProvider({ children, adapter }: AuthProviderProps) {
     return unsubscribe;
   }, [adapter]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
+  const value = useMemo<AuthContextValue>(() => {
+    async function runWithError<T>(action: () => Promise<T>): Promise<T> {
+      setError(null);
+      try {
+        return await action();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Something went wrong.";
+        setError(message);
+        throw err;
+      }
+    }
+
+    return {
       session,
       status,
       error,
-      async signIn(email: string, password: string) {
-        setError(null);
-        try {
-          await adapter.signIn(email, password);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Sign-in failed.";
-          setError(message);
-          throw err;
-        }
-      },
-      async signOut() {
-        await adapter.signOut();
-      },
-    }),
-    [session, status, error, adapter],
-  );
+      signIn: (email, password) => runWithError(() => adapter.signIn(email, password)),
+      signOut: () => adapter.signOut(),
+      signUp: (email, password, displayName) =>
+        runWithError(
+          () => adapter.signUp?.(email, password, displayName) ?? notSupported("signUp"),
+        ),
+      sendPasswordReset: (email) =>
+        runWithError(() => adapter.sendPasswordReset?.(email) ?? notSupported("sendPasswordReset")),
+      confirmPasswordReset: (code, newPassword) =>
+        runWithError(
+          () =>
+            adapter.confirmPasswordReset?.(code, newPassword) ??
+            notSupported("confirmPasswordReset"),
+        ),
+      sendEmailVerification: () =>
+        runWithError(
+          () => adapter.sendEmailVerification?.() ?? notSupported("sendEmailVerification"),
+        ),
+      applyActionCode: (code) =>
+        runWithError(() => adapter.applyActionCode?.(code) ?? notSupported("applyActionCode")),
+      reloadUser: () => runWithError(() => adapter.reloadUser?.() ?? notSupported("reloadUser")),
+      updateDisplayName: (displayName) =>
+        runWithError(
+          () => adapter.updateDisplayName?.(displayName) ?? notSupported("updateDisplayName"),
+        ),
+      updatePhotoURL: (photoURL) =>
+        runWithError(() => adapter.updatePhotoURL?.(photoURL) ?? notSupported("updatePhotoURL")),
+    };
+  }, [session, status, error, adapter]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

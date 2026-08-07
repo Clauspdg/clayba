@@ -14,7 +14,60 @@ export const driverAccountStatusSchema = z.nativeEnum(DriverAccountStatus);
 export const driverDocumentTypeSchema = z.nativeEnum(DriverDocumentType);
 export const driverAvailabilityStatusSchema = z.nativeEnum(DriverAvailabilityStatus);
 
-/** Source of truth for the `driverApplications` collection document shape. */
+/** The applicant's personal details (Web Phase W1, Part 4) — collected once, reviewed by an admin before `DriversRepository.activateApplication()` creates the real `Driver` record. */
+export const driverApplicationPersonalInfoSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  phoneNumber: z.string().min(1),
+  dateOfBirth: z.string().min(1),
+  address: z.string().min(1),
+  city: z.string().min(1),
+});
+
+export type DriverApplicationPersonalInfo = z.infer<typeof driverApplicationPersonalInfoSchema>;
+
+export const driverApplicationLicenseSchema = z.object({
+  licenseNumber: z.string().min(1),
+  licenseState: z.string().min(1),
+  licenseExpiresAt: z.string().min(1),
+  photoUrl: z.string().url().optional(),
+});
+
+export type DriverApplicationLicense = z.infer<typeof driverApplicationLicenseSchema>;
+
+/**
+ * Vehicle details captured on the application — deliberately NOT written to
+ * the real `vehicles` collection at application time: `firestore.rules`
+ * only allows admins/dispatchers to write `vehicles`, and a real `Vehicle`
+ * record is only created once an admin reviews and activates the
+ * application. This is that same data, staged here until then.
+ */
+export const driverApplicationVehicleInfoSchema = z.object({
+  make: z.string().min(1),
+  model: z.string().min(1),
+  year: z.number().int().min(1980),
+  color: z.string().min(1),
+  plateNumber: z.string().min(1),
+});
+
+export type DriverApplicationVehicleInfo = z.infer<typeof driverApplicationVehicleInfoSchema>;
+
+export const driverApplicationInsuranceSchema = z.object({
+  provider: z.string().min(1),
+  policyNumber: z.string().min(1),
+  expiresAt: z.string().min(1),
+  photoUrl: z.string().url().optional(),
+});
+
+export type DriverApplicationInsurance = z.infer<typeof driverApplicationInsuranceSchema>;
+
+/**
+ * Source of truth for the `driverApplications` collection document shape.
+ * `personalInfo`/`license`/`vehicleInfo`/`insurance`/`profilePhotoUrl` were
+ * added in Web Phase W1 (Part 4) — all optional so pre-existing documents
+ * (and the Sprint 5 seed script's activated applications, which never set
+ * these) still validate unchanged.
+ */
 export const driverApplicationSchema = z.object({
   id: z.string().min(1),
   userId: z.string().min(1),
@@ -22,11 +75,24 @@ export const driverApplicationSchema = z.object({
   submittedAt: firestoreDateSchema.optional(),
   reviewedBy: z.string().optional(),
   rejectionReason: z.string().optional(),
+  personalInfo: driverApplicationPersonalInfoSchema.optional(),
+  license: driverApplicationLicenseSchema.optional(),
+  vehicleInfo: driverApplicationVehicleInfoSchema.optional(),
+  insurance: driverApplicationInsuranceSchema.optional(),
+  profilePhotoUrl: z.string().url().optional(),
   createdAt: firestoreDateSchema,
   updatedAt: firestoreDateSchema,
 });
 
 export type DriverApplication = z.infer<typeof driverApplicationSchema>;
+
+/** Input shape accepted when starting a new application (Web Phase W1, Part 4) — everything else is filled in as the wizard progresses via `saveApplicationProgress`. */
+export const createDriverApplicationInputSchema = driverApplicationSchema.pick({
+  userId: true,
+  status: true,
+});
+
+export type CreateDriverApplicationInput = z.infer<typeof createDriverApplicationInputSchema>;
 
 export const driverDocumentSchema = z.object({
   type: driverDocumentTypeSchema,

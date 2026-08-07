@@ -1,19 +1,58 @@
 "use client";
 
-import { DEFAULT_PLATFORM_SETTINGS } from "@the-ride/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, useTranslation } from "@the-ride/ui";
+import { adminFirestore } from "@/lib/firebase-client";
+import { subscribeGlobalSettings } from "@/lib/settings-admin";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  ErrorState,
+  LoadingState,
+  useTranslation,
+} from "@the-ride/ui";
+import { DEFAULT_PLATFORM_SETTINGS, type PlatformSettings } from "@the-ride/types";
+import { useEffect, useState } from "react";
 
-/** Assignment Settings (Sprint 4, Part 3/6/10) — the matching engine's eligibility thresholds and offer timer. */
+/**
+ * Assignment Settings (Sprint 4, Part 3/6/10; wired live in Web Phase W1)
+ * — read-only view of the matching engine's eligibility thresholds and
+ * offer timer, now read from `settings/global` (edited from the
+ * "Dispatch Settings" sidebar page) rather than hardcoded defaults.
+ */
 export function AssignmentSettingsTab() {
   const { t } = useTranslation();
+  const [settings, setSettings] = useState<PlatformSettings | null | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return subscribeGlobalSettings(adminFirestore, setSettings, setError);
+  }, []);
+
+  if (error) {
+    return <ErrorState title={t("admin.emptyStates.errorTitle")} description={error} />;
+  }
+
+  if (settings === undefined) {
+    return <LoadingState title={t("common.loading")} />;
+  }
+
+  const values = settings ?? DEFAULT_PLATFORM_SETTINGS;
 
   const rows: Array<[string, string]> = [
-    [t("admin.assignmentSettings.offerTimeout"), `${DEFAULT_PLATFORM_SETTINGS.assignmentTimeoutSeconds}s`],
-    [t("admin.assignmentSettings.maxDriverOffers"), String(DEFAULT_PLATFORM_SETTINGS.maxDriverOffers)],
-    [t("admin.assignmentSettings.minDriverScore"), String(DEFAULT_PLATFORM_SETTINGS.minDriverScore)],
-    [t("admin.assignmentSettings.minAcceptanceRate"), `${(DEFAULT_PLATFORM_SETTINGS.minAcceptanceRate * 100).toFixed(0)}%`],
-    [t("admin.assignmentSettings.maxCancellationRate"), `${(DEFAULT_PLATFORM_SETTINGS.maxCancellationRate * 100).toFixed(0)}%`],
-    [t("admin.assignmentSettings.maxActiveJobs"), String(DEFAULT_PLATFORM_SETTINGS.maxActiveJobsPerDriver)],
+    [t("admin.assignmentSettings.offerTimeout"), `${values.assignmentTimeoutSeconds}s`],
+    [t("admin.assignmentSettings.maxDriverOffers"), String(values.maxDriverOffers)],
+    [t("admin.assignmentSettings.minDriverScore"), String(values.minDriverScore)],
+    [
+      t("admin.assignmentSettings.minAcceptanceRate"),
+      `${(values.minAcceptanceRate * 100).toFixed(0)}%`,
+    ],
+    [
+      t("admin.assignmentSettings.maxCancellationRate"),
+      `${(values.maxCancellationRate * 100).toFixed(0)}%`,
+    ],
+    [t("admin.assignmentSettings.maxActiveJobs"), String(values.maxActiveJobsPerDriver)],
   ];
 
   return (
@@ -23,9 +62,12 @@ export function AssignmentSettingsTab() {
         <CardDescription>{t("admin.assignmentSettings.description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="grid gap-4 tablet:grid-cols-2">
+        <dl className="tablet:grid-cols-2 grid gap-4">
           {rows.map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
+            <div
+              key={label}
+              className="flex items-center justify-between border-b border-neutral-100 py-2 dark:border-neutral-800"
+            >
               <dt className="text-sm text-neutral-500 dark:text-neutral-400">{label}</dt>
               <dd className="text-sm font-medium text-neutral-900 dark:text-neutral-50">{value}</dd>
             </div>

@@ -7,7 +7,13 @@ export interface AppButtonProps extends PressableProps {
   variant?: "primary" | "outline";
 }
 
-export function AppButton({ label, variant = "primary", style, disabled, ...props }: AppButtonProps) {
+export function AppButton({
+  label,
+  variant = "primary",
+  style,
+  disabled,
+  ...props
+}: AppButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -30,7 +36,7 @@ export function AppButton({ label, variant = "primary", style, disabled, ...prop
 const styles = StyleSheet.create({
   base: {
     height: 48,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,

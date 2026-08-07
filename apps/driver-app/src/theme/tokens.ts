@@ -10,17 +10,19 @@
  * mid-sprint.
  */
 export const colors = {
-  brand: "#0F62FE",
+  brand: "#CB562C",
   brandForeground: "#FFFFFF",
+  brandLight: "#E4A34E",
+  accent: "#BA966E",
   neutral0: "#FFFFFF",
-  neutral50: "#F9FAFB",
-  neutral100: "#F3F4F6",
-  neutral200: "#E5E7EB",
-  neutral400: "#9CA3AF",
-  neutral500: "#6B7280",
-  neutral700: "#374151",
-  neutral900: "#111827",
-  neutral950: "#030712",
+  neutral50: "#FAF9F7",
+  neutral100: "#F3F1EE",
+  neutral200: "#E7E3DD",
+  neutral400: "#A69C8E",
+  neutral500: "#7D7468",
+  neutral700: "#56564E",
+  neutral900: "#262420",
+  neutral950: "#171512",
   danger: "#DC2626",
 } as const;
 
@@ -33,8 +35,8 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 4,
-  md: 12,
-  lg: 16,
+  sm: 8,
+  md: 14,
+  lg: 20,
   full: 9999,
 } as const;

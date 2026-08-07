@@ -7,19 +7,34 @@ export interface AppButtonProps extends PressableProps {
   variant?: "primary" | "outline" | "danger";
 }
 
-const LABEL_STYLE_KEY: Record<NonNullable<AppButtonProps["variant"]>, "primaryLabel" | "outlineLabel" | "dangerLabel"> = {
+const LABEL_STYLE_KEY: Record<
+  NonNullable<AppButtonProps["variant"]>,
+  "primaryLabel" | "outlineLabel" | "dangerLabel"
+> = {
   primary: "primaryLabel",
   outline: "outlineLabel",
   danger: "dangerLabel",
 };
 
-export function AppButton({ label, variant = "primary", style, disabled, ...props }: AppButtonProps) {
+export function AppButton({
+  label,
+  variant = "primary",
+  style,
+  disabled,
+  ...props
+}: AppButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
-      style={(state) => [styles.base, styles[variant], state.pressed && styles.pressed, disabled && styles.disabled, typeof style === "function" ? style(state) : style]}
+      style={(state) => [
+        styles.base,
+        styles[variant],
+        state.pressed && styles.pressed,
+        disabled && styles.disabled,
+        typeof style === "function" ? style(state) : style,
+      ]}
       {...props}
     >
       <Text style={styles[LABEL_STYLE_KEY[variant]]}>{label}</Text>
@@ -30,7 +45,7 @@ export function AppButton({ label, variant = "primary", style, disabled, ...prop
 const styles = StyleSheet.create({
   base: {
     height: 48,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,

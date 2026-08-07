@@ -334,7 +334,13 @@ export const en = {
     profilePhoto: "Profile photo",
     upload: "Upload",
     uploaded: "Uploaded",
-    uploadFailed: "Upload failed — try again",
+    uploading: "Uploading…",
+    uploadFailed: "Your photo couldn't be uploaded. Please try again.",
+    uploadTooLarge: "File is too large. Please choose an image under 5MB.",
+    uploadInvalidType: "Please select a JPG, PNG, or WebP image.",
+    uploadServiceUnavailable:
+      "Upload service is temporarily unavailable. Please try again shortly.",
+    photoRequired: "Please upload a profile photo to continue.",
     applicationStatusTitle: "Application status",
     applicationStatusSubtitle: "We'll notify you as your application moves forward.",
     statusDraft: "Draft",
@@ -375,6 +381,9 @@ export const en = {
     loadErrorTitle: "Couldn't load your application",
     loadErrorBody:
       "Something went wrong on our end. Please try again — if this keeps happening, contact support.",
+    saveErrorPermission:
+      "We couldn't save your changes — please sign out and back in, then try again.",
+    saveErrorGeneric: "We couldn't save your changes. Please try again.",
   },
   driverHome: {
     title: "Dashboard",

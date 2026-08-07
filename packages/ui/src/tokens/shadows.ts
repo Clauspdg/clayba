@@ -16,26 +16,57 @@ export interface ElevationLevel {
   };
 }
 
+/** Sprint UI 1.0: softer, more diffused "premium" shadows on a warm shadow tint (`#262420`, the new neutral-900) instead of flat black. Web values match `packages/config/tailwind/base.ts`'s `boxShadow.elevation1-4`. */
 export const elevation: Record<"none" | "sm" | "md" | "lg" | "xl", ElevationLevel> = {
   none: {
     web: "none",
-    native: { shadowColor: "transparent", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
+    native: {
+      shadowColor: "transparent",
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    },
   },
   sm: {
-    web: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-    native: { shadowColor: "#000000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+    web: "0 2px 8px -2px rgb(38 36 32 / 0.06)",
+    native: {
+      shadowColor: "#262420",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
   },
   md: {
-    web: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-    native: { shadowColor: "#000000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+    web: "0 8px 24px -4px rgb(38 36 32 / 0.10), 0 2px 8px -2px rgb(38 36 32 / 0.06)",
+    native: {
+      shadowColor: "#262420",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 4,
+    },
   },
   lg: {
-    web: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-    native: { shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 6 },
+    web: "0 16px 40px -8px rgb(38 36 32 / 0.14), 0 4px 12px -4px rgb(38 36 32 / 0.08)",
+    native: {
+      shadowColor: "#262420",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.14,
+      shadowRadius: 20,
+      elevation: 7,
+    },
   },
   xl: {
-    web: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
-    native: { shadowColor: "#000000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 10 },
+    web: "0 24px 64px -12px rgb(38 36 32 / 0.18), 0 8px 20px -8px rgb(38 36 32 / 0.10)",
+    native: {
+      shadowColor: "#262420",
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.18,
+      shadowRadius: 32,
+      elevation: 12,
+    },
   },
 };
 

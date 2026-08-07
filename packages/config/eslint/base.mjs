@@ -11,6 +11,7 @@ export const baseConfig = [
       "**/node_modules/**",
       "**/dist/**",
       "**/build/**",
+      "**/out/**",
       "**/.next/**",
       "**/.expo/**",
       "**/.turbo/**",

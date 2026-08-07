@@ -31,6 +31,7 @@ export * from "./sheet";
 export * from "./drawer";
 export * from "./tooltip";
 export * from "./popover";
+export * from "./alert";
 export * from "./toast";
 export * from "./snackbar";
 export * from "./progress";
