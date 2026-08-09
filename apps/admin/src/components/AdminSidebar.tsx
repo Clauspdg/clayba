@@ -46,6 +46,8 @@ export function AdminSidebar() {
       header={<Logo withWordmark className="text-neutral-900 dark:text-neutral-50" />}
       items={items}
       footer={<ContentManagementNavGroup pathname={pathname} />}
+      mobileMenuLabel={t("nav.menu")}
+      mobileMenuCloseLabel={t("common.close")}
     />
   );
 }

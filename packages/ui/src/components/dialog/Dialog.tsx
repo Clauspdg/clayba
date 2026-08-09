@@ -23,7 +23,7 @@ export function DialogContent({ className, children, closeLabel, ...props }: Dia
       <DialogPrimitive.Overlay className="data-[state=open]:animate-fade-in fixed inset-0 z-50 bg-black/50" />
       <DialogPrimitive.Content
         className={cn(
-          "shadow-elevation4 data-[state=open]:animate-slide-up fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900",
+          "shadow-elevation4 data-[state=open]:animate-slide-up fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900",
           className,
         )}
         {...props}

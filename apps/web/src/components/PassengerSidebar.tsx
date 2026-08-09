@@ -28,6 +28,8 @@ export function PassengerSidebar() {
       linkComponent={Link}
       header={<Logo withWordmark className="text-neutral-900 dark:text-neutral-50" />}
       items={items}
+      mobileMenuLabel={t("nav.menu")}
+      mobileMenuCloseLabel={t("common.close")}
     />
   );
 }

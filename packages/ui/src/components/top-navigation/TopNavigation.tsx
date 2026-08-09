@@ -59,7 +59,16 @@ export function TopNavigation({
   const [open, setOpen] = useState(false);
   const transparent = variant === "transparent";
 
-  const navLinks = (onNavigate?: () => void) =>
+  /**
+   * `useTransparentStyle` defaults to the header's own `transparent` flag
+   * (correct for the desktop nav, which sits over the same see-through bar)
+   * but the mobile drawer always passes `false` explicitly — its panel has
+   * its own solid white/neutral-900 background (`SidePanelContent`)
+   * regardless of the header variant, so white-on-white text would
+   * otherwise render invisibly whenever the transparent header variant is
+   * active (e.g. the unscrolled home page).
+   */
+  const navLinks = (onNavigate?: () => void, useTransparentStyle = transparent) =>
     items.map((item) => (
       <LinkComponent
         key={item.href}
@@ -68,10 +77,10 @@ export function TopNavigation({
         onClick={onNavigate}
         className={cn(
           "text-sm font-medium transition-colors",
-          transparent
+          useTransparentStyle
             ? "text-white/85 hover:text-white"
             : "hover:text-brand dark:hover:text-brand-300 text-neutral-600 dark:text-neutral-400",
-          item.active && (transparent ? "text-white" : "text-brand dark:text-brand-300"),
+          item.active && (useTransparentStyle ? "text-white" : "text-brand dark:text-brand-300"),
         )}
       >
         {item.label}
@@ -111,7 +120,7 @@ export function TopNavigation({
                 {menuLabel}
               </SidePanelTitle>
               <nav aria-label="Mobile" className="flex flex-col gap-5">
-                {navLinks(() => setOpen(false))}
+                {navLinks(() => setOpen(false), false)}
               </nav>
               {mobileExtra && (
                 <div className="mt-6 flex flex-col gap-4 border-t border-neutral-200 pt-6 dark:border-neutral-800">
