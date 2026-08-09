@@ -1,9 +1,11 @@
 "use client";
 
 import { useFooterContent } from "@/hooks/useSiteContent";
+import { isPassengerShellRoute } from "@/lib/passenger-shell-routes";
 import { Button, Divider, Icon, Input, Logo, useTranslation, type IconName } from "@the-ride/ui";
 import { RELEASE_VERSION_STRING } from "@the-ride/types";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 const DEFAULT_SOCIAL_LINKS: { icon: IconName; label: string; href: string }[] = [
@@ -24,6 +26,7 @@ const DEFAULT_SOCIAL_LINKS: { icon: IconName; label: string; href: string }[] = 
  */
 export function SiteFooter() {
   const { t } = useTranslation();
+  const pathname = usePathname();
   const footer = useFooterContent();
   const socialLinks = footer.socialLinks ?? DEFAULT_SOCIAL_LINKS;
   const [email, setEmail] = useState("");
@@ -56,6 +59,10 @@ export function SiteFooter() {
     event.preventDefault();
     if (!email.trim()) return;
     setSubscribed(true);
+  }
+
+  if (isPassengerShellRoute(pathname)) {
+    return null;
   }
 
   return (

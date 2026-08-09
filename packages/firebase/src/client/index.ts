@@ -6,6 +6,7 @@ export * from "./analytics";
 export * from "./messaging";
 export * from "./prepare-only";
 export * from "./driver-application";
+export * from "./driver";
 export * from "./contact";
 export * from "./passenger-profile";
 export * from "./favorite-places";

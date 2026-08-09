@@ -56,6 +56,11 @@ export const fr = {
     login: "Connexion",
     signup: "Inscription",
     menu: "Menu",
+    ride: "Course",
+    myApplication: "Ma candidature",
+    driverStatus: "Statut chauffeur",
+    account: "Compte",
+    openAdminDashboard: "Ouvrir le tableau de bord admin",
   },
   footer: {
     rights: "Tous droits réservés.",
@@ -397,6 +402,74 @@ export const fr = {
     saveErrorPermission:
       "Nous n'avons pas pu enregistrer vos modifications — déconnectez-vous puis reconnectez-vous et réessayez.",
     saveErrorGeneric: "Nous n'avons pas pu enregistrer vos modifications. Veuillez réessayer.",
+
+    eligibilityTitle: "Conduisez avec The Ride",
+    eligibilityBody:
+      "Gagnez de l'argent selon votre horaire. Voici ce qu'il faut savoir avant de postuler.",
+    eligibilityHeading: "Admissibilité",
+    eligibility1: "21 ans ou plus",
+    eligibility2: "Permis de conduire valide, détenu depuis au moins 1 an",
+    eligibility3: "Un véhicule à quatre portes en bon état",
+    eligibility4: "Assurance automobile valide",
+    benefitsHeading: "Avantages",
+    benefit1: "Conservez 100 % de vos pourboires",
+    benefit2: "Horaire flexible — conduisez quand ça vous convient",
+    benefit3: "Paiements hebdomadaires",
+    documentChecklistHeading: "Ce dont vous aurez besoin",
+    checklistLicense: "Une photo de votre permis de conduire",
+    checklistInsurance: "Une photo de votre assurance automobile",
+    checklistVehicleInfo: "La marque, le modèle, l'année et la plaque de votre véhicule",
+    checklistProfilePhoto: "Une photo de profil",
+    startApplicationCta: "Commencer la candidature",
+
+    continueTitle: "Continuez votre candidature",
+    continueBody: "Vous avez une candidature en cours. Reprenez là où vous vous êtes arrêté.",
+    missingInfoHeading: "Encore requis",
+    missingInfoComplete: "Tout est rempli — vous pouvez maintenant réviser et soumettre.",
+    lastSaved: "Dernier enregistrement {date}",
+    resumeApplicationCta: "Reprendre la candidature",
+
+    statusPortalTitle: "Statut de la candidature",
+    applicationIdLabel: "Numéro de candidature",
+    submittedDateLabel: "Soumise",
+    documentsReceivedHeading: "Documents reçus",
+    documentsMissingHeading: "Encore manquants",
+    nextStepHeading: "Prochaine étape",
+    nextStepSubmitted: "Nous examinons les documents que vous avez soumis.",
+    nextStepDocumentsPending: "Nous vérifions vos documents téléversés.",
+    nextStepBackgroundCheck: "Une vérification des antécédents est en cours.",
+    nextStepVehicleInspection: "L'inspection de votre véhicule est en cours de planification.",
+    nextStepInterview: "Un entretien est en cours de planification.",
+    contactSupportCta: "Contacter le support",
+
+    actionRequiredTitle: "Action requise",
+    actionRequiredBody:
+      "Nous avons besoin de quelque chose de votre part avant de poursuivre l'examen de votre candidature.",
+    uploadOrEditCta: "Téléverser / Modifier",
+    resubmitCta: "Soumettre à nouveau",
+
+    approvedTitle: "Votre candidature a été approuvée!",
+    approvedBody:
+      "Nous terminons quelques dernières étapes — vérification de conformité et configuration du compte — avant l'activation complète de votre compte chauffeur. Nous vous informerons dès que vous pourrez commencer à conduire.",
+
+    rejectedTitle: "Candidature non approuvée",
+    rejectedBody:
+      "Malheureusement, nous ne pouvons pas donner suite à votre candidature pour le moment.",
+    rejectionReasonLabel: "Motif",
+
+    driverDashboardTitle: "Bon retour, chauffeur",
+    driverStatusLabel: "Statut",
+    approvedVehicleLabel: "Véhicule approuvé",
+    goOnlineUnavailable:
+      "Passez en ligne depuis l'application chauffeur pour commencer à recevoir des demandes de course.",
+    driverProfileCta: "Profil chauffeur",
+
+    suspendedTitle: "Compte suspendu",
+    suspendedBody:
+      "Votre compte chauffeur a été suspendu. Vous ne pouvez pas passer en ligne tant que votre compte est suspendu. Contactez le support pour plus de détails.",
+    inactiveTitle: "Compte inactif",
+    inactiveBody:
+      "Votre compte chauffeur est actuellement inactif. Contactez le support pour plus de détails.",
   },
   driverHome: {
     title: "Tableau de bord",

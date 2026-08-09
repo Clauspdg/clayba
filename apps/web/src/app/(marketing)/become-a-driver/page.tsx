@@ -9,9 +9,12 @@ import {
   submitApplication,
 } from "@the-ride/firebase/client";
 import {
+  Alert,
+  Badge,
   Button,
   Card,
   CardContent,
+  Divider,
   ErrorState,
   Heading,
   Input,
@@ -20,14 +23,24 @@ import {
   Text,
   useToast,
   useTranslation,
+  DRIVER_APPLICATION_STATUS_LABEL_KEY,
+  DRIVER_APPLICATION_STATUS_TONE,
 } from "@the-ride/ui";
 import { useAuth } from "@the-ride/hooks";
-import type { DriverApplication } from "@the-ride/types";
+import {
+  DriverAccountStatus,
+  DriverApplicationStatus,
+  ExperienceState,
+  type Driver,
+  type DriverApplication,
+} from "@the-ride/types";
+import { isDriverApplicantState, isDriverState } from "@the-ride/utils";
 import { FirebaseError } from "firebase/app";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ZodError } from "zod";
 
+import { useExperienceState } from "@/hooks/useExperienceState";
 import { webFirestore } from "@/lib/firebase-client";
 
 const STEP_KEYS = ["personal", "license", "vehicle", "insurance", "photo", "review"] as const;
@@ -143,11 +156,21 @@ function fromApplication(app: DriverApplication): FormState {
   };
 }
 
+/**
+ * Lifecycle-aware entry point (User State Experience sprint, Parts 4-9) —
+ * routes to a dedicated screen per `ExperienceState` instead of always
+ * dropping every authenticated visitor straight into the six-step wizard.
+ * `ApplicationWizard` itself is unchanged and only mounts once the visitor
+ * explicitly starts or resumes (`wizardOpen`), so its own tested
+ * draft-resume/create logic stays exactly as it was.
+ */
 export default function BecomeADriverPage() {
   const { t } = useTranslation();
   const { status, session } = useAuth();
+  const { state, loading, error, driverApplication, driver } = useExperienceState();
+  const [wizardOpen, setWizardOpen] = useState(false);
 
-  if (status === "loading") {
+  if (status === "loading" || loading || (status === "authenticated" && state === null)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <LoadingState title={t("common.loading")} />
@@ -176,7 +199,431 @@ export default function BecomeADriverPage() {
     );
   }
 
-  return <ApplicationWizard userId={session.uid} />;
+  if (error) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <ErrorState title={t("becomeDriver.loadErrorTitle")} description={error} />
+      </div>
+    );
+  }
+
+  if (wizardOpen) {
+    return <ApplicationWizard userId={session.uid} />;
+  }
+
+  if (isDriverState(state) && driver) {
+    return state === ExperienceState.DRIVER_ACTIVATED ? (
+      <DriverDashboardScreen driver={driver} application={driverApplication} />
+    ) : (
+      <DriverSuspendedScreen driver={driver} />
+    );
+  }
+
+  if (isDriverApplicantState(state) && driverApplication) {
+    switch (driverApplication.status) {
+      case DriverApplicationStatus.DRAFT:
+        return (
+          <ContinueApplicationScreen
+            application={driverApplication}
+            onResume={() => setWizardOpen(true)}
+          />
+        );
+      case DriverApplicationStatus.APPROVED:
+        return <ApprovedScreen application={driverApplication} />;
+      case DriverApplicationStatus.REJECTED:
+        return <RejectedScreen application={driverApplication} />;
+      default:
+        return <StatusPortalScreen application={driverApplication} />;
+    }
+  }
+
+  // AUTHENTICATED_PASSENGER (or a staff role browsing this page directly) —
+  // no application or driver record yet.
+  return <EligibilityScreen onStart={() => setWizardOpen(true)} />;
+}
+
+function StatusBadge({ status }: { status: DriverApplicationStatus }) {
+  const { t } = useTranslation();
+  return (
+    <Badge tone={DRIVER_APPLICATION_STATUS_TONE[status]}>
+      {t(DRIVER_APPLICATION_STATUS_LABEL_KEY[status])}
+    </Badge>
+  );
+}
+
+/** Part 4 — authenticated user, no application yet. */
+function EligibilityScreen({ onStart }: { onStart: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <section className="mx-auto max-w-2xl px-6 py-16">
+      <div className="mb-8 text-center">
+        <Heading level={1} className="mb-3">
+          {t("becomeDriver.eligibilityTitle")}
+        </Heading>
+        <Text size="lg" tone="muted">
+          {t("becomeDriver.eligibilityBody")}
+        </Text>
+      </div>
+      <Card className="shadow-elevation1">
+        <CardContent className="flex flex-col gap-6 p-8">
+          <ChecklistSection
+            title={t("becomeDriver.eligibilityHeading")}
+            items={[
+              t("becomeDriver.eligibility1"),
+              t("becomeDriver.eligibility2"),
+              t("becomeDriver.eligibility3"),
+              t("becomeDriver.eligibility4"),
+            ]}
+          />
+          <Divider />
+          <ChecklistSection
+            title={t("becomeDriver.benefitsHeading")}
+            items={[
+              t("becomeDriver.benefit1"),
+              t("becomeDriver.benefit2"),
+              t("becomeDriver.benefit3"),
+            ]}
+          />
+          <Divider />
+          <ChecklistSection
+            title={t("becomeDriver.documentChecklistHeading")}
+            items={[
+              t("becomeDriver.checklistLicense"),
+              t("becomeDriver.checklistInsurance"),
+              t("becomeDriver.checklistVehicleInfo"),
+              t("becomeDriver.checklistProfilePhoto"),
+            ]}
+          />
+          <Button size="lg" fullWidth onClick={onStart}>
+            {t("becomeDriver.startApplicationCta")}
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function ChecklistSection({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Heading level={4}>{title}</Heading>
+      <ul className="flex flex-col gap-1.5">
+        {items.map((item) => (
+          <li
+            key={item}
+            className="flex items-start gap-2 text-sm text-neutral-700 dark:text-neutral-300"
+          >
+            <span className="bg-brand mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** How complete each of the wizard's six sections is, from real saved data — shared by the Continue and Status Portal screens. */
+function useApplicationCompleteness(application: DriverApplication) {
+  return useMemo(() => {
+    const sections: { key: string; label: string; done: boolean }[] = [
+      {
+        key: "personal",
+        label: "becomeDriver.stepPersonal",
+        done: Boolean(application.personalInfo),
+      },
+      {
+        key: "license",
+        label: "becomeDriver.license",
+        done: Boolean(application.license?.photoUrl),
+      },
+      { key: "vehicle", label: "becomeDriver.vehicle", done: Boolean(application.vehicleInfo) },
+      {
+        key: "insurance",
+        label: "becomeDriver.insurance",
+        done: Boolean(application.insurance?.photoUrl),
+      },
+      {
+        key: "photo",
+        label: "becomeDriver.profilePhoto",
+        done: Boolean(application.profilePhotoUrl),
+      },
+    ];
+    const completedCount = sections.filter((s) => s.done).length;
+    return { sections, completedCount, total: sections.length };
+  }, [application]);
+}
+
+/** Part 5 — DRAFT. */
+function ContinueApplicationScreen({
+  application,
+  onResume,
+}: {
+  application: DriverApplication;
+  onResume: () => void;
+}) {
+  const { t, locale } = useTranslation();
+  const { sections, completedCount, total } = useApplicationCompleteness(application);
+  const missing = sections.filter((s) => !s.done);
+  const progressPercent = (completedCount / total) * 100;
+  const lastSavedDate = application.updatedAt.toLocaleDateString(locale, { dateStyle: "medium" });
+
+  return (
+    <section className="mx-auto max-w-2xl px-6 py-16">
+      <Card className="shadow-elevation1">
+        <CardContent className="flex flex-col gap-5 p-8">
+          <div>
+            <Heading level={2} className="mb-2">
+              {t("becomeDriver.continueTitle")}
+            </Heading>
+            <Text tone="muted">{t("becomeDriver.continueBody")}</Text>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Progress value={progressPercent} label={t("becomeDriver.applicationTitle")} />
+            <Text size="sm" tone="muted">
+              {t("becomeDriver.stepProgress", { current: completedCount, total })}
+            </Text>
+          </div>
+          {missing.length > 0 ? (
+            <ChecklistSection
+              title={t("becomeDriver.missingInfoHeading")}
+              items={missing.map((s) => t(s.label))}
+            />
+          ) : (
+            <Alert tone="success">{t("becomeDriver.missingInfoComplete")}</Alert>
+          )}
+          <Text size="xs" tone="muted">
+            {t("becomeDriver.lastSaved", { date: lastSavedDate })}
+          </Text>
+          <Button size="lg" fullWidth onClick={onResume}>
+            {t("becomeDriver.resumeApplicationCta")}
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+const REVIEW_PIPELINE = [
+  DriverApplicationStatus.SUBMITTED,
+  DriverApplicationStatus.DOCUMENTS_PENDING,
+  DriverApplicationStatus.BACKGROUND_CHECK,
+  DriverApplicationStatus.VEHICLE_INSPECTION,
+  DriverApplicationStatus.INTERVIEW,
+  DriverApplicationStatus.APPROVED,
+] as const;
+
+const NEXT_STEP_KEY: Partial<Record<DriverApplicationStatus, string>> = {
+  [DriverApplicationStatus.SUBMITTED]: "becomeDriver.nextStepSubmitted",
+  [DriverApplicationStatus.DOCUMENTS_PENDING]: "becomeDriver.nextStepDocumentsPending",
+  [DriverApplicationStatus.BACKGROUND_CHECK]: "becomeDriver.nextStepBackgroundCheck",
+  [DriverApplicationStatus.VEHICLE_INSPECTION]: "becomeDriver.nextStepVehicleInspection",
+  [DriverApplicationStatus.INTERVIEW]: "becomeDriver.nextStepInterview",
+};
+
+/**
+ * Part 6/7 — SUBMITTED / DOCUMENTS_PENDING / BACKGROUND_CHECK /
+ * VEHICLE_INSPECTION / INTERVIEW. Also stands in for
+ * DRIVER_APPLICANT_ACTION_REQUIRED's UI (see that state's doc comment in
+ * `@the-ride/types`'s experience.enums.ts for why it can't be reached yet)
+ * — an `ACTION_REQUIRED`-shaped Alert renders whenever a future admin note
+ * field is present, without requiring a separate screen.
+ */
+function StatusPortalScreen({ application }: { application: DriverApplication }) {
+  const { t, locale } = useTranslation();
+  const { sections } = useApplicationCompleteness(application);
+  const received = sections.filter((s) => s.done);
+  const missing = sections.filter((s) => !s.done);
+  const currentIndex = REVIEW_PIPELINE.indexOf(
+    application.status as (typeof REVIEW_PIPELINE)[number],
+  );
+  const nextStepKey = NEXT_STEP_KEY[application.status];
+
+  return (
+    <section className="mx-auto max-w-2xl px-6 py-16">
+      <Card className="shadow-elevation1">
+        <CardContent className="flex flex-col gap-5 p-8">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Heading level={2} className="mb-1">
+                {t("becomeDriver.statusPortalTitle")}
+              </Heading>
+              <Text size="sm" tone="muted">
+                {t("becomeDriver.applicationIdLabel")}: {application.id}
+              </Text>
+            </div>
+            <StatusBadge status={application.status} />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {REVIEW_PIPELINE.map((step, index) => (
+              <div key={step} className="flex items-center gap-2">
+                <Badge tone={index <= currentIndex ? "success" : "neutral"}>
+                  {t(DRIVER_APPLICATION_STATUS_LABEL_KEY[step])}
+                </Badge>
+                {index < REVIEW_PIPELINE.length - 1 && (
+                  <span className="text-neutral-300 dark:text-neutral-700">→</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {application.submittedAt && (
+            <Text size="sm" tone="muted">
+              {t("becomeDriver.submittedDateLabel")}:{" "}
+              {application.submittedAt.toLocaleDateString(locale, { dateStyle: "medium" })}
+            </Text>
+          )}
+
+          {received.length > 0 && (
+            <ChecklistSection
+              title={t("becomeDriver.documentsReceivedHeading")}
+              items={received.map((s) => t(s.label))}
+            />
+          )}
+          {missing.length > 0 && (
+            <ChecklistSection
+              title={t("becomeDriver.documentsMissingHeading")}
+              items={missing.map((s) => t(s.label))}
+            />
+          )}
+
+          {nextStepKey && (
+            <Alert tone="brand" title={t("becomeDriver.nextStepHeading")}>
+              {t(nextStepKey)}
+            </Alert>
+          )}
+
+          <Button variant="outline" asChild>
+            <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+/** Part 8 — APPROVED, not yet activated. */
+function ApprovedScreen({ application }: { application: DriverApplication }) {
+  const { t } = useTranslation();
+  return (
+    <section className="mx-auto max-w-2xl px-6 py-16 text-center">
+      <Card className="shadow-elevation1">
+        <CardContent className="flex flex-col items-center gap-4 p-8">
+          <StatusBadge status={application.status} />
+          <Heading level={2}>{t("becomeDriver.approvedTitle")}</Heading>
+          <Text tone="muted">{t("becomeDriver.approvedBody")}</Text>
+          <Button variant="outline" asChild>
+            <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+/** REJECTED — not in the sprint's example output list, but a real reachable `DriverApplicationStatus` this page must still handle honestly (Part 24: no missing case). */
+function RejectedScreen({ application }: { application: DriverApplication }) {
+  const { t } = useTranslation();
+  return (
+    <section className="mx-auto max-w-2xl px-6 py-16 text-center">
+      <Card className="shadow-elevation1">
+        <CardContent className="flex flex-col items-center gap-4 p-8">
+          <StatusBadge status={application.status} />
+          <Heading level={2}>{t("becomeDriver.rejectedTitle")}</Heading>
+          <Text tone="muted">{t("becomeDriver.rejectedBody")}</Text>
+          {application.rejectionReason && (
+            <Alert
+              tone="neutral"
+              title={t("becomeDriver.rejectionReasonLabel")}
+              className="w-full text-left"
+            >
+              {application.rejectionReason}
+            </Alert>
+          )}
+          <Button variant="outline" asChild>
+            <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+/** Part 9 — DRIVER_ACTIVATED. Must never show the application wizard again. */
+function DriverDashboardScreen({
+  driver,
+  application,
+}: {
+  driver: Driver;
+  application: DriverApplication | null;
+}) {
+  const { t } = useTranslation();
+  const vehicle = application?.vehicleInfo;
+  return (
+    <section className="mx-auto max-w-2xl px-6 py-16">
+      <Card className="shadow-elevation1">
+        <CardContent className="flex flex-col gap-5 p-8">
+          <div className="flex items-center justify-between">
+            <Heading level={2}>{t("becomeDriver.driverDashboardTitle")}</Heading>
+            <Badge tone="success">{t("becomeDriver.statusActivated")}</Badge>
+          </div>
+          {vehicle && (
+            <div>
+              <Text size="sm" weight="medium" tone="muted">
+                {t("becomeDriver.approvedVehicleLabel")}
+              </Text>
+              <Text>
+                {vehicle.make} {vehicle.model} ({vehicle.year}) — {vehicle.plateNumber}
+              </Text>
+            </div>
+          )}
+          <Divider />
+          <div className="flex flex-col gap-2">
+            <Text size="sm" weight="medium">
+              {t("driverHome.goOnline")}
+            </Text>
+            <Button disabled fullWidth>
+              {t("driverHome.goOnline")}
+            </Button>
+            <Text size="xs" tone="muted">
+              {t("becomeDriver.goOnlineUnavailable")}
+            </Text>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" fullWidth asChild>
+              <Link href="/profile">{t("becomeDriver.driverProfileCta")}</Link>
+            </Button>
+            <Button variant="outline" fullWidth asChild>
+              <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+/** Part 10 — DRIVER_SUSPENDED / DRIVER_INACTIVE. Go Online must be unreachable. */
+function DriverSuspendedScreen({ driver }: { driver: Driver }) {
+  const { t } = useTranslation();
+  const isSuspended = driver.status === DriverAccountStatus.SUSPENDED;
+  return (
+    <section className="mx-auto max-w-2xl px-6 py-16">
+      <Card className="shadow-elevation1">
+        <CardContent className="flex flex-col gap-4 p-8">
+          <Alert
+            tone="danger"
+            title={isSuspended ? t("becomeDriver.suspendedTitle") : t("becomeDriver.inactiveTitle")}
+          >
+            {isSuspended ? t("becomeDriver.suspendedBody") : t("becomeDriver.inactiveBody")}
+          </Alert>
+          <Button variant="outline" asChild>
+            <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
 }
 
 function ApplicationWizard({ userId }: { userId: string }) {

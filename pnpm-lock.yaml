@@ -585,6 +585,9 @@ importers:
       '@the-ride/hooks':
         specifier: workspace:*
         version: link:../hooks
+      '@the-ride/types':
+        specifier: workspace:*
+        version: link:../types
       '@the-ride/utils':
         specifier: workspace:*
         version: link:../utils

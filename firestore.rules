@@ -83,7 +83,15 @@ service cloud.firestore {
     }
 
     match /drivers/{driverId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher', 'support']));
+      // `resource == null` first (short-circuits `&&`/`||`) — a `get()` on
+      // a document that doesn't exist yet has a null `resource`, and
+      // dereferencing `resource.data` on it throws, which Firestore
+      // surfaces to the client as permission-denied instead of "not
+      // found." Every non-driver user's own `drivers/{uid}` doc doesn't
+      // exist (see `resolveExperienceState` in `@the-ride/utils`, which
+      // reads this doc for every signed-in user to check driver status) —
+      // without this guard, that's the common case, not an edge case.
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher', 'support']));
       // All mutations (approve/suspend/reactivate/warn/terminate) go through
       // DriversRepository server-side only.
       allow write: if isAdmin();

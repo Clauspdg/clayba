@@ -54,6 +54,11 @@ export const en = {
     login: "Log in",
     signup: "Sign up",
     menu: "Menu",
+    ride: "Ride",
+    myApplication: "My Application",
+    driverStatus: "Driver Status",
+    account: "Account",
+    openAdminDashboard: "Open Admin Dashboard",
   },
   footer: {
     rights: "All rights reserved.",
@@ -384,6 +389,74 @@ export const en = {
     saveErrorPermission:
       "We couldn't save your changes — please sign out and back in, then try again.",
     saveErrorGeneric: "We couldn't save your changes. Please try again.",
+
+    // Lifecycle screens (User State Experience sprint) — one dedicated
+    // screen per ExperienceState instead of always jumping straight into
+    // the wizard, per apps/web/src/app/(marketing)/become-a-driver.
+    eligibilityTitle: "Drive with The Ride",
+    eligibilityBody: "Earn on your own schedule. Here's what you need to know before you apply.",
+    eligibilityHeading: "Eligibility",
+    eligibility1: "21 years or older",
+    eligibility2: "Valid driver's license, held for at least 1 year",
+    eligibility3: "A four-door vehicle in good condition",
+    eligibility4: "Valid vehicle insurance",
+    benefitsHeading: "Benefits",
+    benefit1: "Keep 100% of your tips",
+    benefit2: "Flexible hours — drive whenever works for you",
+    benefit3: "Weekly payouts",
+    documentChecklistHeading: "What you'll need",
+    checklistLicense: "A photo of your driver's license",
+    checklistInsurance: "A photo of your vehicle insurance",
+    checklistVehicleInfo: "Your vehicle's make, model, year, and plate number",
+    checklistProfilePhoto: "A profile photo",
+    startApplicationCta: "Start Driver Application",
+
+    continueTitle: "Continue your application",
+    continueBody: "You have an application in progress. Pick up right where you left off.",
+    missingInfoHeading: "Still needed",
+    missingInfoComplete: "Everything's filled in — you're ready to review and submit.",
+    lastSaved: "Last saved {date}",
+    resumeApplicationCta: "Resume Application",
+
+    statusPortalTitle: "Application Status",
+    applicationIdLabel: "Application ID",
+    submittedDateLabel: "Submitted",
+    documentsReceivedHeading: "Documents received",
+    documentsMissingHeading: "Still missing",
+    nextStepHeading: "Next step",
+    nextStepSubmitted: "We're reviewing your submitted documents.",
+    nextStepDocumentsPending: "We're verifying your uploaded documents.",
+    nextStepBackgroundCheck: "A background check is in progress.",
+    nextStepVehicleInspection: "Your vehicle inspection is being scheduled.",
+    nextStepInterview: "An interview is being scheduled.",
+    contactSupportCta: "Contact Support",
+
+    actionRequiredTitle: "Action Required",
+    actionRequiredBody:
+      "We need something from you before we can continue reviewing your application.",
+    uploadOrEditCta: "Upload / Edit",
+    resubmitCta: "Resubmit",
+
+    approvedTitle: "Your application has been approved!",
+    approvedBody:
+      "We're finishing a few final steps — a compliance check and account setup — before your driver account is fully activated. We'll notify you as soon as you can start driving.",
+
+    rejectedTitle: "Application not approved",
+    rejectedBody:
+      "Unfortunately, we're not able to move forward with your application at this time.",
+    rejectionReasonLabel: "Reason",
+
+    driverDashboardTitle: "Welcome back, driver",
+    driverStatusLabel: "Status",
+    approvedVehicleLabel: "Approved vehicle",
+    goOnlineUnavailable: "Go online from the driver app to start receiving ride requests.",
+    driverProfileCta: "Driver Profile",
+
+    suspendedTitle: "Account Suspended",
+    suspendedBody:
+      "Your driver account has been suspended. You cannot go online while your account is suspended. Contact support for details and next steps.",
+    inactiveTitle: "Account Inactive",
+    inactiveBody: "Your driver account is currently inactive. Contact support for details.",
   },
   driverHome: {
     title: "Dashboard",

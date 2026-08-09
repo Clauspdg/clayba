@@ -30,17 +30,19 @@ const COLLECTION = "driverApplications";
  * `firestore.rules` rather than a server.
  */
 
-/** Finds the signed-in user's own in-progress application, if any — so re-opening the form resumes a draft instead of starting over. */
+/**
+ * Finds the signed-in user's own application regardless of status — used
+ * both to resume a draft and, since the User State Experience sprint, as
+ * the resolver's ground truth for every later lifecycle stage (submitted,
+ * under review, approved, rejected, activated). One application per user
+ * is an invariant enforced elsewhere (the wizard only ever creates a draft
+ * when none already exists), so the first match is authoritative.
+ */
 export async function findOwnApplication(
   db: Firestore,
   userId: string,
 ): Promise<DriverApplication | null> {
-  const q = query(
-    collection(db, COLLECTION),
-    where("userId", "==", userId),
-    where("status", "in", [DriverApplicationStatus.DRAFT, DriverApplicationStatus.SUBMITTED]),
-    fsLimit(1),
-  );
+  const q = query(collection(db, COLLECTION), where("userId", "==", userId), fsLimit(1));
   const snapshot = await getDocs(q);
   const found = snapshot.docs[0];
   if (!found) return null;

@@ -28,12 +28,17 @@ import {
   type ResolvedStatistic,
   type ResolvedTestimonial,
 } from "@/hooks/useSiteContent";
-import type { SectionKey } from "@the-ride/types";
+import { useExperienceState } from "@/hooks/useExperienceState";
+import { ExperienceState, type SectionKey } from "@the-ride/types";
+import { hasDriverJourney, isDriverState } from "@the-ride/utils";
 import { useState, type ReactNode } from "react";
 
 export default function HomePage() {
   const { t } = useTranslation();
   const homepage = useHomepageContent();
+  const { state } = useExperienceState();
+  const isAuthenticated = state !== null && state !== ExperienceState.GUEST;
+  const hasApplicationOrDriverRecord = hasDriverJourney(state);
   const sectionOrder = useSectionsContent();
 
   const DEFAULT_STATS: ResolvedStatistic[] = [
@@ -339,7 +344,10 @@ export default function HomePage() {
                       homepage.accentColor ? { backgroundColor: homepage.accentColor } : undefined
                     }
                   >
-                    <Link href={homepage.ctaPassengerHref}>{homepage.ctaPassengerLabel}</Link>
+                    {/* Authenticated users get a real, actionable "Book a Ride" CTA instead of the generic guest-facing "/services" link (Part 3). */}
+                    <Link href={isAuthenticated ? "/book" : homepage.ctaPassengerHref}>
+                      {isAuthenticated ? t("passengerNav.bookRide") : homepage.ctaPassengerLabel}
+                    </Link>
                   </Button>
                 )}
                 {homepage.ctaDriverEnabled && (
@@ -349,7 +357,16 @@ export default function HomePage() {
                     className="border-white/30 text-white hover:bg-white/10 hover:text-white"
                     asChild
                   >
-                    <Link href={homepage.ctaDriverHref}>{homepage.ctaDriverLabel}</Link>
+                    {/* Never show "Become a Driver" marketing copy once the user already has an application/driver record (Part 3) — point them at their real status instead. */}
+                    <Link
+                      href={
+                        hasApplicationOrDriverRecord ? "/become-a-driver" : homepage.ctaDriverHref
+                      }
+                    >
+                      {hasApplicationOrDriverRecord
+                        ? t(isDriverState(state) ? "nav.driverStatus" : "nav.myApplication")
+                        : homepage.ctaDriverLabel}
+                    </Link>
                   </Button>
                 )}
               </div>
