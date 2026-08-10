@@ -9,6 +9,11 @@ import type { NextConfig } from "next";
  * actually redeployed, so "the code is correct" and "the live site reflects
  * it" turned out to be two different claims. Falls back to "unknown" rather
  * than throwing if `git` isn't on PATH in some build environment.
+ *
+ * UX-2 sprint: unlike the build date below, a `git rev-parse` of a fixed
+ * HEAD is deterministic no matter how many times/processes call it, so
+ * always resolving it here (rather than requiring callers to pre-set it)
+ * carries none of the hydration risk that a fresh `Date` would.
  */
 function getBuildCommit(): string {
   try {
@@ -26,7 +31,21 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_BUILD_COMMIT: process.env.NEXT_PUBLIC_BUILD_COMMIT || getBuildCommit(),
-    NEXT_PUBLIC_BUILD_DATE: process.env.NEXT_PUBLIC_BUILD_DATE || new Date().toISOString(),
+    // UX-2 sprint, Part 1 (hydration-warning root cause): this used to fall
+    // back to `new Date().toISOString()` here. Next's static export loads
+    // this config module separately for the client bundle compile and for
+    // the server-side static-render pass, each a few seconds apart — a
+    // fresh `Date` produced two different literal timestamp strings baked
+    // into SiteFooter's dev-build banner text, so every page hydrated with
+    // a text mismatch (React error #418) the instant it loaded. A
+    // timestamp must come from a real environment variable set ONCE,
+    // before `next build` runs (see `scripts/deploy-hosting.mjs`'s
+    // `getBuildDate()` call) — never computed inside this module, whose
+    // evaluation count/timing across build phases isn't something app code
+    // controls. Ad-hoc local builds that skip that script simply get no
+    // timestamp (SiteFooter renders the commit only) rather than a
+    // fabricated, inconsistent one.
+    NEXT_PUBLIC_BUILD_DATE: process.env.NEXT_PUBLIC_BUILD_DATE || "",
   },
   // Static export (Sprint 4.6, Part 2) — firebase.json's "web" hosting target
   // serves apps/web/out. No API routes/server actions/dynamic [param] routes

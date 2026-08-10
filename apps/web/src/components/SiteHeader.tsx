@@ -10,13 +10,18 @@ import {
   useTranslation,
 } from "@the-ride/ui";
 import { ExperienceState } from "@the-ride/types";
-import { isDriverApplicantState, isDriverState, isStaffState } from "@the-ride/utils";
+import {
+  getDriverCtaLabelKey,
+  isDriverApplicantState,
+  isDriverState,
+  isStaffState,
+} from "@the-ride/utils";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useScrolled } from "@/hooks/useScrolled";
-import { useExperienceState } from "@/hooks/useExperienceState";
+import { useUserExperience } from "@/hooks/useUserExperience";
 import { useNavigationContent } from "@/hooks/useSiteContent";
 import { isPassengerShellRoute } from "@/lib/passenger-shell-routes";
 
@@ -36,7 +41,8 @@ export function SiteHeader() {
   const pathname = usePathname();
   const scrolled = useScrolled();
   const navigation = useNavigationContent();
-  const { state } = useExperienceState();
+  const experience = useUserExperience();
+  const state = experience.experience;
 
   if (isPassengerShellRoute(pathname)) {
     return null;
@@ -49,62 +55,45 @@ export function SiteHeader() {
   const isDriver = isDriverState(state);
   const isStaff = isStaffState(state);
   const isPassenger = state === ExperienceState.PASSENGER;
+  const isGuest = state === ExperienceState.GUEST || state === null;
 
   /**
-   * Nav links change by experience state (Part 12) — driver-applicant and
-   * driver states all currently resolve to the single lifecycle-aware
-   * `/become-a-driver` page (there is no separate Application/Status/
-   * Documents/Trips/Earnings page in this app yet), so their nav
-   * intentionally has fewer, non-duplicate entries rather than several
-   * links pointing at the same place.
+   * Nav links come straight from the UX-1 resolver's `navigationProfile`
+   * (Part 2) — this component no longer decides which links a Passenger vs
+   * Driver Applicant vs Driver sees, it only renders what
+   * `resolveUserExperience()` already computed. The one exception is
+   * GUEST, where a published Site Content CMS nav (`navigation.items`)
+   * takes priority over the resolver's hardcoded marketing-nav fallback —
+   * that override is presentation content, not experience logic.
    */
   const items = (
-    isPassenger
-      ? [
-          { label: t("passengerNav.bookRide"), href: "/book" },
-          { label: t("passengerNav.rideHistory"), href: "/rides" },
-          { label: t("passengerNav.savedPlaces"), href: "/saved-places" },
-          { label: t("passengerNav.notifications"), href: "/notifications" },
-          { label: t("passengerNav.support"), href: "/support" },
-        ]
-      : isDriverApplicant || isDriver
-        ? [
-            {
-              label: isDriver ? t("nav.driverStatus") : t("nav.myApplication"),
-              href: "/become-a-driver",
-            },
-            { label: t("passengerNav.support"), href: "/support" },
-          ]
-        : isStaff
-          ? []
-          : (navigation.items ?? [
-              { label: t("nav.about"), href: "/about" },
-              { label: t("nav.safety"), href: "/safety" },
-              { label: t("nav.services"), href: "/services" },
-              { label: t("nav.becomeDriver"), href: "/become-a-driver" },
-              { label: t("nav.faq"), href: "/faq" },
-              { label: t("nav.contact"), href: "/contact" },
-            ])
+    isGuest
+      ? (navigation.items ??
+        experience.navigationProfile.map((item) => ({ label: t(item.labelKey), href: item.href })))
+      : experience.navigationProfile.map((item) => ({ label: t(item.labelKey), href: item.href }))
   ).map((item) => ({ ...item, active: pathname === item.href }));
 
   const outlineButtonClass = isTransparent
     ? "border-white/40 text-white hover:bg-white/10 hover:text-white"
     : "";
 
-  /** Primary CTA replaces "Become a Driver" once the user already has an application/driver record (Part 3: never show it as the primary CTA in that case). */
-  const primaryCta = isDriver ? (
-    <Button size="sm" asChild>
-      <Link href="/become-a-driver">{t("nav.driverStatus")}</Link>
-    </Button>
-  ) : isDriverApplicant ? (
-    <Button size="sm" asChild>
-      <Link href="/become-a-driver">{t("nav.myApplication")}</Link>
-    </Button>
-  ) : !isPassenger && !isStaff ? (
-    <Button size="sm" asChild>
-      <Link href="/become-a-driver">{t("website.becomeDriverPage.cta")}</Link>
-    </Button>
-  ) : null;
+  /**
+   * Primary CTA (Part 14's CTA audit table) — GUEST and PASSENGER both get
+   * the "start application" prompt (a Passenger previously got no primary
+   * CTA here at all, a gap this sprint fixes); a driver-applicant/driver
+   * gets their stage-specific label instead; staff and everyone else gets
+   * none.
+   */
+  const primaryCta =
+    isDriverApplicant || isDriver ? (
+      <Button size="sm" asChild>
+        <Link href="/become-a-driver">{t(getDriverCtaLabelKey(state as ExperienceState))}</Link>
+      </Button>
+    ) : isGuest || experience.capabilities?.canStartDriverApplication ? (
+      <Button size="sm" asChild>
+        <Link href="/become-a-driver">{t("website.becomeDriverPage.cta")}</Link>
+      </Button>
+    ) : null;
 
   const secondaryCta =
     state === null || isStaff ? null : isPassenger || isDriverApplicant || isDriver ? (

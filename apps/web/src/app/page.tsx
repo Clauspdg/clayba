@@ -29,9 +29,34 @@ import {
   type ResolvedTestimonial,
 } from "@/hooks/useSiteContent";
 import { useExperienceState } from "@/hooks/useExperienceState";
+import { useUserExperience } from "@/hooks/useUserExperience";
 import { ExperienceState, type SectionKey } from "@the-ride/types";
 import { hasDriverJourney, isDriverState } from "@the-ride/utils";
-import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+
+/**
+ * UX-2 sprint, Parts 3-4 — "/" stays the strong marketing homepage for
+ * GUEST (Part 3), but a signed-in Passenger (or driver-applicant/driver)
+ * must not see that same guest-acquisition page (Part 4). Rather than
+ * building a second, duplicate "passenger home" here, this redirects to
+ * `preferredLandingRoute` (UX-1's resolver) — `/dashboard` for a
+ * Passenger, already a complete booking-focused home with a real
+ * current-ride/no-active-ride state, wallet, notifications, and saved
+ * places (Part 13's "do not invent fake functionality just to eliminate a
+ * Coming Soon page" cuts the other way here too: don't duplicate a real
+ * page that already exists). Staff's `preferredLandingRoute` is `/` itself
+ * (no redirect target, no loop).
+ */
+function useRedirectToPreferredLanding() {
+  const router = useRouter();
+  const { loading, preferredLandingRoute } = useUserExperience();
+
+  useEffect(() => {
+    if (loading || !preferredLandingRoute || preferredLandingRoute === "/") return;
+    router.replace(preferredLandingRoute);
+  }, [loading, preferredLandingRoute, router]);
+}
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -40,6 +65,7 @@ export default function HomePage() {
   const isAuthenticated = state !== null && state !== ExperienceState.GUEST;
   const hasApplicationOrDriverRecord = hasDriverJourney(state);
   const sectionOrder = useSectionsContent();
+  useRedirectToPreferredLanding();
 
   const DEFAULT_STATS: ResolvedStatistic[] = [
     { value: "250K+", label: t("website.landing.stat1") },

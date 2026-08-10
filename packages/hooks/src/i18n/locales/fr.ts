@@ -59,6 +59,9 @@ export const fr = {
     ride: "Course",
     myApplication: "Ma candidature",
     driverStatus: "Statut chauffeur",
+    continueApplication: "Continuer la candidature",
+    viewApproval: "Voir l'approbation",
+    accountStatus: "Statut du compte",
     account: "Compte",
     openAdminDashboard: "Ouvrir le tableau de bord admin",
   },
@@ -451,11 +454,16 @@ export const fr = {
     approvedTitle: "Votre candidature a été approuvée!",
     approvedBody:
       "Nous terminons quelques dernières étapes — vérification de conformité et configuration du compte — avant l'activation complète de votre compte chauffeur. Nous vous informerons dès que vous pourrez commencer à conduire.",
+    whatHappensNextHeading: "Et ensuite",
+    whatHappensNextBody:
+      "Notre équipe termine une dernière vérification de conformité et configure votre compte chauffeur. Vous recevrez un e-mail dès que votre compte sera activé et que vous pourrez passer en ligne.",
+    complianceSummaryHeading: "Résumé de conformité",
 
     rejectedTitle: "Candidature non approuvée",
     rejectedBody:
       "Malheureusement, nous ne pouvons pas donner suite à votre candidature pour le moment.",
     rejectionReasonLabel: "Motif",
+    decisionDateLabel: "Date de décision",
 
     driverDashboardTitle: "Bon retour, chauffeur",
     driverStatusLabel: "Statut",
@@ -463,6 +471,16 @@ export const fr = {
     goOnlineUnavailable:
       "Passez en ligne depuis l'application chauffeur pour commencer à recevoir des demandes de course.",
     driverProfileCta: "Profil chauffeur",
+    openDriverAppTitle: "Conduisez avec l'application Chauffeur",
+    openDriverAppBody:
+      "Passer en ligne, accepter des courses et suivre vos revenus se font tous dans l'application Chauffeur — ce tableau de bord web ne sert qu'au statut de votre compte et à vos documents.",
+
+    vehicleSummaryHeading: "Véhicule",
+    lastUpdateLabel: "Dernière mise à jour",
+    inconsistentStateTitle: "Nous avons remarqué quelque chose d'inhabituel avec votre compte",
+    suspensionReasonLabel: "Motif",
+    suspendedSinceLabel: "Suspendu depuis",
+    suspensionEndsLabel: "Fin de la suspension",
 
     suspendedTitle: "Compte suspendu",
     suspendedBody:

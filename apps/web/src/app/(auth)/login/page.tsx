@@ -5,6 +5,7 @@ import {
   Heading,
   Icon,
   Input,
+  LoadingState,
   Logo,
   PasswordInput,
   Text,
@@ -12,8 +13,10 @@ import {
 } from "@the-ride/ui";
 import { useAuth } from "@the-ride/hooks";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
+
+import { useUserExperience } from "@/hooks/useUserExperience";
 
 const SOCIAL_PROVIDERS = [
   { id: "google", label: "Google" },
@@ -21,17 +24,31 @@ const SOCIAL_PROVIDERS = [
   { id: "facebook", label: "Facebook" },
 ] as const;
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { t } = useTranslation();
   const { status, error, signIn } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
+  const { loading: experienceLoading, preferredLandingRoute } = useUserExperience();
 
+  /**
+   * UX-2 sprint, Part 15 — every experience state gets its own real
+   * landing route (a draft applicant back to their application, an active
+   * driver to their driver home, ...) instead of always hardcoding
+   * `/dashboard`, which is only ever correct for a Passenger. Waits for
+   * `useUserExperience()` to finish resolving before redirecting, so a
+   * driver applicant isn't sent to `/dashboard` for a flash before a
+   * second redirect to `/become-a-driver` corrects it. `next` (the same
+   * query param `verify-email` already reads) takes priority when present
+   * — it preserves a genuinely requested destination (e.g. a driver
+   * finishing signup) without this page needing to know why it's there.
+   */
   useEffect(() => {
-    if (status === "authenticated") {
-      router.replace("/dashboard");
-    }
-  }, [status, router]);
+    if (status !== "authenticated" || experienceLoading) return;
+    const next = searchParams.get("next");
+    router.replace(next || preferredLandingRoute || "/dashboard");
+  }, [status, experienceLoading, preferredLandingRoute, searchParams, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -135,5 +152,14 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  const { t } = useTranslation();
+  return (
+    <Suspense fallback={<LoadingState title={t("common.loading")} />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

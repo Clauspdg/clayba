@@ -5,6 +5,7 @@ import {
   uploadDriverProfilePhoto,
   createDraftApplication,
   findOwnApplication,
+  getActiveSuspensionForDriver,
   saveApplicationProgress,
   submitApplication,
 } from "@the-ride/firebase/client";
@@ -33,6 +34,7 @@ import {
   ExperienceState,
   type Driver,
   type DriverApplication,
+  type DriverSuspension,
 } from "@the-ride/types";
 import { isDriverApplicantState, isDriverState } from "@the-ride/utils";
 import { FirebaseError } from "firebase/app";
@@ -40,7 +42,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ZodError } from "zod";
 
-import { useExperienceState } from "@/hooks/useExperienceState";
+import { useUserExperience } from "@/hooks/useUserExperience";
 import { webFirestore } from "@/lib/firebase-client";
 
 const STEP_KEYS = ["personal", "license", "vehicle", "insurance", "photo", "review"] as const;
@@ -167,7 +169,14 @@ function fromApplication(app: DriverApplication): FormState {
 export default function BecomeADriverPage() {
   const { t } = useTranslation();
   const { status, session } = useAuth();
-  const { state, loading, error, driverApplication, driver } = useExperienceState();
+  const {
+    experience: state,
+    loading,
+    error,
+    currentApplication: driverApplication,
+    driver,
+    blockingReason,
+  } = useUserExperience();
   const [wizardOpen, setWizardOpen] = useState(false);
 
   if (status === "loading" || loading || (status === "authenticated" && state === null)) {
@@ -211,35 +220,54 @@ export default function BecomeADriverPage() {
     return <ApplicationWizard userId={session.uid} />;
   }
 
-  if (isDriverState(state) && driver) {
-    return state === ExperienceState.DRIVER_ACTIVE ? (
-      <DriverDashboardScreen driver={driver} application={driverApplication} />
-    ) : (
-      <DriverSuspendedScreen driver={driver} />
-    );
-  }
-
-  if (isDriverApplicantState(state) && driverApplication) {
-    switch (driverApplication.status) {
-      case DriverApplicationStatus.DRAFT:
-        return (
-          <ContinueApplicationScreen
-            application={driverApplication}
-            onResume={() => setWizardOpen(true)}
-          />
-        );
-      case DriverApplicationStatus.APPROVED:
-        return <ApprovedScreen application={driverApplication} />;
-      case DriverApplicationStatus.REJECTED:
-        return <RejectedScreen application={driverApplication} />;
-      default:
-        return <StatusPortalScreen application={driverApplication} />;
+  const content = (() => {
+    if (isDriverState(state) && driver) {
+      return state === ExperienceState.DRIVER_ACTIVE ? (
+        <DriverDashboardScreen driver={driver} application={driverApplication} />
+      ) : (
+        <DriverSuspendedScreen driver={driver} />
+      );
     }
-  }
 
-  // PASSENGER (or a staff role browsing this page directly) — no
-  // application or driver record yet.
-  return <EligibilityScreen onStart={() => setWizardOpen(true)} />;
+    if (isDriverApplicantState(state) && driverApplication) {
+      switch (driverApplication.status) {
+        case DriverApplicationStatus.DRAFT:
+          return (
+            <ContinueApplicationScreen
+              application={driverApplication}
+              onResume={() => setWizardOpen(true)}
+            />
+          );
+        case DriverApplicationStatus.APPROVED:
+          return <ApprovedScreen application={driverApplication} />;
+        case DriverApplicationStatus.REJECTED:
+          return <RejectedScreen application={driverApplication} />;
+        default:
+          return <StatusPortalScreen application={driverApplication} />;
+      }
+    }
+
+    // PASSENGER (or a staff role browsing this page directly) — no
+    // application or driver record yet.
+    return <EligibilityScreen onStart={() => setWizardOpen(true)} />;
+  })();
+
+  return (
+    <>
+      {/* UX-2 sprint, Part 16 — surfaces UX-1's `blockingReason` (a genuinely
+          inconsistent data state, e.g. an activated application with no
+          driver record yet) instead of silently hiding it behind whatever
+          screen the resolver otherwise picked. Never blocks the page. */}
+      {blockingReason && (
+        <div className="mx-auto max-w-2xl px-6 pt-8">
+          <Alert tone="warning" title={t("becomeDriver.inconsistentStateTitle")}>
+            {blockingReason}
+          </Alert>
+        </div>
+      )}
+      {content}
+    </>
+  );
 }
 
 function StatusBadge({ status }: { status: DriverApplicationStatus }) {
@@ -467,11 +495,29 @@ function StatusPortalScreen({ application }: { application: DriverApplication })
             ))}
           </div>
 
-          {application.submittedAt && (
+          <div className="flex flex-wrap gap-x-6 gap-y-1">
+            {application.submittedAt && (
+              <Text size="sm" tone="muted">
+                {t("becomeDriver.submittedDateLabel")}:{" "}
+                {application.submittedAt.toLocaleDateString(locale, { dateStyle: "medium" })}
+              </Text>
+            )}
             <Text size="sm" tone="muted">
-              {t("becomeDriver.submittedDateLabel")}:{" "}
-              {application.submittedAt.toLocaleDateString(locale, { dateStyle: "medium" })}
+              {t("becomeDriver.lastUpdateLabel")}:{" "}
+              {application.updatedAt.toLocaleDateString(locale, { dateStyle: "medium" })}
             </Text>
+          </div>
+
+          {application.vehicleInfo && (
+            <div>
+              <Text size="sm" weight="medium" tone="muted">
+                {t("becomeDriver.vehicleSummaryHeading")}
+              </Text>
+              <Text>
+                {application.vehicleInfo.make} {application.vehicleInfo.model} (
+                {application.vehicleInfo.year}) — {application.vehicleInfo.plateNumber}
+              </Text>
+            </div>
           )}
 
           {received.length > 0 && (
@@ -502,16 +548,51 @@ function StatusPortalScreen({ application }: { application: DriverApplication })
   );
 }
 
-/** Part 8 — APPROVED, not yet activated. */
+/**
+ * Part 9 — APPROVED, not yet activated. Must never expose Go Online /
+ * Driver Home here — this screen only renders while there is no `drivers/{uid}`
+ * record yet; the moment one exists, `BecomeADriverPage`'s own routing
+ * (state-driven, not this component) moves the user to
+ * `DriverDashboardScreen` instead. No CTA here can accidentally skip that.
+ */
 function ApprovedScreen({ application }: { application: DriverApplication }) {
   const { t } = useTranslation();
+  const { sections } = useApplicationCompleteness(application);
+  const received = sections.filter((s) => s.done);
+  const vehicle = application.vehicleInfo;
+
   return (
-    <section className="mx-auto max-w-2xl px-6 py-16 text-center">
+    <section className="mx-auto max-w-2xl px-6 py-16">
       <Card className="shadow-elevation1">
-        <CardContent className="flex flex-col items-center gap-4 p-8">
-          <StatusBadge status={application.status} />
-          <Heading level={2}>{t("becomeDriver.approvedTitle")}</Heading>
-          <Text tone="muted">{t("becomeDriver.approvedBody")}</Text>
+        <CardContent className="flex flex-col gap-5 p-8 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <StatusBadge status={application.status} />
+            <Heading level={2}>{t("becomeDriver.approvedTitle")}</Heading>
+            <Text tone="muted">{t("becomeDriver.approvedBody")}</Text>
+          </div>
+
+          {vehicle && (
+            <div className="text-left">
+              <Text size="sm" weight="medium" tone="muted">
+                {t("becomeDriver.approvedVehicleLabel")}
+              </Text>
+              <Text>
+                {vehicle.make} {vehicle.model} ({vehicle.year}) — {vehicle.plateNumber}
+              </Text>
+            </div>
+          )}
+
+          {received.length > 0 && (
+            <ChecklistSection
+              title={t("becomeDriver.complianceSummaryHeading")}
+              items={received.map((s) => t(s.label))}
+            />
+          )}
+
+          <Alert tone="brand" title={t("becomeDriver.whatHappensNextHeading")}>
+            {t("becomeDriver.whatHappensNextBody")}
+          </Alert>
+
           <Button variant="outline" asChild>
             <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
           </Button>
@@ -521,9 +602,9 @@ function ApprovedScreen({ application }: { application: DriverApplication }) {
   );
 }
 
-/** REJECTED — not in the sprint's example output list, but a real reachable `DriverApplicationStatus` this page must still handle honestly (Part 24: no missing case). */
+/** REJECTED — not in the sprint's example output list, but a real reachable `DriverApplicationStatus` this page must still handle honestly (Part 24: no missing case). Per UX-2 Part 10: no reapplication action — no business rule/backend support for one exists in this codebase yet (documented as a gap rather than invented). */
 function RejectedScreen({ application }: { application: DriverApplication }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   return (
     <section className="mx-auto max-w-2xl px-6 py-16 text-center">
       <Card className="shadow-elevation1">
@@ -531,6 +612,10 @@ function RejectedScreen({ application }: { application: DriverApplication }) {
           <StatusBadge status={application.status} />
           <Heading level={2}>{t("becomeDriver.rejectedTitle")}</Heading>
           <Text tone="muted">{t("becomeDriver.rejectedBody")}</Text>
+          <Text size="sm" tone="muted">
+            {t("becomeDriver.decisionDateLabel")}:{" "}
+            {application.updatedAt.toLocaleDateString(locale, { dateStyle: "medium" })}
+          </Text>
           {application.rejectionReason && (
             <Alert
               tone="neutral"
@@ -578,15 +663,18 @@ function DriverDashboardScreen({
             </div>
           )}
           <Divider />
-          <div className="flex flex-col gap-2">
+          {/* UX-2 sprint, Part 11 — operational driving (going online,
+              accepting rides, earnings) lives in the Driver App, not this
+              web dashboard; there is no real app-store/deep-link URL wired
+              up anywhere in this codebase yet (a genuine gap, documented in
+              the sprint report), so this is an honest informational panel
+              rather than a disabled button pretending to be a live action. */}
+          <div className="bg-brand-50 dark:bg-brand-900/40 flex flex-col gap-1.5 rounded-xl p-4">
             <Text size="sm" weight="medium">
-              {t("driverHome.goOnline")}
+              {t("becomeDriver.openDriverAppTitle")}
             </Text>
-            <Button disabled fullWidth>
-              {t("driverHome.goOnline")}
-            </Button>
-            <Text size="xs" tone="muted">
-              {t("becomeDriver.goOnlineUnavailable")}
+            <Text size="sm" tone="muted">
+              {t("becomeDriver.openDriverAppBody")}
             </Text>
           </div>
           <div className="flex gap-3">
@@ -603,10 +691,40 @@ function DriverDashboardScreen({
   );
 }
 
-/** Part 10 — DRIVER_SUSPENDED / DRIVER_INACTIVE. Go Online must be unreachable. */
+/**
+ * Part 12 — DRIVER_SUSPENDED / DRIVER_INACTIVE. Go Online must be
+ * unreachable — this screen has no operational CTA at all, only account
+ * status and Support, matching the spec's "never show Go Online as an
+ * available action." Fetches the real `driverSuspensions` record (reason,
+ * start/end date) for a suspended driver — `terminate()` never creates one
+ * (see `DriversRepository`), so an inactive/terminated driver only ever
+ * gets the generic message, honestly reflecting that no more specific data
+ * exists for that state.
+ */
 function DriverSuspendedScreen({ driver }: { driver: Driver }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const isSuspended = driver.status === DriverAccountStatus.SUSPENDED;
+  const [suspension, setSuspension] = useState<DriverSuspension | null>(null);
+  const [suspensionLoading, setSuspensionLoading] = useState(isSuspended);
+
+  useEffect(() => {
+    if (!isSuspended) return;
+    let cancelled = false;
+    getActiveSuspensionForDriver(webFirestore, driver.id)
+      .then((result) => {
+        if (!cancelled) setSuspension(result);
+      })
+      .catch((err: unknown) => {
+        console.error("[become-a-driver] failed to load suspension details", err);
+      })
+      .finally(() => {
+        if (!cancelled) setSuspensionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuspended, driver.id]);
+
   return (
     <section className="mx-auto max-w-2xl px-6 py-16">
       <Card className="shadow-elevation1">
@@ -617,6 +735,36 @@ function DriverSuspendedScreen({ driver }: { driver: Driver }) {
           >
             {isSuspended ? t("becomeDriver.suspendedBody") : t("becomeDriver.inactiveBody")}
           </Alert>
+
+          {isSuspended && !suspensionLoading && suspension && (
+            <dl className="flex flex-col gap-2 text-sm">
+              <div className="flex justify-between gap-4 border-b border-neutral-100 py-2 dark:border-neutral-800">
+                <dt className="text-neutral-500 dark:text-neutral-400">
+                  {t("becomeDriver.suspensionReasonLabel")}
+                </dt>
+                <dd className="text-right font-medium">{suspension.reason}</dd>
+              </div>
+              <div className="flex justify-between gap-4 border-b border-neutral-100 py-2 dark:border-neutral-800">
+                <dt className="text-neutral-500 dark:text-neutral-400">
+                  {t("becomeDriver.suspendedSinceLabel")}
+                </dt>
+                <dd className="font-medium">
+                  {suspension.startAt.toLocaleDateString(locale, { dateStyle: "medium" })}
+                </dd>
+              </div>
+              {suspension.endAt && (
+                <div className="flex justify-between gap-4 py-2">
+                  <dt className="text-neutral-500 dark:text-neutral-400">
+                    {t("becomeDriver.suspensionEndsLabel")}
+                  </dt>
+                  <dd className="font-medium">
+                    {suspension.endAt.toLocaleDateString(locale, { dateStyle: "medium" })}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          )}
+
           <Button variant="outline" asChild>
             <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
           </Button>

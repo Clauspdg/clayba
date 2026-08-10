@@ -57,6 +57,9 @@ export const en = {
     ride: "Ride",
     myApplication: "My Application",
     driverStatus: "Driver Status",
+    continueApplication: "Continue Application",
+    viewApproval: "View Approval",
+    accountStatus: "Account Status",
     account: "Account",
     openAdminDashboard: "Open Admin Dashboard",
   },
@@ -440,17 +443,32 @@ export const en = {
     approvedTitle: "Your application has been approved!",
     approvedBody:
       "We're finishing a few final steps — a compliance check and account setup — before your driver account is fully activated. We'll notify you as soon as you can start driving.",
+    whatHappensNextHeading: "What happens next",
+    whatHappensNextBody:
+      "Our team is completing a final compliance check and setting up your driver account. You'll get an email as soon as you're activated and able to go online.",
+    complianceSummaryHeading: "Compliance summary",
 
     rejectedTitle: "Application not approved",
     rejectedBody:
       "Unfortunately, we're not able to move forward with your application at this time.",
     rejectionReasonLabel: "Reason",
+    decisionDateLabel: "Decision date",
 
     driverDashboardTitle: "Welcome back, driver",
     driverStatusLabel: "Status",
     approvedVehicleLabel: "Approved vehicle",
     goOnlineUnavailable: "Go online from the driver app to start receiving ride requests.",
     driverProfileCta: "Driver Profile",
+    openDriverAppTitle: "Drive with the Driver App",
+    openDriverAppBody:
+      "Going online, accepting rides, and tracking earnings all happen in the Driver App — this web dashboard is for your account status and documents only.",
+
+    vehicleSummaryHeading: "Vehicle",
+    lastUpdateLabel: "Last update",
+    inconsistentStateTitle: "We noticed something unusual with your account",
+    suspensionReasonLabel: "Reason",
+    suspendedSinceLabel: "Suspended since",
+    suspensionEndsLabel: "Suspension ends",
 
     suspendedTitle: "Account Suspended",
     suspendedBody:

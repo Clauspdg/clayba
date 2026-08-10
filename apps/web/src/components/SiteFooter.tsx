@@ -15,6 +15,23 @@ const DEFAULT_SOCIAL_LINKS: { icon: IconName; label: string; href: string }[] = 
 ];
 
 /**
+ * UX-2 sprint, Part 1 (hydration-warning root cause): the copyright year
+ * used to call `new Date().getFullYear()` directly in the render body —
+ * the same class of bug as the dev-build banner below (see
+ * `next.config.ts`'s comment): a value computed fresh on every render
+ * differs between the server-rendered HTML and the client's hydration
+ * pass whenever those two renders straddle a real-world boundary (there,
+ * milliseconds; here, only a year rollover, so it was far rarer, but not
+ * actually safe). `NEXT_PUBLIC_BUILD_DATE` is now a single, stable
+ * build-time constant (never recomputed per render), so deriving the year
+ * from it is hydration-safe; a hardcoded fallback year covers ad-hoc
+ * builds that don't set it, with no runtime `Date` call either way.
+ */
+const COPYRIGHT_YEAR = process.env.NEXT_PUBLIC_BUILD_DATE
+  ? new Date(process.env.NEXT_PUBLIC_BUILD_DATE).getFullYear()
+  : 2026;
+
+/**
  * Premium footer (Sprint 7, made CMS-configurable in Sprints 7.1-7.2 —
  * tagline/newsletter copy/social links/nav-link columns can all be
  * published from Content Management → Footer, each falling back to
@@ -156,7 +173,7 @@ export function SiteFooter() {
       <div className="tablet:flex-row mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-xs text-neutral-400 dark:text-neutral-500">
         <p>
           {footer.copyrightText ||
-            `© ${new Date().getFullYear()} ${t("common.appName")} — ${t("footer.rights")}`}
+            `© ${COPYRIGHT_YEAR} ${t("common.appName")} — ${t("footer.rights")}`}
         </p>
         <p>v{RELEASE_VERSION_STRING}</p>
       </div>
