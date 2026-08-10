@@ -1,5 +1,6 @@
 export * from "./capabilities";
 export * from "./driverCtaLabel";
+export * from "./driverEntryPointLabels";
 export * from "./landingRoute";
 export * from "./lifecycleState";
 export * from "./navigationProfile";

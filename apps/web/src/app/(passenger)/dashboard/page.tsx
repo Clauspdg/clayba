@@ -1,5 +1,6 @@
 "use client";
 
+import { DriverEntryCard } from "@/components/DriverEntryCard";
 import { webFirestore } from "@/lib/firebase-client";
 import {
   subscribeFavoritePlaces,
@@ -139,6 +140,9 @@ export default function DashboardPage() {
           <Link href="/profile">{t("passengerNav.profile")}</Link>
         </Button>
       </div>
+
+      {/* Passenger -> Driver entry point sprint, Part 1 */}
+      <DriverEntryCard />
 
       <div className="tablet:grid-cols-2 laptop:grid-cols-3 grid gap-4">
         <Card className="duration-normal hover:shadow-elevation3 transition-shadow">

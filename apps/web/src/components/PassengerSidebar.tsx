@@ -4,6 +4,8 @@ import { Logo, Sidebar, useTranslation } from "@the-ride/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { DriverNavGroup } from "./DriverNavGroup";
+
 /** Passenger dashboard nav (Sprint 6) — mirrors `apps/admin/src/components/AdminSidebar.tsx`'s pattern exactly. */
 export function PassengerSidebar() {
   const { t } = useTranslation();
@@ -28,6 +30,7 @@ export function PassengerSidebar() {
       linkComponent={Link}
       header={<Logo withWordmark className="text-neutral-900 dark:text-neutral-50" />}
       items={items}
+      footer={<DriverNavGroup pathname={pathname} />}
       mobileMenuLabel={t("nav.menu")}
       mobileMenuCloseLabel={t("common.close")}
     />
