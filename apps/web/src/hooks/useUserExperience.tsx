@@ -10,6 +10,7 @@ import type {
   UserCapabilities,
 } from "@the-ride/types";
 import { resolveUserExperience } from "@the-ride/utils";
+import { createContext, useContext, type ReactNode } from "react";
 
 import { useExperienceInputs } from "./useExperienceInputs";
 
@@ -32,24 +33,8 @@ export interface UserExperienceResult {
   refresh: () => void;
 }
 
-/**
- * The canonical UX-1 web hook (Part 6) — the rich sibling of
- * `useExperienceState`. Shares the same data-fetching (`useExperienceInputs`)
- * and calls `resolveUserExperience`, which itself wraps
- * `resolveExperienceState`, so this is not a second role/status system —
- * it is the same resolver chain, viewed through the fuller
- * `ResolvedExperience` shape.
- *
- * Not yet wired into any page (per UX-1's "DO NOT redesign pages yet");
- * this hook exists so UX-2/3 route guards and navigation can consume a
- * single source of truth for capabilities/routing/nav data once that work
- * begins. A `UserExperienceProvider` (context wrapper around this hook) is
- * deliberately not added yet either, since nothing consumes it — add one
- * only when a real cross-tree consumer needs it, per Part 6's "does not
- * require a full page reload where reactive."
- */
-export function useUserExperience(): UserExperienceResult {
-  const { status, claims, driverApplication, driver, error, refetch } = useExperienceInputs();
+function computeResult(input: ReturnType<typeof useExperienceInputs>): UserExperienceResult {
+  const { status, claims, driverApplication, driver, error, refetch } = input;
 
   if (status === "loading") {
     return {
@@ -86,4 +71,39 @@ export function useUserExperience(): UserExperienceResult {
     driver,
     refresh: refetch,
   };
+}
+
+const UserExperienceContext = createContext<UserExperienceResult | null>(null);
+
+/**
+ * UX-2 sprint audit fix — `useUserExperience()` is now called from four
+ * places that all mount together on every page (`SiteHeader` lives in the
+ * root layout, plus whichever page itself also calls it: homepage, login,
+ * become-a-driver). Before this provider existed, each call independently
+ * re-ran `useExperienceInputs()`'s Firestore fetch (the user's own
+ * `driverApplications` + `drivers` docs), so every page load did the same
+ * two reads twice over for no reason. This is exactly the "a real
+ * cross-tree consumer needs it" trigger `useUserExperience`'s original doc
+ * comment said to wait for — fetches once here, in the root layout, and
+ * every consumer below it reads the same resolved value from context.
+ */
+export function UserExperienceProvider({ children }: { children: ReactNode }) {
+  const inputs = useExperienceInputs();
+  const value = computeResult(inputs);
+  return <UserExperienceContext.Provider value={value}>{children}</UserExperienceContext.Provider>;
+}
+
+/**
+ * The canonical UX-1 web hook (Part 6) for "what should this person see
+ * right now." Reads from `UserExperienceProvider` (mounted once in
+ * `app/layout.tsx`) rather than fetching independently; throws outside
+ * that provider, matching every other context hook in this codebase
+ * (`useAuth`, `useTheme`, `useTranslation`).
+ */
+export function useUserExperience(): UserExperienceResult {
+  const context = useContext(UserExperienceContext);
+  if (!context) {
+    throw new Error("useUserExperience must be used within a UserExperienceProvider");
+  }
+  return context;
 }

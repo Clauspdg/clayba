@@ -20,11 +20,10 @@ export interface ExperienceInputsResult {
 /**
  * The single place `apps/web` fetches the raw data every experience
  * resolver needs (UX-1 sprint, Part 6) — the signed-in user's Firebase Auth
- * claims plus their own `driverApplications` and `drivers` records.
- * `useExperienceState` (flat, pre-UX-1 shape) and `useUserExperience`
- * (rich UX-1 shape) both build on this instead of independently querying
- * Firestore, so there is exactly one data-fetching path and one resolver
- * chain behind both hooks — not a second role/status system.
+ * claims plus their own `driverApplications` and `drivers` records. Called
+ * exactly once, by `UserExperienceProvider` (UX-2 sprint audit fix) —
+ * every consumer reads the already-resolved result from
+ * `useUserExperience()`'s context instead of re-running this fetch.
  */
 export function useExperienceInputs(): ExperienceInputsResult {
   const { status: authStatus, session } = useAuth();

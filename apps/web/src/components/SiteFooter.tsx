@@ -179,8 +179,15 @@ export function SiteFooter() {
       </div>
       {process.env.NEXT_PUBLIC_APP_ENV === "development" && (
         <div className="border-t border-dashed border-neutral-200 bg-neutral-50 py-2 text-center font-mono text-[10px] text-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-600">
-          DEV BUILD {process.env.NEXT_PUBLIC_BUILD_COMMIT ?? "unknown"} —{" "}
-          {(process.env.NEXT_PUBLIC_BUILD_DATE ?? "").replace("T", " ").slice(0, 16)}
+          DEV BUILD {process.env.NEXT_PUBLIC_BUILD_COMMIT ?? "unknown"}
+          {/* UX-2 sprint, Part 1 — NEXT_PUBLIC_BUILD_DATE is only ever a
+              real, pre-set env var now (see next.config.ts), never a
+              runtime Date() fallback; an ad-hoc build that skipped
+              scripts/deploy-hosting.mjs simply has none, so this omits the
+              dash entirely rather than rendering a trailing "— " with
+              nothing after it. */}
+          {process.env.NEXT_PUBLIC_BUILD_DATE &&
+            ` — ${process.env.NEXT_PUBLIC_BUILD_DATE.replace("T", " ").slice(0, 16)}`}
         </div>
       )}
     </footer>

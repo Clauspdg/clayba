@@ -5,6 +5,7 @@ import { Poppins } from "next/font/google";
 import { AppAuthProvider } from "@/components/AppAuthProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { UserExperienceProvider } from "@/hooks/useUserExperience";
 
 import "./globals.css";
 
@@ -26,11 +27,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50">
         <RideProviders>
           <AppAuthProvider>
-            <div className="flex min-h-screen flex-col">
-              <SiteHeader />
-              <main className="flex-1">{children}</main>
-              <SiteFooter />
-            </div>
+            <UserExperienceProvider>
+              <div className="flex min-h-screen flex-col">
+                <SiteHeader />
+                <main className="flex-1">{children}</main>
+                <SiteFooter />
+              </div>
+            </UserExperienceProvider>
           </AppAuthProvider>
         </RideProviders>
       </body>
