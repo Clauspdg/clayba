@@ -68,10 +68,26 @@ export function ApplicationsTab() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
+    /**
+     * Release-blocking bug fix — a real application submitted today after
+     * sitting as a draft for days (`createdAt` from when the draft was
+     * first started) sorted dead last behind same-day QA fixture data and
+     * was invisible without manually paginating past it. `submittedAt` is
+     * set exactly once, at the draft -> submitted transition
+     * (`submitApplication` in `packages/firebase/src/client/`), and is
+     * never touched by any later admin transition — every document this
+     * query can return (every `PENDING_STATUSES` value requires having
+     * passed through `submitted` first) is guaranteed to have one. It's
+     * also the semantically correct signal for "when did this actually
+     * enter the review queue," which `createdAt` is not once a draft can
+     * sit unfinished for days before being submitted. Needs its own
+     * composite index (`status` + `submittedAt`) — see
+     * firestore.indexes.json.
+     */
     const q = query(
       collection(adminFirestore, "driverApplications"),
       where("status", "in", PENDING_STATUSES),
-      orderBy("createdAt", "desc"),
+      orderBy("submittedAt", "desc"),
     );
     const unsubscribe = onSnapshot(
       q,
