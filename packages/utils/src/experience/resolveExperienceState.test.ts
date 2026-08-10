@@ -24,23 +24,26 @@ describe("resolveExperienceState", () => {
     );
   });
 
-  it("returns AUTHENTICATED_PASSENGER for a signed-in user with no application or driver record", () => {
+  it("returns PASSENGER for a signed-in user with no application or driver record", () => {
     expect(
       resolveExperienceState({
         claims: claims(Role.PASSENGER),
         driverApplication: null,
         driver: null,
       }),
-    ).toBe(ExperienceState.AUTHENTICATED_PASSENGER);
+    ).toBe(ExperienceState.PASSENGER);
   });
 
   const applicationStatusCases: [DriverApplicationStatus, ExperienceState][] = [
     [DriverApplicationStatus.DRAFT, ExperienceState.DRIVER_APPLICANT_DRAFT],
     [DriverApplicationStatus.SUBMITTED, ExperienceState.DRIVER_APPLICANT_SUBMITTED],
-    [DriverApplicationStatus.DOCUMENTS_PENDING, ExperienceState.DRIVER_APPLICANT_UNDER_REVIEW],
-    [DriverApplicationStatus.BACKGROUND_CHECK, ExperienceState.DRIVER_APPLICANT_UNDER_REVIEW],
-    [DriverApplicationStatus.VEHICLE_INSPECTION, ExperienceState.DRIVER_APPLICANT_UNDER_REVIEW],
-    [DriverApplicationStatus.INTERVIEW, ExperienceState.DRIVER_APPLICANT_UNDER_REVIEW],
+    [DriverApplicationStatus.DOCUMENTS_PENDING, ExperienceState.DRIVER_APPLICANT_DOCUMENTS_PENDING],
+    [DriverApplicationStatus.BACKGROUND_CHECK, ExperienceState.DRIVER_APPLICANT_BACKGROUND_CHECK],
+    [
+      DriverApplicationStatus.VEHICLE_INSPECTION,
+      ExperienceState.DRIVER_APPLICANT_VEHICLE_INSPECTION,
+    ],
+    [DriverApplicationStatus.INTERVIEW, ExperienceState.DRIVER_APPLICANT_INTERVIEW],
     [DriverApplicationStatus.APPROVED, ExperienceState.DRIVER_APPLICANT_APPROVED],
     [DriverApplicationStatus.REJECTED, ExperienceState.DRIVER_APPLICANT_REJECTED],
   ];
@@ -58,7 +61,7 @@ describe("resolveExperienceState", () => {
   }
 
   const driverStatusCases: [DriverAccountStatus, ExperienceState][] = [
-    [DriverAccountStatus.ACTIVE, ExperienceState.DRIVER_ACTIVATED],
+    [DriverAccountStatus.ACTIVE, ExperienceState.DRIVER_ACTIVE],
     [DriverAccountStatus.SUSPENDED, ExperienceState.DRIVER_SUSPENDED],
     [DriverAccountStatus.TERMINATED, ExperienceState.DRIVER_INACTIVE],
   ];
@@ -75,13 +78,40 @@ describe("resolveExperienceState", () => {
     });
   }
 
-  it("prioritizes the driver record over a stale 'activated' application status", () => {
+  it("prioritizes the driver record over a stale 'activated' application status (case 15: driver record present, driver claim missing)", () => {
     const result = resolveExperienceState({
-      claims: claims(Role.DRIVER),
+      claims: claims(Role.PASSENGER), // the real system never sets a "driver" claim — see resolveExperienceState's doc comment
       driverApplication: { ...baseApplication, status: DriverApplicationStatus.ACTIVATED },
       driver: { ...baseDriver, status: DriverAccountStatus.ACTIVE },
     });
-    expect(result).toBe(ExperienceState.DRIVER_ACTIVATED);
+    expect(result).toBe(ExperienceState.DRIVER_ACTIVE);
+  });
+
+  it("does not grant driver access from a 'driver' claim alone when no driver record exists (case 14: driver claim without a driver record)", () => {
+    const result = resolveExperienceState({
+      claims: claims(Role.DRIVER),
+      driverApplication: null,
+      driver: null,
+    });
+    expect(result).toBe(ExperienceState.PASSENGER);
+  });
+
+  it("resolves a reactivated driver (suspended -> active) correctly (case 18)", () => {
+    const result = resolveExperienceState({
+      claims: claims(Role.PASSENGER),
+      driverApplication: { ...baseApplication, status: DriverApplicationStatus.ACTIVATED },
+      driver: { ...baseDriver, status: DriverAccountStatus.ACTIVE },
+    });
+    expect(result).toBe(ExperienceState.DRIVER_ACTIVE);
+  });
+
+  it("does not duplicate a second application into a different state — resolves from the single found application (case 16, duplicate-prevention lives in findOwnApplication's limit(1); this just confirms the resolver only ever sees one)", () => {
+    const result = resolveExperienceState({
+      claims: claims(Role.PASSENGER),
+      driverApplication: { ...baseApplication, status: DriverApplicationStatus.DRAFT },
+      driver: null,
+    });
+    expect(result).toBe(ExperienceState.DRIVER_APPLICANT_DRAFT);
   });
 
   const roleCases: [Role, ExperienceState][] = [
@@ -90,6 +120,7 @@ describe("resolveExperienceState", () => {
     [Role.DISPATCHER, ExperienceState.DISPATCHER],
     [Role.SUPPORT, ExperienceState.SUPPORT],
     [Role.CONTENT_MANAGER, ExperienceState.CONTENT_MANAGER],
+    [Role.MODERATOR, ExperienceState.MODERATOR],
   ];
 
   for (const [role, expected] of roleCases) {

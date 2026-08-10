@@ -8,40 +8,48 @@ import {
   type DriverApplication,
 } from "@the-ride/types";
 
+export interface ExperienceInputs {
+  claims: AuthClaims | null;
+  driverApplication: DriverApplication | null;
+  driver: Driver | null;
+}
+
 /**
- * Canonical experience-state resolver (User State Experience sprint, Part 1).
+ * Flat effective-experience resolver (UX-1 sprint, Part 2/4). The ONLY
+ * place allowed to decide the single `ExperienceState` value for "what
+ * should this person see right now." `resolveUserExperience` (this
+ * module's richer entry point) wraps this and adds `roles`/`primaryRole`/
+ * `lifecycleState`/`capabilities`/`preferredLandingRoute`/
+ * `navigationProfile`/`blockingReason` on top — this function stays flat
+ * and independently testable because most existing call sites only need
+ * a single value to switch on.
  *
- * The ONLY place allowed to decide "what should this person see right now"
- * — every personalized surface (SiteHeader, homepage, become-a-driver, a
- * future passenger dashboard) calls this instead of re-deriving its own
- * ad hoc status logic from claims/application/driver data. Pure and
- * framework-agnostic: callers own fetching the three inputs (Firebase Auth
- * claims via `useAuth()`, the user's own `driverApplications` doc, the
- * user's own `drivers` doc) and pass already-resolved data in — this
- * function does no I/O, which is what makes it trivially unit-testable
- * and reusable across web/native later.
+ * Pure and framework-agnostic: callers own fetching the three inputs
+ * (Firebase Auth claims via `useAuth()`, the user's own `driverApplications`
+ * doc, the user's own `drivers` doc) and pass already-resolved data in.
  *
  * Priority order (first match wins), matching how the underlying data is
  * actually structured rather than inventing a parallel status system:
- *   1. Staff role claims (admin/super_admin/dispatcher/support/content_manager)
- *      — a staff member's own passenger/driver history, if any, is
- *      irrelevant to which experience they get.
+ *   1. Staff role claims (admin/super_admin/dispatcher/support/
+ *      content_manager/moderator) — a staff member's own passenger/driver
+ *      history, if any, is irrelevant to which experience they get.
  *   2. A `drivers/{uid}` record — the real source of truth for "is this
  *      person an activated driver," set only by `activateApplication()`.
  *      Takes priority over the application doc because after activation
  *      the application's own status (`activated`) is a secondary signal;
- *      the driver record is authoritative.
+ *      the driver record is authoritative. It also takes priority over
+ *      any `driver` role *claim* — in this codebase, `activateApplication`
+ *      never sets one (a confirmed, documented gap — see
+ *      docs/user-experience-model.md's "Claim/Firestore consistency"), so
+ *      gating on the claim would leave every real activated driver
+ *      resolving as a plain passenger.
  *   3. A `driverApplications` doc for this user, branched by its real
  *      `DriverApplicationStatus` (see `DRIVER_APPLICATION_TRANSITIONS` in
  *      `@the-ride/types`'s drivers.constants.ts for the actual state
  *      machine this switch mirrors).
  *   4. Default: an authenticated user with neither is a plain passenger.
  */
-export function resolveExperienceState(input: {
-  claims: AuthClaims | null;
-  driverApplication: DriverApplication | null;
-  driver: Driver | null;
-}): ExperienceState {
+export function resolveExperienceState(input: ExperienceInputs): ExperienceState {
   const { claims, driverApplication, driver } = input;
 
   if (!claims) return ExperienceState.GUEST;
@@ -57,6 +65,8 @@ export function resolveExperienceState(input: {
       return ExperienceState.SUPPORT;
     case Role.CONTENT_MANAGER:
       return ExperienceState.CONTENT_MANAGER;
+    case Role.MODERATOR:
+      return ExperienceState.MODERATOR;
     default:
       break;
   }
@@ -64,7 +74,7 @@ export function resolveExperienceState(input: {
   if (driver) {
     switch (driver.status) {
       case DriverAccountStatus.ACTIVE:
-        return ExperienceState.DRIVER_ACTIVATED;
+        return ExperienceState.DRIVER_ACTIVE;
       case DriverAccountStatus.SUSPENDED:
         return ExperienceState.DRIVER_SUSPENDED;
       case DriverAccountStatus.TERMINATED:
@@ -79,10 +89,13 @@ export function resolveExperienceState(input: {
       case DriverApplicationStatus.SUBMITTED:
         return ExperienceState.DRIVER_APPLICANT_SUBMITTED;
       case DriverApplicationStatus.DOCUMENTS_PENDING:
+        return ExperienceState.DRIVER_APPLICANT_DOCUMENTS_PENDING;
       case DriverApplicationStatus.BACKGROUND_CHECK:
+        return ExperienceState.DRIVER_APPLICANT_BACKGROUND_CHECK;
       case DriverApplicationStatus.VEHICLE_INSPECTION:
+        return ExperienceState.DRIVER_APPLICANT_VEHICLE_INSPECTION;
       case DriverApplicationStatus.INTERVIEW:
-        return ExperienceState.DRIVER_APPLICANT_UNDER_REVIEW;
+        return ExperienceState.DRIVER_APPLICANT_INTERVIEW;
       case DriverApplicationStatus.APPROVED:
         return ExperienceState.DRIVER_APPLICANT_APPROVED;
       case DriverApplicationStatus.REJECTED:
@@ -96,20 +109,23 @@ export function resolveExperienceState(input: {
     }
   }
 
-  return ExperienceState.AUTHENTICATED_PASSENGER;
+  return ExperienceState.PASSENGER;
 }
 
 const DRIVER_APPLICANT_STATES: ReadonlySet<ExperienceState> = new Set([
   ExperienceState.DRIVER_APPLICANT_DRAFT,
   ExperienceState.DRIVER_APPLICANT_SUBMITTED,
-  ExperienceState.DRIVER_APPLICANT_UNDER_REVIEW,
+  ExperienceState.DRIVER_APPLICANT_DOCUMENTS_PENDING,
+  ExperienceState.DRIVER_APPLICANT_BACKGROUND_CHECK,
+  ExperienceState.DRIVER_APPLICANT_VEHICLE_INSPECTION,
+  ExperienceState.DRIVER_APPLICANT_INTERVIEW,
   ExperienceState.DRIVER_APPLICANT_ACTION_REQUIRED,
   ExperienceState.DRIVER_APPLICANT_APPROVED,
   ExperienceState.DRIVER_APPLICANT_REJECTED,
 ]);
 
 const DRIVER_STATES: ReadonlySet<ExperienceState> = new Set([
-  ExperienceState.DRIVER_ACTIVATED,
+  ExperienceState.DRIVER_ACTIVE,
   ExperienceState.DRIVER_SUSPENDED,
   ExperienceState.DRIVER_INACTIVE,
 ]);
@@ -120,6 +136,7 @@ const STAFF_STATES: ReadonlySet<ExperienceState> = new Set([
   ExperienceState.DISPATCHER,
   ExperienceState.SUPPORT,
   ExperienceState.CONTENT_MANAGER,
+  ExperienceState.MODERATOR,
 ]);
 
 /** Any state on the driver-application lifecycle (draft through rejected) — has NOT yet been activated. */
@@ -127,7 +144,7 @@ export function isDriverApplicantState(state: ExperienceState | null): boolean {
   return state !== null && DRIVER_APPLICANT_STATES.has(state);
 }
 
-/** Activated, suspended, or inactive — has (or had) a real `drivers/{uid}` record. */
+/** Active, suspended, or inactive — has (or had) a real `drivers/{uid}` record. */
 export function isDriverState(state: ExperienceState | null): boolean {
   return state !== null && DRIVER_STATES.has(state);
 }

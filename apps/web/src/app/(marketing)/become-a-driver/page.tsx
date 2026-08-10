@@ -212,7 +212,7 @@ export default function BecomeADriverPage() {
   }
 
   if (isDriverState(state) && driver) {
-    return state === ExperienceState.DRIVER_ACTIVATED ? (
+    return state === ExperienceState.DRIVER_ACTIVE ? (
       <DriverDashboardScreen driver={driver} application={driverApplication} />
     ) : (
       <DriverSuspendedScreen driver={driver} />
@@ -237,8 +237,8 @@ export default function BecomeADriverPage() {
     }
   }
 
-  // AUTHENTICATED_PASSENGER (or a staff role browsing this page directly) —
-  // no application or driver record yet.
+  // PASSENGER (or a staff role browsing this page directly) — no
+  // application or driver record yet.
   return <EligibilityScreen onStart={() => setWizardOpen(true)} />;
 }
 

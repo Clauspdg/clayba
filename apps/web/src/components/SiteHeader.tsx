@@ -48,7 +48,7 @@ export function SiteHeader() {
   const isDriverApplicant = isDriverApplicantState(state);
   const isDriver = isDriverState(state);
   const isStaff = isStaffState(state);
-  const isPassenger = state === ExperienceState.AUTHENTICATED_PASSENGER;
+  const isPassenger = state === ExperienceState.PASSENGER;
 
   /**
    * Nav links change by experience state (Part 12) — driver-applicant and
