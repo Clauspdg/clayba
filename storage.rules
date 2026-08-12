@@ -51,18 +51,32 @@ service firebase.storage {
     }
 
     // Documents are sensitive (license, insurance, background check) — only
-    // the owner may read/write them, never publicly and never any other
-    // signed-in user. Admin review tooling reads these via the Admin SDK,
-    // which bypasses these rules entirely. isImage() rejects arbitrary
-    // executable/content uploads — the wizard only ever sends a photo of
-    // each document (see become-a-driver's PhotoField), never raw PDFs.
-    // read and write are split (matching profile-photo.jpg above) because
-    // isImage()/isUnder5MB() read request.resource, which is only present
-    // on a write — combining them under one `read, write` rule silently
-    // denies every read (including the getDownloadURL() call every upload
-    // helper makes immediately after uploading, per storage.ts).
+    // the owner or an admin/dispatcher reviewer may read them, never
+    // publicly and never any other signed-in user. `apps/admin` is a
+    // static-export CLIENT app (no Admin SDK backend to bypass these rules
+    // from — a stale claim this comment used to make), so its own reads
+    // are subject to this same rule; `|| isAdmin()` (Admin Driver
+    // Application Review Workspace sprint) makes that access explicit
+    // here instead of relying only on the fact that the download-token
+    // URL already stored on the `driverApplications` document (which
+    // Firestore rules already gate to owner/admin/dispatcher) happens to
+    // also work as a bearer link for anyone who has it — see
+    // docs/driver-management.md's "Storage access" note for the full
+    // implication of that token-URL behavior, which this rule change does
+    // not by itself close (only Storage-rule-gated access is closed by
+    // requiring `isAdmin()`; a leaked download-token URL is still usable
+    // by whoever has it until the token is rotated).
+    //
+    // isImage() rejects arbitrary executable/content uploads — the wizard
+    // only ever sends a photo of each document (see become-a-driver's
+    // PhotoField), never raw PDFs. read and write are split (matching
+    // profile-photo.jpg above) because isImage()/isUnder5MB() read
+    // request.resource, which is only present on a write — combining them
+    // under one `read, write` rule silently denies every read (including
+    // the getDownloadURL() call every upload helper makes immediately
+    // after uploading, per storage.ts).
     match /drivers/{uid}/documents/{document} {
-      allow read: if isOwner(uid);
+      allow read: if isOwner(uid) || isAdmin();
       allow write: if isOwner(uid) && isImage() && isUnder5MB();
     }
 

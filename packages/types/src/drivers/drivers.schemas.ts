@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  DocumentReviewStatus,
   DriverAccountStatus,
   DriverApplicationStatus,
   DriverAvailabilityStatus,
@@ -13,6 +14,48 @@ export const driverApplicationStatusSchema = z.nativeEnum(DriverApplicationStatu
 export const driverAccountStatusSchema = z.nativeEnum(DriverAccountStatus);
 export const driverDocumentTypeSchema = z.nativeEnum(DriverDocumentType);
 export const driverAvailabilityStatusSchema = z.nativeEnum(DriverAvailabilityStatus);
+export const documentReviewStatusSchema = z.nativeEnum(DocumentReviewStatus);
+
+/**
+ * Admin Driver Application Review Workspace sprint — one reviewer decision
+ * per uploaded document (license/insurance/profile photo), keyed by
+ * `DriverDocumentType` on `driverApplicationSchema.documentReviews`. A new
+ * review *replaces* the current entry (Firestore doesn't version map
+ * fields) — `updatedAt` marks when that happened; nothing before this
+ * sprint ever wrote to this field, so there is no prior history to lose
+ * for any real application reviewed before now, and the whole
+ * `documentReviews` map is additive/optional so existing documents (this
+ * sprint's own `OYuxO8MvrKr8sYT0qsPP` included) validate unchanged.
+ */
+export const documentReviewSchema = z.object({
+  status: documentReviewStatusSchema,
+  reviewedBy: z.string().optional(),
+  reviewedAt: firestoreDateSchema.optional(),
+  /** Required for `rejected`/`replacement_required`, per Part 13's "reason required" — enforced in `apps/admin`'s UI/service layer, not the schema, matching `rejectionReason` on the application itself. */
+  reason: z.string().optional(),
+  updatedAt: firestoreDateSchema,
+});
+
+export type DocumentReview = z.infer<typeof documentReviewSchema>;
+
+/**
+ * Admin-only, timestamped review note (Part 15) — never mixed with
+ * `rejectionReason` (the applicant-facing decision reason on the
+ * application itself). `applicantFacing` defaults to false at the write
+ * site; nothing today actually surfaces a `true` one to the applicant
+ * (documented as a gap, not implemented) — the flag exists so that's a
+ * additive follow-up, not a schema change, when it is.
+ */
+export const adminNoteSchema = z.object({
+  id: z.string().min(1),
+  authorId: z.string().min(1),
+  authorName: z.string().optional(),
+  body: z.string().min(1),
+  createdAt: firestoreDateSchema,
+  applicantFacing: z.boolean().default(false),
+});
+
+export type AdminNote = z.infer<typeof adminNoteSchema>;
 
 /** The applicant's personal details (Web Phase W1, Part 4) — collected once, reviewed by an admin before `DriversRepository.activateApplication()` creates the real `Driver` record. */
 export const driverApplicationPersonalInfoSchema = z.object({
@@ -80,6 +123,9 @@ export const driverApplicationSchema = z.object({
   vehicleInfo: driverApplicationVehicleInfoSchema.optional(),
   insurance: driverApplicationInsuranceSchema.optional(),
   profilePhotoUrl: z.string().url().optional(),
+  /** Keyed by `DriverDocumentType` (only `drivers_license`/`vehicle_insurance`/`profile_photo` are ever set — those are the only documents this application actually collects). Optional/absent until an admin reviews at least one document. */
+  documentReviews: z.record(driverDocumentTypeSchema, documentReviewSchema).optional(),
+  adminNotes: z.array(adminNoteSchema).optional(),
   createdAt: firestoreDateSchema,
   updatedAt: firestoreDateSchema,
 });

@@ -29,7 +29,7 @@ import {
   useToast,
   useTranslation,
 } from "@the-ride/ui";
-import { DriverAccountStatus, type Driver } from "@the-ride/types";
+import { DriverAccountStatus, driverSchema, type Driver } from "@the-ride/types";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
@@ -39,7 +39,11 @@ const STATUS_TONE: Record<string, "neutral" | "brand" | "success" | "warning" | 
   terminated: "danger",
 };
 
-export function ActiveDriversTab() {
+interface ActiveDriversTabProps {
+  onView: (driverId: string) => void;
+}
+
+export function ActiveDriversTab({ onView }: ActiveDriversTabProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [drivers, setDrivers] = useState<Driver[] | null>(null);
@@ -51,7 +55,18 @@ export function ActiveDriversTab() {
     const q = query(collection(adminFirestore, "drivers"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => setDrivers(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Driver)),
+      (snapshot) => {
+        const parsed: Driver[] = [];
+        for (const d of snapshot.docs) {
+          try {
+            parsed.push(driverSchema.parse({ id: d.id, ...d.data() }));
+          } catch (err) {
+            // Same reasoning as ApplicationsTab: don't let one bad doc blank the whole list.
+            console.error("[ActiveDriversTab] failed to parse driver", d.id, err);
+          }
+        }
+        setDrivers(parsed);
+      },
       (err) => setError(err.message),
     );
     return unsubscribe;
@@ -169,25 +184,30 @@ export function ActiveDriversTab() {
                   <TableCell>{driver.rating.toFixed(1)}</TableCell>
                   <TableCell>{driver.score}</TableCell>
                   <TableCell>
-                    {driver.status === DriverAccountStatus.SUSPENDED ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        isLoading={busyId === driver.id}
-                        onClick={() => void handleReactivate(driver)}
-                      >
-                        {t("admin.drivers.reactivate")}
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={() => onView(driver.id)}>
+                        {t("admin.documentReview.viewApplication")}
                       </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        isLoading={busyId === driver.id}
-                        onClick={() => setSuspending(driver)}
-                      >
-                        {t("admin.drivers.suspend")}
-                      </Button>
-                    )}
+                      {driver.status === DriverAccountStatus.SUSPENDED ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          isLoading={busyId === driver.id}
+                          onClick={() => void handleReactivate(driver)}
+                        >
+                          {t("admin.drivers.reactivate")}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          isLoading={busyId === driver.id}
+                          onClick={() => setSuspending(driver)}
+                        >
+                          {t("admin.drivers.suspend")}
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

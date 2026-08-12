@@ -38,6 +38,22 @@ export enum DriverDocumentType {
 }
 
 /**
+ * Admin Driver Application Review Workspace sprint — per-document review
+ * outcome, distinct from the application's own `DriverApplicationStatus`
+ * (which tracks the overall pipeline stage, not any one document). Kept as
+ * its own small enum rather than folding into `DriverApplicationStatus`
+ * per "do NOT create a second application-status system" — this reviews a
+ * document, not the application.
+ */
+export enum DocumentReviewStatus {
+  PENDING = "pending",
+  VALID = "valid",
+  REJECTED = "rejected",
+  REPLACEMENT_REQUIRED = "replacement_required",
+  EXPIRED = "expired",
+}
+
+/**
  * Real-time shift/presence status (Sprint 4, Part 1) — distinct from
  * `DriverAccountStatus`, which is the admin-driven standing of the
  * account itself. A driver toggles their own `DriverAvailabilityStatus`
