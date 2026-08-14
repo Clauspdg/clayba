@@ -175,7 +175,13 @@ service cloud.firestore {
       // denied every passenger read, including their own requests. `resource`
       // (the existing document) is the correct reference for reads, matching
       // the `trips` rule above.
-      allow read: if isSignedIn() && (resource.data.passengerId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
+      // `assignedDriverId` clause (UX-3, Dedicated Driver Space) — the
+      // Driver Space's Ride Requests/Current Ride pages read the request's
+      // pickup/dropoff via this doc (a `RideOffer` carries no address
+      // fields of its own); `DispatchService.runMatchingAttempt` sets
+      // `assignedDriverId` in the same step it creates the offer, so it's
+      // already present by the time a driver would try to read this.
+      allow read: if isSignedIn() && (resource.data.passengerId == request.auth.uid || resource.data.assignedDriverId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
       allow create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid;
       // Owners may cancel their own request (status -> cancelled only);
       // every other transition (matched/assigned/etc.) is dispatch-engine-only.

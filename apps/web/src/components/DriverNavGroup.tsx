@@ -1,24 +1,23 @@
 "use client";
 
 import { Icon, useTranslation } from "@the-ride/ui";
-import { getDriverNavLabelKey } from "@the-ride/utils";
+import { getDriverNavLabelKey, isDriverState } from "@the-ride/utils";
 import Link from "next/link";
 
 import { useUserExperience } from "@/hooks/useUserExperience";
 
-const HREF = "/become-a-driver";
-
 /**
- * Passenger → Driver entry point sprint, Part 2 — a single, separated
- * "Driver" section at the bottom of the Passenger sidebar (rendered
- * through `Sidebar`'s existing `footer` slot, mirroring
+ * Passenger → Driver entry point sprint, Part 2 (updated by UX-3 —
+ * Dedicated Driver Space, Part 25) — a single, separated "Driver" section
+ * at the bottom of the Passenger sidebar (rendered through `Sidebar`'s
+ * existing `footer` slot, mirroring
  * `apps/admin/src/components/ContentManagementNavGroup.tsx`'s pattern,
  * rather than adding section/group support to the shared `Sidebar` in
  * `packages/ui`). Unlike that admin group this has no expand/collapse —
- * there is exactly one item, whose label changes with lifecycle state
- * instead of there being several separate items to toggle between.
- * Renders nothing until the resolver has an answer, so it never flashes
- * the wrong label.
+ * there is exactly one item, whose label AND destination change with
+ * lifecycle state: an applicant still goes to `/become-a-driver`, a real
+ * driver (active/suspended/inactive) goes to `/driver`. Renders nothing
+ * until the resolver has an answer, so it never flashes the wrong label.
  */
 export function DriverNavGroup({ pathname }: { pathname: string }) {
   const { t } = useTranslation();
@@ -26,7 +25,8 @@ export function DriverNavGroup({ pathname }: { pathname: string }) {
 
   if (!experience) return null;
 
-  const active = pathname === HREF;
+  const href = isDriverState(experience) ? "/driver" : "/become-a-driver";
+  const active = pathname === href || pathname.startsWith("/driver/");
 
   return (
     <div className="flex flex-col gap-1 border-t border-neutral-200 pt-3 dark:border-neutral-800">
@@ -34,7 +34,7 @@ export function DriverNavGroup({ pathname }: { pathname: string }) {
         {t("becomeDriver.entryPoint.driverSectionLabel")}
       </p>
       <Link
-        href={HREF}
+        href={href}
         aria-current={active ? "page" : undefined}
         className={`flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
           active

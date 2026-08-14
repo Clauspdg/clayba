@@ -5,3 +5,4 @@ export * from "./dispatch";
 export * from "./matching";
 export * from "./search-expansion";
 export * from "./offer-workflow";
+export * from "./trip-status-workflow";

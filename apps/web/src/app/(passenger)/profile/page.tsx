@@ -1,5 +1,7 @@
 "use client";
 
+import { CapabilitySummary } from "@/components/CapabilitySummary";
+import { useUserExperience } from "@/hooks/useUserExperience";
 import { webFirestore } from "@/lib/firebase-client";
 import {
   addEmergencyContact,
@@ -35,6 +37,7 @@ import { useEffect, useState, type FormEvent } from "react";
 export default function ProfilePage() {
   const { t, setLocale } = useTranslation();
   const { session, signOut, updateDisplayName, updatePhotoURL, sendEmailVerification } = useAuth();
+  const { roles, lifecycleState } = useUserExperience();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -215,13 +218,10 @@ export default function ProfilePage() {
                   </dt>
                   <dd className="text-sm font-medium">{session.email}</dd>
                 </div>
-                <div className="flex justify-between py-2">
-                  <dt className="text-sm text-neutral-500 dark:text-neutral-400">
-                    {t("profile.role")}
-                  </dt>
-                  <dd className="text-sm font-medium capitalize">{session.claims.role}</dd>
-                </div>
               </dl>
+              <div className="py-2">
+                <CapabilitySummary roles={roles} lifecycleState={lifecycleState} />
+              </div>
               <Button variant="outline" onClick={() => setEditing(true)} className="self-start">
                 {t("profile.editProfile")}
               </Button>

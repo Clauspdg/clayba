@@ -122,7 +122,9 @@ describe("resolveUserExperience — full test matrix", () => {
     expect(result.capabilities.canGoOnline).toBe(true);
     expect(result.capabilities.canBookRide).toBe(true); // retains passenger capability
     expect(result.capabilities.canStartDriverApplication).toBe(false); // must not submit a second application
-    expect(result.preferredLandingRoute).toBe("/become-a-driver");
+    expect(result.preferredLandingRoute).toBe("/driver");
+    expect(result.navigationProfile.some((item) => item.href === "/driver")).toBe(true);
+    expect(result.navigationProfile.some((item) => item.href === "/become-a-driver")).toBe(false);
   });
 
   it("8. Suspended driver", () => {
@@ -135,6 +137,9 @@ describe("resolveUserExperience — full test matrix", () => {
     expect(result.lifecycleState).toEqual({ stage: "suspended" });
     expect(result.capabilities.canGoOnline).toBe(false);
     expect(result.capabilities.canAccessDriverHome).toBe(false);
+    // Suspended still gets the dedicated Driver Space — a restricted view
+    // inside it, not a bounce back to /become-a-driver (UX-3, Part 26).
+    expect(result.preferredLandingRoute).toBe("/driver");
   });
 
   const staffCases: [string, Role, ExperienceState][] = [

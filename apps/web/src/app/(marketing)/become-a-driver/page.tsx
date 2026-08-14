@@ -5,7 +5,6 @@ import {
   uploadDriverProfilePhoto,
   createDraftApplication,
   findOwnApplication,
-  getActiveSuspensionForDriver,
   saveApplicationProgress,
   submitApplication,
 } from "@the-ride/firebase/client";
@@ -28,17 +27,11 @@ import {
   DRIVER_APPLICATION_STATUS_TONE,
 } from "@the-ride/ui";
 import { useAuth } from "@the-ride/hooks";
-import {
-  DriverAccountStatus,
-  DriverApplicationStatus,
-  ExperienceState,
-  type Driver,
-  type DriverApplication,
-  type DriverSuspension,
-} from "@the-ride/types";
+import { DriverApplicationStatus, type DriverApplication } from "@the-ride/types";
 import { isDriverApplicantState, isDriverState } from "@the-ride/utils";
 import { FirebaseError } from "firebase/app";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ZodError } from "zod";
 
@@ -169,6 +162,7 @@ function fromApplication(app: DriverApplication): FormState {
 export default function BecomeADriverPage() {
   const { t } = useTranslation();
   const { status, session } = useAuth();
+  const router = useRouter();
   const {
     experience: state,
     loading,
@@ -178,6 +172,20 @@ export default function BecomeADriverPage() {
     blockingReason,
   } = useUserExperience();
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  // UX-3 sprint (Dedicated Driver Space), Part 26 — `/become-a-driver` is
+  // the applicant/onboarding path only now; anyone with a real
+  // `drivers/{uid}` record (active, suspended, or inactive) belongs in the
+  // dedicated `/driver` space instead, which renders its own restricted
+  // view for suspended/inactive rather than this page pretending to be an
+  // operational dashboard. Visiting this URL directly as an active driver
+  // must never restart the application wizard — this redirect fires before
+  // `wizardOpen` (or anything else on this page) can render.
+  useEffect(() => {
+    if (isDriverState(state) && driver) {
+      router.replace("/driver");
+    }
+  }, [state, driver, router]);
 
   if (status === "loading" || loading || (status === "authenticated" && state === null)) {
     return (
@@ -216,19 +224,19 @@ export default function BecomeADriverPage() {
     );
   }
 
+  if (isDriverState(state) && driver) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <LoadingState title={t("common.loading")} />
+      </div>
+    );
+  }
+
   if (wizardOpen) {
     return <ApplicationWizard userId={session.uid} />;
   }
 
   const content = (() => {
-    if (isDriverState(state) && driver) {
-      return state === ExperienceState.DRIVER_ACTIVE ? (
-        <DriverDashboardScreen driver={driver} application={driverApplication} />
-      ) : (
-        <DriverSuspendedScreen driver={driver} />
-      );
-    }
-
     if (isDriverApplicantState(state) && driverApplication) {
       switch (driverApplication.status) {
         case DriverApplicationStatus.DRAFT:
@@ -625,146 +633,6 @@ function RejectedScreen({ application }: { application: DriverApplication }) {
               {application.rejectionReason}
             </Alert>
           )}
-          <Button variant="outline" asChild>
-            <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </section>
-  );
-}
-
-/** Part 9 — DRIVER_ACTIVATED. Must never show the application wizard again. */
-function DriverDashboardScreen({
-  driver,
-  application,
-}: {
-  driver: Driver;
-  application: DriverApplication | null;
-}) {
-  const { t } = useTranslation();
-  const vehicle = application?.vehicleInfo;
-  return (
-    <section className="mx-auto max-w-2xl px-6 py-16">
-      <Card className="shadow-elevation1">
-        <CardContent className="flex flex-col gap-5 p-8">
-          <div className="flex items-center justify-between">
-            <Heading level={2}>{t("becomeDriver.driverDashboardTitle")}</Heading>
-            <Badge tone="success">{t("becomeDriver.statusActivated")}</Badge>
-          </div>
-          {vehicle && (
-            <div>
-              <Text size="sm" weight="medium" tone="muted">
-                {t("becomeDriver.approvedVehicleLabel")}
-              </Text>
-              <Text>
-                {vehicle.make} {vehicle.model} ({vehicle.year}) — {vehicle.plateNumber}
-              </Text>
-            </div>
-          )}
-          <Divider />
-          {/* UX-2 sprint, Part 11 — operational driving (going online,
-              accepting rides, earnings) lives in the Driver App, not this
-              web dashboard; there is no real app-store/deep-link URL wired
-              up anywhere in this codebase yet (a genuine gap, documented in
-              the sprint report), so this is an honest informational panel
-              rather than a disabled button pretending to be a live action. */}
-          <div className="bg-brand-50 dark:bg-brand-900/40 flex flex-col gap-1.5 rounded-xl p-4">
-            <Text size="sm" weight="medium">
-              {t("becomeDriver.openDriverAppTitle")}
-            </Text>
-            <Text size="sm" tone="muted">
-              {t("becomeDriver.openDriverAppBody")}
-            </Text>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" fullWidth asChild>
-              <Link href="/profile">{t("becomeDriver.driverProfileCta")}</Link>
-            </Button>
-            <Button variant="outline" fullWidth asChild>
-              <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </section>
-  );
-}
-
-/**
- * Part 12 — DRIVER_SUSPENDED / DRIVER_INACTIVE. Go Online must be
- * unreachable — this screen has no operational CTA at all, only account
- * status and Support, matching the spec's "never show Go Online as an
- * available action." Fetches the real `driverSuspensions` record (reason,
- * start/end date) for a suspended driver — `terminate()` never creates one
- * (see `DriversRepository`), so an inactive/terminated driver only ever
- * gets the generic message, honestly reflecting that no more specific data
- * exists for that state.
- */
-function DriverSuspendedScreen({ driver }: { driver: Driver }) {
-  const { t, locale } = useTranslation();
-  const isSuspended = driver.status === DriverAccountStatus.SUSPENDED;
-  const [suspension, setSuspension] = useState<DriverSuspension | null>(null);
-  const [suspensionLoading, setSuspensionLoading] = useState(isSuspended);
-
-  useEffect(() => {
-    if (!isSuspended) return;
-    let cancelled = false;
-    getActiveSuspensionForDriver(webFirestore, driver.id)
-      .then((result) => {
-        if (!cancelled) setSuspension(result);
-      })
-      .catch((err: unknown) => {
-        console.error("[become-a-driver] failed to load suspension details", err);
-      })
-      .finally(() => {
-        if (!cancelled) setSuspensionLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isSuspended, driver.id]);
-
-  return (
-    <section className="mx-auto max-w-2xl px-6 py-16">
-      <Card className="shadow-elevation1">
-        <CardContent className="flex flex-col gap-4 p-8">
-          <Alert
-            tone="danger"
-            title={isSuspended ? t("becomeDriver.suspendedTitle") : t("becomeDriver.inactiveTitle")}
-          >
-            {isSuspended ? t("becomeDriver.suspendedBody") : t("becomeDriver.inactiveBody")}
-          </Alert>
-
-          {isSuspended && !suspensionLoading && suspension && (
-            <dl className="flex flex-col gap-2 text-sm">
-              <div className="flex justify-between gap-4 border-b border-neutral-100 py-2 dark:border-neutral-800">
-                <dt className="text-neutral-500 dark:text-neutral-400">
-                  {t("becomeDriver.suspensionReasonLabel")}
-                </dt>
-                <dd className="text-right font-medium">{suspension.reason}</dd>
-              </div>
-              <div className="flex justify-between gap-4 border-b border-neutral-100 py-2 dark:border-neutral-800">
-                <dt className="text-neutral-500 dark:text-neutral-400">
-                  {t("becomeDriver.suspendedSinceLabel")}
-                </dt>
-                <dd className="font-medium">
-                  {suspension.startAt.toLocaleDateString(locale, { dateStyle: "medium" })}
-                </dd>
-              </div>
-              {suspension.endAt && (
-                <div className="flex justify-between gap-4 py-2">
-                  <dt className="text-neutral-500 dark:text-neutral-400">
-                    {t("becomeDriver.suspensionEndsLabel")}
-                  </dt>
-                  <dd className="font-medium">
-                    {suspension.endAt.toLocaleDateString(locale, { dateStyle: "medium" })}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          )}
-
           <Button variant="outline" asChild>
             <Link href="/support">{t("becomeDriver.contactSupportCta")}</Link>
           </Button>

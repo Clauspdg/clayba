@@ -1,8 +1,10 @@
 import {
   driverSchema,
   driverSuspensionSchema,
+  vehicleSchema,
   type Driver,
   type DriverSuspension,
+  type Vehicle,
 } from "@the-ride/types";
 import { collection, doc, getDoc, getDocs, query, where, type Firestore } from "firebase/firestore";
 
@@ -50,4 +52,17 @@ export async function getActiveSuspensionForDriver(
     .filter((s) => !s.liftedAt)
     .sort((a, b) => b.startAt.getTime() - a.startAt.getTime());
   return active[0] ?? null;
+}
+
+/**
+ * UX-3 sprint (Dedicated Driver Space), Part 10 — a driver's own linked
+ * vehicle (`driver.vehicleId`). `firestore.rules`' `vehicles` rule is
+ * `allow read: if isSignedIn()` (any signed-in user, not owner-scoped —
+ * dispatch/booking flows already need to read vehicle info broadly), so
+ * this is a plain read, same shape as `getOwnDriverRecord` above.
+ */
+export async function getVehicle(db: Firestore, vehicleId: string): Promise<Vehicle | null> {
+  const snapshot = await getDoc(doc(db, "vehicles", vehicleId));
+  if (!snapshot.exists()) return null;
+  return vehicleSchema.parse({ id: snapshot.id, ...snapshot.data() });
 }

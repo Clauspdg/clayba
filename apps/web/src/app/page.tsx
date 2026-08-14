@@ -32,7 +32,7 @@ import { useUserExperience } from "@/hooks/useUserExperience";
 import { ExperienceState, type SectionKey } from "@the-ride/types";
 import { hasDriverJourney, isDriverState } from "@the-ride/utils";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -63,9 +63,24 @@ export default function HomePage() {
    * only ever triggers one Firestore fetch (shared via
    * `UserExperienceProvider`), not two.
    */
+  // UX-3 sprint (Dedicated Driver Space) — debounced for the same reason as
+  // `RequireDriverAccess`/`login/page.tsx`: `onIdTokenChanged` can fire
+  // more than once on a fresh sign-in, and `experienceLoading` going false
+  // once isn't reliable proof `preferredLandingRoute` is the final answer.
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
+    if (redirectTimer.current) {
+      clearTimeout(redirectTimer.current);
+      redirectTimer.current = null;
+    }
     if (experienceLoading || !preferredLandingRoute || preferredLandingRoute === "/") return;
-    router.replace(preferredLandingRoute);
+    redirectTimer.current = setTimeout(() => {
+      router.replace(preferredLandingRoute);
+    }, 1200);
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
   }, [experienceLoading, preferredLandingRoute, router]);
 
   const DEFAULT_STATS: ResolvedStatistic[] = [

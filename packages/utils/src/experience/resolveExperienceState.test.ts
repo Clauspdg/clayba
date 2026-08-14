@@ -8,7 +8,13 @@ import {
 } from "@the-ride/types";
 import { describe, expect, it } from "vitest";
 
-import { resolveExperienceState } from "./resolveExperienceState";
+import {
+  hasDriverJourney,
+  isDriverApplicantState,
+  isDriverState,
+  isStaffState,
+  resolveExperienceState,
+} from "./resolveExperienceState";
 
 const baseApplication = { id: "app1", userId: "u1" } as unknown as DriverApplication;
 const baseDriver = { id: "u1", userId: "u1", applicationId: "app1" } as unknown as Driver;
@@ -134,4 +140,50 @@ describe("resolveExperienceState", () => {
       ).toBe(expected);
     });
   }
+});
+
+// UX-3 sprint (Dedicated Driver Space), Part 2 — these three predicates are
+// the exact decision logic `RequireDriverAccess` uses to decide who gets
+// into `/driver` (isDriverState) vs. gets sent to `/become-a-driver`
+// (isDriverApplicantState), so they're the single most access-critical
+// functions in the whole sprint. Untested before this sprint.
+describe("isDriverState", () => {
+  it("true for active, suspended, and inactive drivers", () => {
+    expect(isDriverState(ExperienceState.DRIVER_ACTIVE)).toBe(true);
+    expect(isDriverState(ExperienceState.DRIVER_SUSPENDED)).toBe(true);
+    expect(isDriverState(ExperienceState.DRIVER_INACTIVE)).toBe(true);
+  });
+
+  it("false for a plain passenger, an applicant, staff, and null", () => {
+    expect(isDriverState(ExperienceState.PASSENGER)).toBe(false);
+    expect(isDriverState(ExperienceState.DRIVER_APPLICANT_DRAFT)).toBe(false);
+    expect(isDriverState(ExperienceState.ADMIN)).toBe(false);
+    expect(isDriverState(null)).toBe(false);
+  });
+});
+
+describe("isDriverApplicantState", () => {
+  it("true for every applicant stage, including approved/rejected", () => {
+    expect(isDriverApplicantState(ExperienceState.DRIVER_APPLICANT_DRAFT)).toBe(true);
+    expect(isDriverApplicantState(ExperienceState.DRIVER_APPLICANT_APPROVED)).toBe(true);
+    expect(isDriverApplicantState(ExperienceState.DRIVER_APPLICANT_REJECTED)).toBe(true);
+  });
+
+  it("false for a real driver record (active) — an activated driver is no longer an applicant", () => {
+    expect(isDriverApplicantState(ExperienceState.DRIVER_ACTIVE)).toBe(false);
+  });
+});
+
+describe("hasDriverJourney / isStaffState", () => {
+  it("hasDriverJourney is true for both applicant and driver states, false otherwise", () => {
+    expect(hasDriverJourney(ExperienceState.DRIVER_APPLICANT_SUBMITTED)).toBe(true);
+    expect(hasDriverJourney(ExperienceState.DRIVER_ACTIVE)).toBe(true);
+    expect(hasDriverJourney(ExperienceState.PASSENGER)).toBe(false);
+  });
+
+  it("isStaffState never overlaps with isDriverState — staff must never accidentally get Driver Space access", () => {
+    for (const state of Object.values(ExperienceState)) {
+      expect(isStaffState(state) && isDriverState(state)).toBe(false);
+    }
+  });
 });

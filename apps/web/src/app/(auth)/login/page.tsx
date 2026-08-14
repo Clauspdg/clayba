@@ -14,7 +14,7 @@ import {
 import { useAuth } from "@the-ride/hooks";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useUserExperience } from "@/hooks/useUserExperience";
 
@@ -43,11 +43,34 @@ function LoginPageContent() {
    * query param `verify-email` already reads) takes priority when present
    * — it preserves a genuinely requested destination (e.g. a driver
    * finishing signup) without this page needing to know why it's there.
+   *
+   * UX-3 sprint (Dedicated Driver Space) — a real DEV run caught
+   * `onIdTokenChanged` (what `useAuth()`'s session listener is built on)
+   * firing more than once on a fresh sign-in, with `useExperienceInputs`
+   * re-fetching on each firing; the FIRST resolution can transiently land
+   * on `driver: null` before a second, correct fetch a moment later
+   * updates it. `experienceLoading` alone going false isn't enough
+   * evidence to commit to a redirect — debouncing lets a `loading: true`
+   * that reappears shortly after (the second fetch starting) cancel a
+   * premature one, so an active/suspended/inactive driver reliably lands
+   * on `/driver` on the very first sign-in instead of a wrong `/dashboard`
+   * flash. See `RequireDriverAccess`'s identical fix for the fuller story.
    */
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
+    if (redirectTimer.current) {
+      clearTimeout(redirectTimer.current);
+      redirectTimer.current = null;
+    }
     if (status !== "authenticated" || experienceLoading) return;
     const next = searchParams.get("next");
-    router.replace(next || preferredLandingRoute || "/dashboard");
+    redirectTimer.current = setTimeout(() => {
+      router.replace(next || preferredLandingRoute || "/dashboard");
+    }, 1200);
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
   }, [status, experienceLoading, preferredLandingRoute, searchParams, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

@@ -87,7 +87,12 @@ export function SiteHeader() {
   const primaryCta =
     isDriverApplicant || isDriver ? (
       <Button size="sm" asChild>
-        <Link href="/become-a-driver">{t(getDriverCtaLabelKey(state as ExperienceState))}</Link>
+        {/* UX-3 sprint (Dedicated Driver Space) — a real driver (active/
+            suspended/inactive) goes straight to `/driver`, not through
+            `/become-a-driver`'s own redirect; an applicant still goes there. */}
+        <Link href={isDriver ? "/driver" : "/become-a-driver"}>
+          {t(getDriverCtaLabelKey(state as ExperienceState))}
+        </Link>
       </Button>
     ) : isGuest || experience.capabilities?.canStartDriverApplication ? (
       <Button size="sm" asChild>

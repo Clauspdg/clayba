@@ -1,13 +1,17 @@
 import { ExperienceState } from "@the-ride/types";
 
 /**
- * Centralized landing-route resolution (UX-1 sprint, Part 9) — every real,
- * already-existing route in `apps/web`. No dead routes: driver-applicant
- * and driver states land on `/become-a-driver` (the one lifecycle-aware
- * page that branches on their real status), not a nonexistent
- * `/become-a-driver/status` or `/driver` page. Staff states resolve to
- * `/` — `apps/web` has no admin surface to send them to; the real Admin
- * app is a separate deployment this function has no route into.
+ * Centralized landing-route resolution (UX-1 sprint, Part 9; updated by
+ * UX-3 — Dedicated Driver Space). Every real, already-existing route in
+ * `apps/web`. No dead routes: driver-applicant states land on
+ * `/become-a-driver` (the one lifecycle-aware page that branches on real
+ * application status); a `drivers/{uid}` record (active, suspended, or
+ * inactive/terminated) now lands on `/driver` instead — that dedicated
+ * space renders its own restricted view for suspended/inactive rather than
+ * `/become-a-driver` pretending to be an operational dashboard (see
+ * `RequireDriverAccess` in `apps/web`). Staff states resolve to `/` —
+ * `apps/web` has no admin surface to send them to; the real Admin app is a
+ * separate deployment this function has no route into.
  */
 export function getPreferredLandingRoute(state: ExperienceState): string {
   switch (state) {
@@ -24,10 +28,11 @@ export function getPreferredLandingRoute(state: ExperienceState): string {
     case ExperienceState.DRIVER_APPLICANT_ACTION_REQUIRED:
     case ExperienceState.DRIVER_APPLICANT_APPROVED:
     case ExperienceState.DRIVER_APPLICANT_REJECTED:
+      return "/become-a-driver";
     case ExperienceState.DRIVER_ACTIVE:
     case ExperienceState.DRIVER_SUSPENDED:
     case ExperienceState.DRIVER_INACTIVE:
-      return "/become-a-driver";
+      return "/driver";
     case ExperienceState.ADMIN:
     case ExperienceState.SUPER_ADMIN:
     case ExperienceState.DISPATCHER:
