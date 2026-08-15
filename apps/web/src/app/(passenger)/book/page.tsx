@@ -13,6 +13,7 @@ import {
   Card,
   CardContent,
   EmptyState,
+  ErrorState,
   Heading,
   Illustration,
   LoadingState,
@@ -162,6 +163,15 @@ export default function BookRidePage() {
     } finally {
       setConfirming(false);
     }
+  }
+
+  if (loadError && (places === null || categories === null)) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Heading level={2}>{t("passengerNav.bookRide")}</Heading>
+        <ErrorState title={t("admin.emptyStates.errorTitle")} description={loadError} />
+      </div>
+    );
   }
 
   if (places === null || categories === null) {
