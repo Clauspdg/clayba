@@ -4,6 +4,7 @@ import { webFirestore } from "@/lib/firebase-client";
 import {
   addFavoritePlace,
   deleteFavoritePlace,
+  getOrCreatePassengerProfile,
   subscribeFavoritePlaces,
 } from "@the-ride/firebase/client";
 import {
@@ -43,7 +44,24 @@ export default function SavedPlacesPage() {
 
   useEffect(() => {
     if (!session) return;
-    return subscribeFavoritePlaces(webFirestore, session.uid, setPlaces, setError);
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    // `favoritePlaces` lives under `passengers/{uid}` — that profile doc may
+    // not exist yet for a passenger who hasn't hit a profile-creating flow
+    // (e.g. Settings, Book) before visiting this page, so ensure it exists
+    // first rather than subscribing straight into a missing-parent query.
+    getOrCreatePassengerProfile(webFirestore, session.uid)
+      .then(() => {
+        if (cancelled) return;
+        unsubscribe = subscribeFavoritePlaces(webFirestore, session.uid, setPlaces, setError);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [session]);
 
   function handleUseCurrentLocation() {

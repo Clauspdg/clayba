@@ -141,13 +141,25 @@ service cloud.firestore {
     // --- passengers: passengers, favoritePlaces, paymentPreferences ---
 
     match /passengers/{passengerId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || hasRole(['support']));
+      // Same `resource == null` guard as `drivers/{driverId}` above — the
+      // first read of a not-yet-created passenger profile (e.g.
+      // `getOrCreatePassengerProfile`'s existence check) targets a doc
+      // that doesn't exist yet, and dereferencing a null `resource` throws,
+      // which Firestore surfaces as permission-denied rather than "not
+      // found."
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin() || hasRole(['support']));
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
 
       function isPassengerOwner() {
-        return isSignedIn() && get(/databases/$(database)/documents/passengers/$(passengerId)).data.userId == request.auth.uid;
+        // `exists()` short-circuits before `get()` so a not-yet-created
+        // passenger profile (same case as above) doesn't throw NOT_FOUND
+        // while subscribing to its `favoritePlaces`/`paymentPreferences`
+        // subcollections.
+        return isSignedIn()
+          && exists(/databases/$(database)/documents/passengers/$(passengerId))
+          && get(/databases/$(database)/documents/passengers/$(passengerId)).data.userId == request.auth.uid;
       }
 
       match /favoritePlaces/{placeId} {

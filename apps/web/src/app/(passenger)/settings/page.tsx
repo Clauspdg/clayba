@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ErrorState,
   Heading,
   LoadingState,
   Select,
@@ -28,13 +29,18 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [preferences, setPreferences] = useState<PassengerPreferences | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
-    void getOrCreatePassengerProfile(webFirestore, session.uid).then((profile) =>
-      setPreferences(profile.preferences),
-    );
+    getOrCreatePassengerProfile(webFirestore, session.uid)
+      .then((profile) => setPreferences(profile.preferences))
+      .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : String(err)));
   }, [session]);
+
+  if (loadError) {
+    return <ErrorState title={t("admin.emptyStates.errorTitle")} description={loadError} />;
+  }
 
   if (!session || preferences === null) {
     return <LoadingState title={t("common.loading")} />;
