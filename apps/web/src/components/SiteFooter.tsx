@@ -1,7 +1,7 @@
 "use client";
 
 import { useFooterContent } from "@/hooks/useSiteContent";
-import { isPassengerShellRoute } from "@/lib/passenger-shell-routes";
+import { isAppShellRoute } from "@/lib/app-shell-routes";
 import { Button, Divider, Icon, Input, Logo, useTranslation, type IconName } from "@the-ride/ui";
 import { RELEASE_VERSION_STRING } from "@the-ride/types";
 import Link from "next/link";
@@ -78,7 +78,7 @@ export function SiteFooter() {
     setSubscribed(true);
   }
 
-  if (isPassengerShellRoute(pathname)) {
+  if (isAppShellRoute(pathname)) {
     return null;
   }
 

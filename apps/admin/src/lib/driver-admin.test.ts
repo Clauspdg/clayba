@@ -1,9 +1,19 @@
-import { DocumentReviewStatus, DriverApplicationStatus, DriverDocumentType } from "@the-ride/types";
+import {
+  DocumentReviewStatus,
+  DriverApplicationStatus,
+  DriverDocumentType,
+  type DriverApplication,
+} from "@the-ride/types";
 import { canTransitionDriverApplication } from "@the-ride/utils";
 import type { Firestore } from "firebase/firestore";
 import { describe, expect, it } from "vitest";
 
-import { addAdminNote, getApplicationActions, reviewDocument } from "./driver-admin";
+import {
+  addAdminNote,
+  buildInitialDriverDocuments,
+  getApplicationActions,
+  reviewDocument,
+} from "./driver-admin";
 
 describe("getApplicationActions", () => {
   it("never includes REJECTED — it has its own dedicated reason-requiring flow", () => {
@@ -101,5 +111,53 @@ describe("addAdminNote", () => {
     await expect(addAdminNote(unusedDb, "app-1", "   ", "admin-1")).rejects.toThrow(
       /cannot be empty/i,
     );
+  });
+});
+
+describe("buildInitialDriverDocuments", () => {
+  // Audit fix (UX-3 sprint) — `activateApplication` used to leave
+  // `driver.documents` at its schema default of `[]`, which silently
+  // disabled both the Driver Space's Documents page and
+  // `getOnlineEligibility`'s document-expiry gate for every real driver.
+  const verifiedAt = new Date("2026-06-01T00:00:00Z");
+  const baseApplication = { id: "app-1", userId: "driver-1" } as unknown as DriverApplication;
+
+  it("carries license/insurance/profile photo over with the right types and expiry dates", () => {
+    const application: DriverApplication = {
+      ...baseApplication,
+      license: {
+        licenseNumber: "L1",
+        licenseState: "NY",
+        licenseExpiresAt: "2027-03-10",
+        photoUrl: "https://x/license.jpg",
+      },
+      insurance: {
+        provider: "Acme",
+        policyNumber: "P1",
+        expiresAt: "2027-08-31",
+        photoUrl: "https://x/insurance.jpg",
+      },
+      profilePhotoUrl: "https://x/photo.jpg",
+    } as DriverApplication;
+
+    const documents = buildInitialDriverDocuments(application, verifiedAt);
+
+    expect(documents).toHaveLength(3);
+    const license = documents.find((d) => d.type === DriverDocumentType.DRIVERS_LICENSE);
+    expect(license?.url).toBe("https://x/license.jpg");
+    expect(license?.expiresAt).toEqual(new Date("2027-03-10"));
+    expect(license?.verifiedAt).toBe(verifiedAt);
+
+    const insurance = documents.find((d) => d.type === DriverDocumentType.VEHICLE_INSURANCE);
+    expect(insurance?.expiresAt).toEqual(new Date("2027-08-31"));
+
+    const photo = documents.find((d) => d.type === DriverDocumentType.PROFILE_PHOTO);
+    expect(photo?.url).toBe("https://x/photo.jpg");
+    expect(photo?.expiresAt).toBeUndefined();
+  });
+
+  it("only includes documents the application actually has a photo for", () => {
+    const application: DriverApplication = { ...baseApplication } as DriverApplication;
+    expect(buildInitialDriverDocuments(application, verifiedAt)).toEqual([]);
   });
 });

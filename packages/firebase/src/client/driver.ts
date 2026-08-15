@@ -6,7 +6,17 @@ import {
   type DriverSuspension,
   type Vehicle,
 } from "@the-ride/types";
-import { collection, doc, getDoc, getDocs, query, where, type Firestore } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  where,
+  type Firestore,
+  type Unsubscribe,
+} from "firebase/firestore";
 
 const COLLECTION = "drivers";
 const SUSPENSIONS_COLLECTION = "driverSuspensions";
@@ -26,6 +36,45 @@ export async function getOwnDriverRecord(db: Firestore, uid: string): Promise<Dr
   const snapshot = await getDoc(doc(db, COLLECTION, uid));
   if (!snapshot.exists()) return null;
   return driverSchema.parse({ id: snapshot.id, ...snapshot.data() });
+}
+
+/**
+ * UX-3 sprint (Dedicated Driver Space) audit fix, Part 19 — a live
+ * suspension/reactivation must reflect in the Driver Space without a manual
+ * reload, but `useExperienceInputs` (the shared UX-1 hook every page's
+ * `useUserExperience()` reads from) fetches `driver`/`driverApplication`
+ * once per mount via one-shot `getDoc`s, not `onSnapshot` — changing that
+ * shared hook to realtime would affect every consumer across the whole web
+ * app (homepage, login, dashboard, profile...), a much bigger change than
+ * this gap calls for. `DriverShell` instead mounts a small, purpose-built
+ * subscription (this function) scoped to the Driver Space alone, and calls
+ * `useUserExperience()`'s own `refresh()` when the doc actually changes —
+ * reusing the existing one-shot fetch/resolve pipeline instead of adding a
+ * second, parallel notion of "the driver record."
+ */
+export function subscribeOwnDriverRecord(
+  db: Firestore,
+  uid: string,
+  onChange: () => void,
+): Unsubscribe {
+  let first = true;
+  return onSnapshot(
+    doc(db, COLLECTION, uid),
+    () => {
+      // Skip the initial emission — the mounting page already has a fresh
+      // fetch in flight via `useExperienceInputs`; only a LATER change
+      // (an admin action while this session is open) should trigger a refresh.
+      if (first) {
+        first = false;
+        return;
+      }
+      onChange();
+    },
+    () => {
+      // Permission errors etc. are surfaced by the existing one-shot fetch
+      // path already; this listener only needs to know "did it change."
+    },
+  );
 }
 
 /**

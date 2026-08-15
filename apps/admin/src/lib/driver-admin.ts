@@ -2,13 +2,14 @@ import {
   DriverAccountStatus,
   DriverApplicationStatus,
   DriverAvailabilityStatus,
+  DriverDocumentType,
   VehicleStatus,
   driverSchema,
   vehicleSchema,
   type AdminNote,
   type DocumentReviewStatus,
   type DriverApplication,
-  type DriverDocumentType,
+  type DriverDocument,
 } from "@the-ride/types";
 import {
   assertDriverApplicationTransition,
@@ -104,6 +105,56 @@ export function getApplicationActions(status: DriverApplicationStatus): DriverAp
 }
 
 /**
+ * UX-3 sprint (Dedicated Driver Space) audit fix — before this,
+ * `activateApplication` never carried the application's already-uploaded
+ * license/insurance/profile-photo over into the new `driver.documents`
+ * array, so it defaulted to `[]` for every real activated driver. Two real
+ * consequences: the Driver Space's own Documents page (`apps/web`) showed
+ * "no documents on file" for every driver despite them having submitted
+ * real photos during onboarding, and — more seriously — `getOnlineEligibility`
+ * / `DispatchService.buildMatchingCandidates`'s `document_expired` check
+ * (both read `driver.documents`) could never trigger, silently disabling
+ * expiry-based compliance gating platform-wide. `verifiedAt: now` because
+ * activation itself is the review checkpoint that approved this exact
+ * document set (see the activation checklist's "reviewed and valid" items
+ * in `apps/admin`'s `ApplicationReviewWorkspace`).
+ */
+export function buildInitialDriverDocuments(
+  application: DriverApplication,
+  verifiedAt: Date,
+): DriverDocument[] {
+  const documents: DriverDocument[] = [];
+  if (application.license?.photoUrl) {
+    documents.push({
+      type: DriverDocumentType.DRIVERS_LICENSE,
+      url: application.license.photoUrl,
+      expiresAt: application.license.licenseExpiresAt
+        ? new Date(application.license.licenseExpiresAt)
+        : undefined,
+      verifiedAt,
+    });
+  }
+  if (application.insurance?.photoUrl) {
+    documents.push({
+      type: DriverDocumentType.VEHICLE_INSURANCE,
+      url: application.insurance.photoUrl,
+      expiresAt: application.insurance.expiresAt
+        ? new Date(application.insurance.expiresAt)
+        : undefined,
+      verifiedAt,
+    });
+  }
+  if (application.profilePhotoUrl) {
+    documents.push({
+      type: DriverDocumentType.PROFILE_PHOTO,
+      url: application.profilePhotoUrl,
+      verifiedAt,
+    });
+  }
+  return documents;
+}
+
+/**
  * Activates an approved application: creates the real `Vehicle` and
  * `Driver` documents from the data staged on the application (see
  * docs — `driverApplicationSchema`'s `vehicleInfo`), then marks the
@@ -143,6 +194,7 @@ export async function activateApplication(
     applicationId: application.id,
     status: DriverAccountStatus.ACTIVE,
     vehicleId: vehicleRef.id,
+    documents: buildInitialDriverDocuments(application, now),
     availabilityStatus: DriverAvailabilityStatus.OFFLINE,
     createdAt: now,
     updatedAt: now,

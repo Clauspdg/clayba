@@ -23,7 +23,7 @@ import { usePathname } from "next/navigation";
 import { useScrolled } from "@/hooks/useScrolled";
 import { useUserExperience } from "@/hooks/useUserExperience";
 import { useNavigationContent } from "@/hooks/useSiteContent";
-import { isPassengerShellRoute } from "@/lib/passenger-shell-routes";
+import { isAppShellRoute } from "@/lib/app-shell-routes";
 
 /**
  * Only the landing page gets the floating transparent-over-hero navbar
@@ -44,7 +44,7 @@ export function SiteHeader() {
   const experience = useUserExperience();
   const state = experience.experience;
 
-  if (isPassengerShellRoute(pathname)) {
+  if (isAppShellRoute(pathname)) {
     return null;
   }
 

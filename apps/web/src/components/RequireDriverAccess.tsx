@@ -1,10 +1,12 @@
 "use client";
 
+import { subscribeOwnDriverRecord } from "@the-ride/firebase/client";
 import { Button, ErrorState, LoadingState, useTranslation } from "@the-ride/ui";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { useUserExperience } from "@/hooks/useUserExperience";
+import { webFirestore } from "@/lib/firebase-client";
 
 import { RequireAuth } from "./RequireAuth";
 
@@ -35,12 +37,25 @@ export function RequireDriverAccess({ children }: { children: ReactNode }) {
 function DriverLifecycleGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const { loading, error, lifecycleState, preferredLandingRoute, refresh } = useUserExperience();
+  const { loading, error, lifecycleState, preferredLandingRoute, refresh, driver } =
+    useUserExperience();
 
   const isDriverJourney =
     lifecycleState?.stage === "active" ||
     lifecycleState?.stage === "suspended" ||
     lifecycleState?.stage === "inactive";
+
+  // Part 19 — a suspension/reactivation applied from Admin while this
+  // session is open must reflect without a manual reload.
+  // `useExperienceInputs` (the shared hook every `useUserExperience()`
+  // consumer reads from) is a one-shot fetch, not realtime; rather than
+  // making that shared, app-wide hook realtime for every consumer, this
+  // watches just the signed-in driver's own doc and calls the existing
+  // `refresh()` when it actually changes.
+  useEffect(() => {
+    if (!driver) return;
+    return subscribeOwnDriverRecord(webFirestore, driver.id, refresh);
+  }, [driver, refresh]);
 
   // A real DEV run caught a genuine race: Firebase's `onIdTokenChanged`
   // (which `useAuth()`'s session listener is built on) fires more than
