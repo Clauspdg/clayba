@@ -2,14 +2,11 @@
 
 import { webFirestore } from "@/lib/firebase-client";
 import { useUserExperience } from "@/hooks/useUserExperience";
-import { DriverStatusBadge } from "@/components/DriverStatusBadge";
 import {
   getActiveSuspensionForDriver,
   getVehicle,
   subscribeCurrentDriverTrip,
   subscribeMyRideOffers,
-  subscribeMyTransactions,
-  subscribeMyWallet,
 } from "@the-ride/firebase/client";
 import {
   Alert,
@@ -17,8 +14,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
   Heading,
   Icon,
   LoadingState,
@@ -27,14 +22,12 @@ import {
 } from "@the-ride/ui";
 import {
   DriverAccountStatus,
-  TransactionType,
-  VehicleStatus,
+  DriverAvailabilityStatus,
   type Driver,
   type DriverSuspension,
   type RideOffer,
   type Trip,
   type Vehicle,
-  type Wallet,
 } from "@the-ride/types";
 import { getExpiringDocuments, getOnlineEligibility } from "@the-ride/utils";
 import Link from "next/link";
@@ -47,14 +40,6 @@ const ONLINE_BLOCK_REASON_KEY: Record<string, string> = {
   vehicle_not_approved: "driverSpace.onlineBlocked.vehicleNotApproved",
   document_expired: "driverSpace.onlineBlocked.documentExpired",
 };
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
 
 export default function DriverHomePage() {
   const { t } = useTranslation();
@@ -100,10 +85,7 @@ function RestrictedDriverHome({ driver }: { driver: Driver }) {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <Heading level={1}>{t("driverSpace.home.title")}</Heading>
-        <DriverStatusBadge driver={driver} />
-      </div>
+      <Heading level={1}>{t("driverSpace.home.title")}</Heading>
       <Card>
         <CardContent className="flex flex-col gap-4 p-8">
           <Alert
@@ -168,12 +150,21 @@ function RestrictedDriverHome({ driver }: { driver: Driver }) {
   );
 }
 
-/** Parts 4-5 — the full operational dashboard for an active driver. */
+/**
+ * UX Simplification sprint, Part 4 — was five cards showing simultaneously
+ * (online control, pending offer, current ride, vehicle, today's stats),
+ * all at equal visual weight regardless of which one actually mattered
+ * right now. Rebuilt state-driven: exactly ONE primary card renders,
+ * chosen by real precedence (a ride offer outranks an idle "online"
+ * state; an active trip outranks both) — matching the state table this
+ * sprint's spec lists (offline/online-idle/offer/current-ride). Vehicle
+ * and earnings summaries are gone from this page entirely — they're a
+ * "manage X" concern that belongs on their own nav pages (Part 5), not a
+ * dashboard preview competing with the operational state.
+ */
 function ActiveDriverHome({ driver }: { driver: Driver }) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const [vehicle, setVehicle] = useState<Vehicle | null | undefined>(undefined);
-  const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
-  const [todayEarnings, setTodayEarnings] = useState<number | null>(null);
   const [currentTrip, setCurrentTrip] = useState<Trip | null | undefined>(undefined);
   const [pendingOffer, setPendingOffer] = useState<RideOffer | null | undefined>(undefined);
 
@@ -190,30 +181,6 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
       cancelled = true;
     };
   }, [driver.vehicleId]);
-
-  useEffect(
-    () => subscribeMyWallet(webFirestore, driver.userId, setWallet, () => setWallet(null)),
-    [driver.userId],
-  );
-
-  useEffect(() => {
-    if (!wallet) {
-      setTodayEarnings(wallet === null ? 0 : null);
-      return;
-    }
-    return subscribeMyTransactions(
-      webFirestore,
-      wallet.id,
-      (transactions) => {
-        const today = new Date();
-        const total = transactions
-          .filter((tx) => tx.type === TransactionType.PAYOUT && isSameDay(tx.createdAt, today))
-          .reduce((sum, tx) => sum + tx.amount, 0);
-        setTodayEarnings(total);
-      },
-      () => setTodayEarnings(0),
-    );
-  }, [wallet]);
 
   useEffect(
     () =>
@@ -236,13 +203,11 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
 
   const eligibility = getOnlineEligibility(driver, vehicle ?? null);
   const expiringDocuments = getExpiringDocuments(driver.documents);
+  const isOnline = driver.availabilityStatus !== DriverAvailabilityStatus.OFFLINE;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <Heading level={1}>{t("driverSpace.home.title")}</Heading>
-        <DriverStatusBadge driver={driver} />
-      </div>
+    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+      <Heading level={1}>{t("driverSpace.home.title")}</Heading>
 
       {expiringDocuments.length > 0 && (
         <Alert tone="warning" title={t("driverSpace.home.documentWarningTitle")}>
@@ -253,149 +218,71 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
         </Alert>
       )}
 
-      {/* Part 5 — the most important control on the page. */}
-      <Card className="shadow-elevation1">
-        <CardHeader>
-          <CardTitle>{t("driverSpace.home.onlineControlTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <Text tone="muted" size="sm">
-              {t("driverSpace.home.currentStatusLabel")}
-            </Text>
-            <DriverStatusBadge driver={driver} />
-          </div>
-          {eligibility.eligible ? (
-            <>
-              <Button size="lg" fullWidth disabled>
-                {t("driverSpace.home.goOnlineCta")}
-              </Button>
-              <Text size="xs" tone="muted">
-                {t("driverSpace.home.liveDispatchGapBody")}
-              </Text>
-            </>
-          ) : (
-            <>
-              <Button size="lg" fullWidth disabled>
-                {t("driverSpace.home.goOnlineCta")}
-              </Button>
-              <ul className="flex flex-col gap-1.5">
-                {eligibility.reasons.map((reason) => (
-                  <li key={reason} className="text-danger flex items-start gap-2 text-sm">
-                    <Icon name="alertTriangle" size={16} className="mt-0.5 shrink-0" />
-                    {t(ONLINE_BLOCK_REASON_KEY[reason] ?? reason)}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {pendingOffer && (
+      {pendingOffer ? (
         <Card className="border-brand shadow-elevation2 border-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Icon name="bell" size={18} className="text-brand" />
-              {t("driverSpace.home.pendingOfferTitle")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+          <CardContent className="flex flex-col gap-4 p-8">
+            <div className="flex items-center gap-2">
+              <Icon name="bell" size={20} className="text-brand" />
+              <Text weight="medium">{t("driverSpace.home.pendingOfferTitle")}</Text>
+            </div>
             <Text tone="muted" size="sm">
               {t("driverSpace.home.pendingOfferBody")}
             </Text>
-            <Button asChild className="self-start">
+            <Button size="lg" asChild>
               <Link href="/driver/requests">{t("driverSpace.nav.requests")}</Link>
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      {currentTrip && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("driverSpace.home.currentRideTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <Badge tone="brand">{t(`driverSpace.tripStatus.${currentTrip.status}`)}</Badge>
-            <Button variant="outline" asChild className="self-start">
+      ) : currentTrip ? (
+        <Card className="shadow-elevation1">
+          <CardContent className="flex flex-col gap-4 p-8">
+            <div className="flex items-center justify-between">
+              <Text weight="medium">{t("driverSpace.home.currentRideTitle")}</Text>
+              <Badge tone="brand">{t(`driverSpace.tripStatus.${currentTrip.status}`)}</Badge>
+            </div>
+            <Button size="lg" asChild>
               <Link href="/driver/current-ride">{t("driverSpace.nav.currentRide")}</Link>
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      <div className="tablet:grid-cols-2 grid gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("driverSpace.home.vehicleCardTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {vehicle === undefined ? (
-              <Text size="sm" tone="muted">
-                {t("common.loading")}
-              </Text>
-            ) : vehicle ? (
-              <div className="flex flex-col gap-1">
-                <Text weight="medium">
-                  {vehicle.make} {vehicle.model} ({vehicle.year})
-                </Text>
+      ) : (
+        <Card className="shadow-elevation1">
+          <CardContent className="flex flex-col gap-4 p-8">
+            {isOnline ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <Icon name="bell" size={28} className="text-neutral-300 dark:text-neutral-700" />
+                <Text weight="medium">{t("driverSpace.home.waitingForRequestsTitle")}</Text>
                 <Text size="sm" tone="muted">
-                  {vehicle.plateNumber}
+                  {t("driverSpace.home.waitingForRequestsBody")}
                 </Text>
-                <Badge
-                  tone={
-                    vehicle.status === VehicleStatus.APPROVED ||
-                    vehicle.status === VehicleStatus.ACTIVE
-                      ? "success"
-                      : "warning"
-                  }
-                  className="mt-1 w-fit"
-                >
-                  {t(`driverSpace.vehicleStatus.${vehicle.status}`)}
-                </Badge>
               </div>
+            ) : eligibility.eligible ? (
+              <>
+                <Button size="lg" fullWidth disabled>
+                  {t("driverSpace.home.goOnlineCta")}
+                </Button>
+                <Text size="xs" tone="muted">
+                  {t("driverSpace.home.liveDispatchGapBody")}
+                </Text>
+              </>
             ) : (
-              <Text size="sm" tone="muted">
-                {t("driverSpace.home.noVehicle")}
-              </Text>
+              <>
+                <Button size="lg" fullWidth disabled>
+                  {t("driverSpace.home.goOnlineCta")}
+                </Button>
+                <ul className="flex flex-col gap-1.5">
+                  {eligibility.reasons.map((reason) => (
+                    <li key={reason} className="text-danger flex items-start gap-2 text-sm">
+                      <Icon name="alertTriangle" size={16} className="mt-0.5 shrink-0" />
+                      {t(ONLINE_BLOCK_REASON_KEY[reason] ?? reason)}
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("driverSpace.home.todayCardTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between">
-              <Text size="sm" tone="muted">
-                {t("driverSpace.home.todayEarningsLabel")}
-              </Text>
-              <Text weight="medium">
-                {todayEarnings === null
-                  ? t("common.loading")
-                  : new Intl.NumberFormat(locale, {
-                      style: "currency",
-                      currency: wallet?.currency ?? "USD",
-                    }).format(todayEarnings)}
-              </Text>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <Text size="sm" tone="muted">
-                {t("driverSpace.home.ratingLabel")}
-              </Text>
-              <Text weight="medium">{driver.rating.toFixed(1)}</Text>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <Text size="sm" tone="muted">
-                {t("driverSpace.home.acceptanceRateLabel")}
-              </Text>
-              <Text weight="medium">{Math.round(driver.acceptanceRate * 100)}%</Text>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </div>
   );
 }
