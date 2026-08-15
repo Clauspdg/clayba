@@ -49,6 +49,14 @@
       ]
     },
     {
+      "collectionGroup": "driverApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "driverWarnings",
       "queryScope": "COLLECTION",
       "fields": [

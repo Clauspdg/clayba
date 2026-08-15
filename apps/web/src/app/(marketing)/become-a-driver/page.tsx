@@ -4,7 +4,6 @@ import {
   uploadDriverDocument,
   uploadDriverProfilePhoto,
   createDraftApplication,
-  findOwnApplication,
   saveApplicationProgress,
   submitApplication,
 } from "@the-ride/firebase/client";
@@ -233,7 +232,7 @@ export default function BecomeADriverPage() {
   }
 
   if (wizardOpen) {
-    return <ApplicationWizard userId={session.uid} />;
+    return <ApplicationWizard userId={session.uid} existingApplication={driverApplication} />;
   }
 
   const content = (() => {
@@ -642,7 +641,13 @@ function RejectedScreen({ application }: { application: DriverApplication }) {
   );
 }
 
-function ApplicationWizard({ userId }: { userId: string }) {
+function ApplicationWizard({
+  userId,
+  existingApplication,
+}: {
+  userId: string;
+  existingApplication: DriverApplication | null;
+}) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -666,14 +671,21 @@ function ApplicationWizard({ userId }: { userId: string }) {
       setLoading(true);
       setLoadError(null);
       try {
-        const existing = await findOwnApplication(webFirestore, userId);
-        if (cancelled) return;
-        if (existing) {
-          if (existing.status === "submitted") {
+        // Trusts the caller's already-resolved application (from
+        // `useUserExperience()`, gated on its own fetch error — see
+        // `BecomeADriverPage`) instead of independently re-querying
+        // Firestore here. Two separate reads of "does an application
+        // already exist" could disagree (e.g. an unordered query
+        // non-deterministically picking a different doc) and that
+        // disagreement is exactly what could let this fall through to
+        // `createDraftApplication` and create a duplicate (Micro-Sprint A:
+        // "duplicate application cannot be created").
+        if (existingApplication) {
+          if (existingApplication.status === DriverApplicationStatus.SUBMITTED) {
             setSubmitted(true);
           }
-          setApplicationId(existing.id);
-          setForm(fromApplication(existing));
+          setApplicationId(existingApplication.id);
+          setForm(fromApplication(existingApplication));
         } else {
           const id = await createDraftApplication(webFirestore, userId);
           if (!cancelled) setApplicationId(id);
@@ -699,7 +711,7 @@ function ApplicationWizard({ userId }: { userId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [userId, loadAttempt]);
+  }, [userId, existingApplication, loadAttempt]);
 
   const step: StepKey = STEP_KEYS[stepIndex]!;
   const progress = useMemo(() => ((stepIndex + 1) / STEP_KEYS.length) * 100, [stepIndex]);

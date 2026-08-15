@@ -10,6 +10,7 @@ import {
   getDoc,
   getDocs,
   limit as fsLimit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -35,14 +36,26 @@ const COLLECTION = "driverApplications";
  * both to resume a draft and, since the User State Experience sprint, as
  * the resolver's ground truth for every later lifecycle stage (submitted,
  * under review, approved, rejected, activated). One application per user
- * is an invariant enforced elsewhere (the wizard only ever creates a draft
- * when none already exists), so the first match is authoritative.
+ * is meant to be an invariant, but nothing server-side actually enforces
+ * it (`firestore.rules`' `driverApplications` create rule only checks
+ * `userId == request.auth.uid`, not uniqueness) and application docs use
+ * an auto-generated id rather than being keyed by `userId`, so a stray
+ * duplicate is possible. `orderBy("createdAt", "desc")` makes the pick
+ * deterministic in that case — the most recent application always wins,
+ * rather than an unordered `limit(1)` arbitrarily returning either one
+ * from call to call (Micro-Sprint A: "existing application must always be
+ * found, with the correct lifecycle state, on every call").
  */
 export async function findOwnApplication(
   db: Firestore,
   userId: string,
 ): Promise<DriverApplication | null> {
-  const q = query(collection(db, COLLECTION), where("userId", "==", userId), fsLimit(1));
+  const q = query(
+    collection(db, COLLECTION),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc"),
+    fsLimit(1),
+  );
   const snapshot = await getDocs(q);
   const found = snapshot.docs[0];
   if (!found) return null;
