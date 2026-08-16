@@ -97,7 +97,7 @@ export function BookingCard() {
       // and a restrained, always-on copper edge glow (was hover-only)
       // tying the card to the Hero's own accent lighting from HOME-03/
       // 03.1 — intensifies only slightly on hover, never garish.
-      className="bg-white/93 dark:bg-neutral-900/92 w-full max-w-md rounded-3xl border border-white/15 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5),0_1px_0_0_rgba(232,106,47,0.12),0_20px_50px_-20px_rgba(0,0,0,0.5),0_0_36px_-14px_rgba(232,106,47,0.35)] backdrop-blur-md transition-shadow duration-300 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.55),0_1px_0_0_rgba(232,106,47,0.22),0_24px_60px_-20px_rgba(0,0,0,0.55),0_0_48px_-12px_rgba(232,106,47,0.5)] dark:border-white/10"
+      className="w-full max-w-md rounded-3xl border border-white/15 bg-white/95 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5),0_1px_0_0_rgba(232,106,47,0.12),0_20px_50px_-20px_rgba(0,0,0,0.5),0_0_36px_-14px_rgba(232,106,47,0.35)] backdrop-blur-md transition-shadow duration-300 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.55),0_1px_0_0_rgba(232,106,47,0.22),0_24px_60px_-20px_rgba(0,0,0,0.55),0_0_48px_-12px_rgba(232,106,47,0.5)] dark:border-white/10 dark:bg-neutral-900/90"
     >
       <h3 className="mb-2.5 text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
         {t("website.landing.bookingCardTitle")}
@@ -209,7 +209,7 @@ export function BookingCard() {
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           className={`flex items-center justify-between rounded-xl border px-4 py-2 transition-colors duration-300 ${
             estimatedFare !== null
-              ? "border-brand/20 bg-brand-50 dark:bg-brand-900/60"
+              ? "border-brand/20 bg-brand-50 dark:bg-brand-900"
               : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60"
           }`}
         >
