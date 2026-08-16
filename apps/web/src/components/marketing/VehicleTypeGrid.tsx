@@ -4,6 +4,7 @@ import { useVehicleCategories } from "@/hooks/useSiteContent";
 import { Badge, Icon, useTranslation, type IconName } from "@the-ride/ui";
 import type { VehicleCategory } from "@the-ride/types";
 import { motion } from "framer-motion";
+import { useState } from "react";
 
 import { Reveal } from "./Reveal";
 import { VehicleIllustration } from "./VehicleIllustration";
@@ -26,6 +27,7 @@ export function VehicleTypeGrid() {
     description: t(vehicle.descriptionKey),
     icon: vehicle.icon,
     color: "#E86A2F",
+    imageUrl: vehicle.imageUrl,
     baseFare: vehicle.basePrice,
     perKmRate: 0,
     perMinuteRate: 0,
@@ -48,12 +50,8 @@ export function VehicleTypeGrid() {
             transition={{ type: "spring", stiffness: 300, damping: 22 }}
             className="shadow-elevation1 duration-normal hover:shadow-elevation3 group h-full overflow-hidden rounded-2xl border border-neutral-100 bg-white transition-shadow dark:border-neutral-800 dark:bg-neutral-900"
           >
-            <div className="from-brand-50 to-brand-100 text-brand dark:from-brand-900 dark:to-brand-800 dark:text-brand-300 relative flex h-28 items-center justify-center overflow-hidden bg-gradient-to-br transition-transform duration-500 group-hover:scale-105">
-              {vehicle.imageUrl ? (
-                <img src={vehicle.imageUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <VehicleIllustration tall={vehicle.maximumPassengers >= 6} className="h-16 w-32" />
-              )}
+            <div className="from-brand-50 to-brand-100 text-brand dark:from-brand-900 dark:to-brand-800 dark:text-brand-300 relative flex h-44 items-center justify-center overflow-hidden bg-gradient-to-br transition-transform duration-500 group-hover:scale-105">
+              <VehicleCardMedia imageUrl={vehicle.imageUrl} tall={vehicle.maximumPassengers >= 6} />
             </div>
             <div className="flex flex-col gap-3 p-6">
               <div className="flex items-center justify-between">
@@ -79,5 +77,28 @@ export function VehicleTypeGrid() {
         </Reveal>
       ))}
     </div>
+  );
+}
+
+/**
+ * HOME-05B.1 — renders the real category photo when one is set, silently
+ * swapping to the existing `VehicleIllustration` fallback if the image
+ * fails to load (e.g. a broken/removed asset), so a card can never show
+ * a broken-image glyph.
+ */
+function VehicleCardMedia({ imageUrl, tall }: { imageUrl?: string; tall: boolean }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!imageUrl || failed) {
+    return <VehicleIllustration tall={tall} className="h-16 w-32" />;
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt=""
+      className="h-full w-full object-cover"
+      onError={() => setFailed(true)}
+    />
   );
 }

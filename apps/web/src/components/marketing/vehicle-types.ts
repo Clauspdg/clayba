@@ -13,6 +13,8 @@ export interface VehicleTypeInfo {
   /** Simulated base fare (Sprint 6: "fare calculation can remain simulated for now"). */
   basePrice: number;
   perMinuteFactor: number;
+  /** Bundled local photo shown on the homepage Ride Categories card (HOME-05B.1) — purely cosmetic, falls back to VehicleIllustration if unset/unloadable. See docs/vehicle-media-license.md. */
+  imageUrl?: string;
 }
 
 export const VEHICLE_TYPES: VehicleTypeInfo[] = [
@@ -28,6 +30,7 @@ export const VEHICLE_TYPES: VehicleTypeInfo[] = [
     rating: 4.7,
     basePrice: 5,
     perMinuteFactor: 1,
+    imageUrl: "/media/vehicles/economy.jpg",
   },
   {
     id: "comfort",
@@ -41,6 +44,7 @@ export const VEHICLE_TYPES: VehicleTypeInfo[] = [
     rating: 4.8,
     basePrice: 7,
     perMinuteFactor: 1.25,
+    imageUrl: "/media/vehicles/comfort.jpg",
   },
   {
     id: "suv",
@@ -54,6 +58,7 @@ export const VEHICLE_TYPES: VehicleTypeInfo[] = [
     rating: 4.8,
     basePrice: 9,
     perMinuteFactor: 1.5,
+    imageUrl: "/media/vehicles/suv.jpg",
   },
   {
     id: "van",
@@ -67,6 +72,7 @@ export const VEHICLE_TYPES: VehicleTypeInfo[] = [
     rating: 4.6,
     basePrice: 11,
     perMinuteFactor: 1.7,
+    imageUrl: "/media/vehicles/van.jpg",
   },
   {
     id: "premium",
@@ -80,6 +86,7 @@ export const VEHICLE_TYPES: VehicleTypeInfo[] = [
     rating: 4.9,
     basePrice: 14,
     perMinuteFactor: 2,
+    imageUrl: "/media/vehicles/premium.jpg",
   },
   {
     id: "luxury",
@@ -93,6 +100,7 @@ export const VEHICLE_TYPES: VehicleTypeInfo[] = [
     rating: 5,
     basePrice: 20,
     perMinuteFactor: 2.6,
+    imageUrl: "/media/vehicles/luxury.jpg",
   },
 ];
 
