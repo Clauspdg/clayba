@@ -78,6 +78,16 @@ export function SiteHeader() {
     : "";
 
   /**
+   * HOME-02 — the single strongest action in the bar: layers an inset
+   * top highlight (subtle depth) and a restrained orange-tinted glow
+   * (stronger only on hover) on top of the shared `Button` primary
+   * variant's flat `shadow-elevation1`/`hover:shadow-elevation2` — pill
+   * shape and `bg-brand` come from `buttonVariants` already, untouched.
+   */
+  const primaryCtaClassName =
+    "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_8px_20px_-8px_rgba(232,106,47,0.55)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_10px_28px_-8px_rgba(232,106,47,0.7)] transition-shadow duration-normal";
+
+  /**
    * Primary CTA (Part 14's CTA audit table) — GUEST and PASSENGER both get
    * the "start application" prompt (a Passenger previously got no primary
    * CTA here at all, a gap this sprint fixes); a driver-applicant/driver
@@ -86,7 +96,7 @@ export function SiteHeader() {
    */
   const primaryCta =
     isDriverApplicant || isDriver ? (
-      <Button size="sm" asChild>
+      <Button size="sm" asChild className={primaryCtaClassName}>
         {/* UX-3 sprint (Dedicated Driver Space) — a real driver (active/
             suspended/inactive) goes straight to `/driver`, not through
             `/become-a-driver`'s own redirect; an applicant still goes there. */}
@@ -95,7 +105,7 @@ export function SiteHeader() {
         </Link>
       </Button>
     ) : isGuest || experience.capabilities?.canStartDriverApplication ? (
-      <Button size="sm" asChild>
+      <Button size="sm" asChild className={primaryCtaClassName}>
         <Link href="/become-a-driver">{t("website.becomeDriverPage.cta")}</Link>
       </Button>
     ) : null;
@@ -115,7 +125,21 @@ export function SiteHeader() {
     <TopNavigation
       linkComponent={Link}
       variant={isTransparent ? "transparent" : "solid"}
-      className={cn(isHome && "fixed inset-x-0 top-0 z-50", !isTransparent && "shadow-elevation1")}
+      className={cn(
+        isHome && "fixed inset-x-0 top-0 z-50",
+        // HOME-02 — replaces the shared component's own transparent/solid
+        // surface classes (this `className` merges last via `cn`/
+        // `tailwind-merge`, so conflicting utilities here win) with a
+        // slower, eased transition and two refined surfaces: a light
+        // glass wash over the Hero (subtle edge, no heavy blur) and a
+        // translucent dark/light glass bar once scrolled (stronger blur
+        // carries legibility instead of a near-opaque fill).
+        "transition-[background-color,border-color,backdrop-filter,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        isTransparent
+          ? "border-b border-white/10 bg-gradient-to-b from-black/30 via-black/10 to-transparent backdrop-blur-sm"
+          : "border-b border-neutral-900/[0.06] bg-white/75 shadow-[0_1px_0_0_rgba(0,0,0,0.03),0_12px_32px_-18px_rgba(0,0,0,0.14)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-neutral-950/70 dark:shadow-[0_1px_0_0_rgba(255,255,255,0.04),0_12px_32px_-18px_rgba(0,0,0,0.65)]",
+      )}
+      mobileMenuClassName="border-neutral-900/[0.06] bg-white/95 backdrop-blur-xl dark:border-white/[0.08] dark:bg-neutral-950/95"
       logo={
         <motion.div
           whileHover={{ scale: 1.05 }}

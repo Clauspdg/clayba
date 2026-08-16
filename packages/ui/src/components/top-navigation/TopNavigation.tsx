@@ -43,6 +43,8 @@ export interface TopNavigationProps {
    */
   variant?: "solid" | "transparent";
   className?: string;
+  /** HOME-02 — optional surface classes for the mobile drawer's `SidePanelContent`, so a caller can visually align it with a custom header treatment without this component hardcoding one look. Omitting it keeps `SidePanelContent`'s own default surface. */
+  mobileMenuClassName?: string;
 }
 
 export function TopNavigation({
@@ -55,6 +57,7 @@ export function TopNavigation({
   variant = "solid",
   className,
   mobileExtra,
+  mobileMenuClassName,
 }: TopNavigationProps) {
   const [open, setOpen] = useState(false);
   const transparent = variant === "transparent";
@@ -76,11 +79,18 @@ export function TopNavigation({
         aria-current={item.active ? "page" : undefined}
         onClick={onNavigate}
         className={cn(
-          "text-sm font-medium transition-colors",
+          // HOME-02 — a restrained scale-transform underline (no new JS
+          // state, no glow) replaces a plain color swap as the hover/active
+          // affordance, on both the desktop bar and the mobile drawer.
+          "relative py-1 text-sm font-medium transition-colors duration-200",
+          "after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:origin-left after:scale-x-0 after:transition-transform after:duration-300 after:ease-out",
           useTransparentStyle
-            ? "text-white/85 hover:text-white"
-            : "hover:text-brand dark:hover:text-brand-300 text-neutral-600 dark:text-neutral-400",
-          item.active && (useTransparentStyle ? "text-white" : "text-brand dark:text-brand-300"),
+            ? "text-white/85 after:bg-white hover:text-white hover:after:scale-x-100"
+            : "after:bg-brand hover:text-brand dark:hover:text-brand-300 text-neutral-600 hover:after:scale-x-100 dark:text-neutral-400",
+          item.active &&
+            (useTransparentStyle
+              ? "text-white after:scale-x-100"
+              : "text-brand dark:text-brand-300 after:scale-x-100"),
         )}
       >
         {item.label}
@@ -99,7 +109,7 @@ export function TopNavigation({
     >
       <div className="flex items-center gap-8">
         {logo}
-        <nav aria-label="Primary" className="laptop:flex hidden items-center gap-6">
+        <nav aria-label="Primary" className="laptop:flex hidden items-center gap-8">
           {navLinks()}
         </nav>
       </div>
@@ -115,7 +125,7 @@ export function TopNavigation({
                 <Icon name="menu" size={20} />
               </IconButton>
             </SidePanelTrigger>
-            <SidePanelContent side="right" closeLabel={closeLabel}>
+            <SidePanelContent side="right" closeLabel={closeLabel} className={mobileMenuClassName}>
               <SidePanelTitle className="mb-6 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
                 {menuLabel}
               </SidePanelTitle>
