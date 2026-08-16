@@ -337,6 +337,7 @@ export default function HomePage() {
       {homepage.visible && (
         <Hero
           parallax
+          useBundledDefault
           className="tablet:pb-8 tablet:pt-20 px-6 pb-8 pt-24"
           backgroundDesktopImageUrl={homepage.backgroundDesktopImageUrl}
           backgroundLaptopImageUrl={homepage.backgroundLaptopImageUrl}

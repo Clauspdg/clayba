@@ -2,8 +2,18 @@
 
 import { useBreakpoint } from "@the-ride/hooks";
 import { cn } from "@the-ride/ui";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useState, type ReactNode } from "react";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
+/**
+ * HOME-03.1 — the bundled premium default shown once no admin has
+ * published any CMS Hero media at all (see `docs/hero-media-license.md`
+ * for source/license/creator detail on both files). Lowest-priority
+ * layer in the fallback chain: published CMS media always wins; this
+ * only ever appears when every `background*Url` prop below is unset.
+ */
+const DEFAULT_HERO_IMAGE_URL = "/media/hero/hero-default.jpg";
+const DEFAULT_HERO_VIDEO_URL = "/media/hero/hero-default.mp4";
 
 export interface HeroProps {
   children: ReactNode;
@@ -25,6 +35,16 @@ export interface HeroProps {
   backgroundDesktopVideoUrl?: string;
   backgroundMobileVideoUrl?: string;
   backgroundPosterImageUrl?: string;
+  /**
+   * HOME-03.1 — opts a caller into the bundled premium photo/video (see
+   * `docs/hero-media-license.md`) as the lowest-priority fallback, below
+   * any of the `background*Url` CMS props above. Explicit opt-in and
+   * defaulted `false` because `Hero` is shared by every simple marketing
+   * page (About, Safety, Contact, Services, FAQ) via plain `<Hero>` with
+   * no background props at all — those must keep today's crafted CSS
+   * default exactly as it was; only the homepage asked for real media.
+   */
+  useBundledDefault?: boolean;
 }
 
 /**
@@ -65,6 +85,7 @@ export function Hero({
   backgroundDesktopVideoUrl,
   backgroundMobileVideoUrl,
   backgroundPosterImageUrl,
+  useBundledDefault = false,
 }: HeroProps) {
   const ref = useRef<HTMLElement>(null);
   const [videoFailed, setVideoFailed] = useState(false);
@@ -74,7 +95,19 @@ export function Hero({
   const contentOpacity = useTransform(scrollYProgress, [0, 1], [1, parallax ? 0.3 : 1]);
 
   const breakpoint = useBreakpoint();
-  const imageUrl =
+  const prefersReducedMotion = useReducedMotion();
+  // `useBreakpoint()` reads `window.innerWidth` synchronously on the
+  // client's very first render (before its own effect runs), which
+  // rarely matches the server's width-less SSR default — harmless for
+  // className-only differences, but the bundled default below picks
+  // between a <video> and an <img> tag, and a tag-level mismatch is a
+  // hard hydration error, not a soft warning. Gating on `mounted` keeps
+  // the bundled default's video/image choice identical on the server
+  // and the client's first paint; it swaps in the real breakpoint-aware
+  // choice on the next render, once hydration has already succeeded.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const cmsImageUrl =
     breakpoint === "mobile"
       ? (backgroundMobileImageUrl ??
         backgroundTabletImageUrl ??
@@ -85,14 +118,34 @@ export function Hero({
         : breakpoint === "laptop"
           ? (backgroundLaptopImageUrl ?? backgroundDesktopImageUrl)
           : backgroundDesktopImageUrl;
-  const videoUrl =
+  const cmsVideoUrl =
     breakpoint === "mobile"
       ? (backgroundMobileVideoUrl ?? backgroundDesktopVideoUrl)
       : backgroundDesktopVideoUrl;
 
+  // HOME-03.1 — the bundled default only ever fills in where an admin
+  // hasn't published anything: an explicit CMS image/video always wins.
+  // Below `tablet` (and whenever the OS asks for reduced motion) the
+  // bundled DEFAULT video specifically is skipped in favor of its own
+  // still image — a real CMS-published mobile video still plays, since
+  // that's an admin's explicit choice, not this component's default.
+  const isBundledDefault = useBundledDefault && !cmsImageUrl && !cmsVideoUrl;
+  const skipBundledVideo = !mounted || breakpoint === "mobile" || Boolean(prefersReducedMotion);
+  const imageUrl = cmsImageUrl ?? (useBundledDefault ? DEFAULT_HERO_IMAGE_URL : undefined);
+  const videoUrl =
+    cmsVideoUrl ?? (isBundledDefault && !skipBundledVideo ? DEFAULT_HERO_VIDEO_URL : undefined);
+
   const showVideo = Boolean(videoUrl) && !videoFailed;
   const showImage = !showVideo && Boolean(imageUrl);
   const hasCustomBackground = showVideo || showImage;
+  const poster =
+    backgroundPosterImageUrl ?? (isBundledDefault ? DEFAULT_HERO_IMAGE_URL : undefined);
+  // The bundled photo/video are both a wide, sky-heavy night composition
+  // (see docs/hero-media-license.md) — biasing the crop toward the lower
+  // two-thirds keeps the lit street/traffic in frame instead of mostly
+  // empty sky on narrow/tall viewports. A CMS-uploaded asset's framing is
+  // the admin's own call, so this bias is scoped to the bundled default only.
+  const objectPositionClassName = isBundledDefault ? "object-[50%_70%]" : "object-center";
 
   return (
     <section
@@ -102,10 +155,12 @@ export function Hero({
       <motion.div style={{ y: backgroundY }} className="absolute inset-0">
         {showVideo && (
           // Decorative background video — muted, looping, non-informational; no captions track needed.
+          // `preload="auto"` is deliberate: this is always above-the-fold Hero content, never lazy.
           <video
             src={videoUrl}
-            poster={backgroundPosterImageUrl}
-            className="absolute inset-0 h-full w-full object-cover"
+            poster={poster}
+            preload="auto"
+            className={cn("absolute inset-0 h-full w-full object-cover", objectPositionClassName)}
             autoPlay
             muted
             loop
@@ -115,7 +170,11 @@ export function Hero({
           />
         )}
         {showImage && (
-          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={imageUrl}
+            alt=""
+            className={cn("absolute inset-0 h-full w-full object-cover", objectPositionClassName)}
+          />
         )}
         {!hasCustomBackground && (
           <>
@@ -154,8 +213,23 @@ export function Hero({
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_85%_at_50%_45%,transparent_45%,rgba(0,0,0,0.4)_100%)]" />
           </>
         )}
-        {/* Dark overlay — guarantees text contrast regardless of what sits behind it. */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-neutral-950" />
+        {hasCustomBackground ? (
+          <>
+            {/*
+             * HOME-03.1 — real media (bundled default or CMS-published)
+             * gets a deliberately lighter treatment than the crafted
+             * fallback above: just enough dark gradient for text/booking-
+             * card legibility, plus one soft copper wash as THE RIDE's
+             * accent lighting — never the multi-layer composition that
+             * would bury real footage behind gradients.
+             */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/15 to-black/50" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_60%_at_15%_100%,rgba(232,106,47,0.22),transparent_62%)]" />
+          </>
+        ) : (
+          /* Dark overlay — guarantees text contrast regardless of what sits behind it. */
+          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-neutral-950" />
+        )}
       </motion.div>
       <motion.div style={{ y: contentY, opacity: contentOpacity }} className="relative">
         {children}
