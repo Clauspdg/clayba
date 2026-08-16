@@ -231,6 +231,7 @@ export const fr = {
     destination: "Destination",
     distance: "Distance",
     eta: "Arrivée estimée",
+    previewLabel: "Aperçu",
   },
   rideHistory: {
     active: "Actifs",

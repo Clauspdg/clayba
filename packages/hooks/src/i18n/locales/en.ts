@@ -225,6 +225,7 @@ export const en = {
     destination: "Destination",
     distance: "Distance",
     eta: "ETA",
+    previewLabel: "Preview",
   },
   rideHistory: {
     active: "Active",
