@@ -16,7 +16,7 @@ export interface SafetyExperienceProps {
 /**
  * HOME-07A — one featured safety experience (the real-time-tracking card,
  * paired with an illustrative trip-status timeline built from the actual
- * `tripStatus` enum copy) plus the remaining cards as smaller supporting
+ * `driverSpace.tripStatus` enum copy) plus the remaining cards as smaller supporting
  * capability cards, instead of three identical generic tiles. Card
  * content/copy is untouched — only the layout and the added trip-status
  * illustration are new. See docs/safety-experience-audit.md for exactly
@@ -119,7 +119,7 @@ function FeaturedSafetyPanel({ card }: { card: ResolvedSafetyCard }) {
                     isComplete || isCurrent ? "font-medium text-white" : "text-neutral-500",
                   )}
                 >
-                  {t(`tripStatus.${status}`)}
+                  {t(`driverSpace.tripStatus.${status}`)}
                 </span>
               </li>
             );

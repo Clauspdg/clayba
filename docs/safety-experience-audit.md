@@ -34,7 +34,7 @@ What changed is presentation:
 
 - The GPS/tracking card (`icon: "mapPin"`) becomes the **featured**
   panel, paired with an illustrative trip-status timeline built from
-  the real `tripStatus.*` translation keys (the same strings the driver
+  the real `driverSpace.tripStatus.*` translation keys (the same strings the driver
   app uses for its real state machine) — **explicitly labeled "Preview"**
   (reusing the same honesty chip introduced for the Map Preview in
   HOME-06A) so it reads as a static example, never as a live feed for
