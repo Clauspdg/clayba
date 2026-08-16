@@ -10,6 +10,7 @@ import { MapPreview } from "@/components/marketing/MapPreview";
 import { MobileAppSection } from "@/components/marketing/MobileAppSection";
 import { ProcessSteps } from "@/components/marketing/ProcessSteps";
 import { Reveal } from "@/components/marketing/Reveal";
+import { SafetyExperience } from "@/components/marketing/SafetyExperience";
 import { SectionHeading } from "@/components/marketing/SectionHeading";
 import { StatsSection } from "@/components/marketing/StatsSection";
 import { TestimonialsSection } from "@/components/marketing/TestimonialsSection";
@@ -244,36 +245,11 @@ export default function HomePage() {
               className="mb-12 [&_h2]:text-white [&_p]:text-neutral-300"
             />
           </Reveal>
-          <div className="tablet:grid-cols-3 grid gap-6">
-            {safety.cards.map((card, index) => (
-              <Reveal key={card.title} delay={index * 0.1}>
-                <motion.div
-                  whileHover={{ y: -4 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                  className="duration-normal group relative h-full rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-shadow hover:shadow-[0_0_40px_-8px_rgba(232,106,47,0.45)]"
-                >
-                  <span className="bg-brand/20 text-brand-300 group-hover:bg-brand/30 mb-3 flex h-11 w-11 items-center justify-center rounded-xl transition-colors">
-                    <Icon name={card.icon as IconName} size={20} />
-                  </span>
-                  <h3 className="mb-2 font-semibold text-white">{card.title}</h3>
-                  <p className="mb-3 text-sm text-neutral-400">{card.description}</p>
-                  <Badge tone="brand" className="bg-brand/15 text-brand-200">
-                    <Icon name="shieldCheck" size={12} />
-                    {card.badgeText}
-                  </Badge>
-                </motion.div>
-              </Reveal>
-            ))}
-          </div>
-          <div className="mt-10 text-center">
-            <Button
-              variant="outline"
-              className="border-white/30 text-white hover:bg-white/10 hover:text-white"
-              asChild
-            >
-              <Link href={safety.ctaHref}>{safety.ctaLabel}</Link>
-            </Button>
-          </div>
+          <SafetyExperience
+            cards={safety.cards}
+            ctaLabel={safety.ctaLabel}
+            ctaHref={safety.ctaHref}
+          />
         </div>
       </section>
     ),
