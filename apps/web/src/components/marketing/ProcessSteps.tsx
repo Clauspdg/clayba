@@ -2,7 +2,7 @@
 
 import { Icon, type IconName } from "@the-ride/ui";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface ProcessStep {
   icon: IconName;
@@ -77,12 +77,31 @@ function StepMedia({
   imageUrl?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
   const showPhoto = Boolean(imageUrl) && !failed;
+
+  useEffect(() => {
+    setFailed(false);
+  }, [imageUrl]);
+
+  // This is a statically-exported page: the <img> tag (and its request)
+  // exists in the pre-rendered HTML before React hydrates, so a fast
+  // failure (e.g. a genuinely missing asset) can fire its native `error`
+  // event before the onError handler below is even attached, silently
+  // leaving a broken-image glyph. Checking the already-hydrated element's
+  // `complete`/`naturalWidth` once on mount catches that race.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth === 0) {
+      setFailed(true);
+    }
+  }, [imageUrl]);
 
   return (
     <div className="shadow-elevation1 duration-normal hover:shadow-elevation2 relative aspect-square w-full overflow-hidden rounded-3xl border border-neutral-100 transition-shadow dark:border-neutral-800">
       {showPhoto ? (
         <img
+          ref={imgRef}
           src={imageUrl}
           alt=""
           className="duration-normal h-full w-full object-cover transition-transform group-hover:scale-105"
