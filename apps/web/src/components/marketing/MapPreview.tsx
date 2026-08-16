@@ -31,14 +31,14 @@ export function MapPreview({ distanceValue = "12.4 km", etaValue = "18 min" }: M
       <div
         className="absolute inset-0 dark:hidden"
         style={{
-          backgroundImage: "linear-gradient(135deg, #FBFAF7 0%, #F2EEE8 55%, #E9E1D6 100%)",
+          backgroundImage: "linear-gradient(135deg, #FCFBFA 0%, #F5F3F0 55%, #EDEAE4 100%)",
         }}
       />
       <div
         className="absolute inset-0 dark:hidden"
         style={{
           backgroundImage:
-            "radial-gradient(60% 55% at 84% 10%, rgba(232,106,47,0.16), transparent 70%)",
+            "radial-gradient(55% 50% at 85% 8%, rgba(232,106,47,0.08), transparent 70%)",
         }}
       />
       <div
@@ -140,8 +140,11 @@ export function MapPreview({ distanceValue = "12.4 km", etaValue = "18 min" }: M
         </g>
       </svg>
 
-      {/* Pickup marker */}
-      <div className="absolute left-[13%] top-[68%] flex flex-col items-center">
+      {/* Pickup marker — anchored by its bottom edge (not top) so the pin+label
+          grow upward and stay clear of the distance/ETA panel even on the
+          shortest mobile card heights, instead of a fixed top offset that
+          could push the label down into the panel. */}
+      <div className="absolute bottom-[34%] left-[13%] flex flex-col items-center">
         <span className="relative flex h-9 w-9 items-center justify-center">
           <motion.span
             className="absolute inset-0 rounded-full bg-neutral-900/35 dark:bg-white/20"
