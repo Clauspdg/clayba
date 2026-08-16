@@ -97,7 +97,7 @@ export function Hero({
   return (
     <section
       ref={ref}
-      className={cn("relative overflow-hidden bg-neutral-900 px-6 pb-24 pt-24", className)}
+      className={cn("relative overflow-hidden bg-neutral-950 px-6 pb-24 pt-24", className)}
     >
       <motion.div style={{ y: backgroundY }} className="absolute inset-0">
         {showVideo && (
@@ -119,28 +119,43 @@ export function Hero({
         )}
         {!hasCustomBackground && (
           <>
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(232,106,47,0.35),_transparent_55%),radial-gradient(ellipse_at_bottom_right,_rgba(200,91,42,0.3),_transparent_55%)]" />
+            {/*
+             * HOME-03 — full premium-composition rebuild of the no-CMS-media
+             * default (was two soft blobs over a flat dark fill). Deep
+             * graphite base -> controlled copper glow from above -> a wide,
+             * low-opacity "mobility grid" (same line-grid language as
+             * MapPreview, tying the site's map/route visual system into the
+             * Hero) -> two repositioned ambient drift blobs -> a faint
+             * diagonal glass sheen -> an edge vignette for focus. Every
+             * layer stays within the brand's orange family and low opacity
+             * — no neon, no sci-fi glow lines.
+             */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black via-neutral-950 to-neutral-900" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_65%_at_50%_-10%,rgba(232,106,47,0.32),transparent_62%)]" />
             <div
               className="animate-drift absolute inset-0 opacity-[0.08]"
               style={{
-                backgroundImage: "radial-gradient(circle, #FFFFFF 1px, transparent 1px)",
-                backgroundSize: "28px 28px",
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)",
+                backgroundSize: "64px 64px",
               }}
             />
             <motion.div
-              className="bg-brand/30 absolute -left-24 top-1/4 h-72 w-72 rounded-full blur-[100px]"
-              animate={{ x: [0, 30, 0], y: [0, 20, 0] }}
-              transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+              className="bg-brand/25 absolute -right-16 top-0 h-80 w-80 rounded-full blur-[110px]"
+              animate={{ x: [0, -25, 0], y: [0, 25, 0] }}
+              transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div
-              className="bg-brand-700/40 absolute -right-24 bottom-0 h-96 w-96 rounded-full blur-[120px]"
-              animate={{ x: [0, -20, 0], y: [0, -30, 0] }}
-              transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+              className="bg-brand-700/35 absolute -left-24 bottom-0 h-96 w-96 rounded-full blur-[130px]"
+              animate={{ x: [0, 25, 0], y: [0, -20, 0] }}
+              transition={{ duration: 19, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
             />
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.04] via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_85%_at_50%_45%,transparent_45%,rgba(0,0,0,0.4)_100%)]" />
           </>
         )}
         {/* Dark overlay — guarantees text contrast regardless of what sits behind it. */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-neutral-900" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-neutral-950" />
       </motion.div>
       <motion.div style={{ y: contentY, opacity: contentOpacity }} className="relative">
         {children}

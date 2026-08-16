@@ -351,23 +351,35 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className={`flex flex-col gap-4 ${homepage.textAlign === "center" ? "items-center text-center" : "items-start text-left"}`}
+              className={`relative flex flex-col gap-6 ${homepage.textAlign === "center" ? "items-center text-center" : "items-start text-left"}`}
             >
+              {/* HOME-03 — a soft, blurred glow sitting behind the headline
+                  block only (not the whole Hero), separating text from the
+                  busier background layer for depth without a full text-box
+                  panel. `-z-10` keeps it below this column's own siblings
+                  while staying above the Hero's own background layers. */}
+              <div
+                aria-hidden="true"
+                className="bg-brand/20 pointer-events-none absolute -left-16 -top-24 -z-10 h-72 w-72 rounded-full blur-[100px]"
+              />
               <Badge
                 tone="brand"
-                className="bg-brand/15 text-brand-200"
+                className="bg-brand/10 text-brand-200 border-brand/25 border tracking-wide backdrop-blur-sm"
                 style={
                   homepage.accentColor
-                    ? { backgroundColor: `${homepage.accentColor}26`, color: homepage.accentColor }
+                    ? { backgroundColor: `${homepage.accentColor}1A`, color: homepage.accentColor }
                     : undefined
                 }
               >
                 {homepage.eyebrow}
               </Badge>
-              <Heading level={1} className="text-white">
+              <Heading
+                level={1}
+                className="tablet:text-6xl laptop:text-7xl text-5xl leading-[1.05] tracking-tight text-white [text-shadow:0_2px_28px_rgba(0,0,0,0.4)]"
+              >
                 {homepage.title}
               </Heading>
-              <Text size="lg" className="max-w-xl text-neutral-300">
+              <Text size="lg" className="max-w-xl leading-relaxed text-neutral-300">
                 {homepage.subtitle}
               </Text>
               {homepage.introText && (
@@ -382,6 +394,7 @@ export default function HomePage() {
                   <Button
                     size="lg"
                     asChild
+                    className="duration-normal shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_12px_32px_-10px_rgba(232,106,47,0.6)] transition-all hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_18px_40px_-10px_rgba(232,106,47,0.75)]"
                     style={
                       homepage.accentColor ? { backgroundColor: homepage.accentColor } : undefined
                     }
@@ -396,7 +409,7 @@ export default function HomePage() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="border-white/30 text-white hover:bg-white/10 hover:text-white"
+                    className="border-white/15 text-white/90 transition-colors hover:border-white/25 hover:bg-white/5 hover:text-white"
                     asChild
                   >
                     {/* Never show "Become a Driver" marketing copy once the user already has an application/driver record (Part 3) — point them at their real status instead. */}
@@ -413,7 +426,15 @@ export default function HomePage() {
                 )}
               </div>
             </motion.div>
-            <div className="laptop:justify-end flex justify-center">
+            <div className="laptop:justify-end relative flex justify-center">
+              {/* HOME-03 — a wider, softer glow behind the booking card so
+                  it reads as a floating premium object with real depth
+                  against the Hero, without touching BookingCard's own
+                  markup/logic (that's the next micro-sprint). */}
+              <div
+                aria-hidden="true"
+                className="bg-brand/25 pointer-events-none absolute inset-0 -z-10 scale-90 rounded-[2.5rem] blur-[80px]"
+              />
               <BookingCard />
             </div>
           </div>
