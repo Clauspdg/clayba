@@ -91,9 +91,15 @@ export function BookingCard() {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -2 }}
-      className="w-full max-w-md rounded-3xl border border-white/10 bg-white/95 p-5 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_32px_70px_-15px_rgba(232,106,47,0.35)] dark:bg-neutral-900/95"
+      // HOME-04 — refined glass surface: less blur than before (was
+      // backdrop-blur-xl/24px) for a cleaner, less "frosted" read; a
+      // sharper hairline border; an inset top highlight for glass depth;
+      // and a restrained, always-on copper edge glow (was hover-only)
+      // tying the card to the Hero's own accent lighting from HOME-03/
+      // 03.1 — intensifies only slightly on hover, never garish.
+      className="bg-white/93 dark:bg-neutral-900/92 w-full max-w-md rounded-3xl border border-white/15 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5),0_1px_0_0_rgba(232,106,47,0.12),0_20px_50px_-20px_rgba(0,0,0,0.5),0_0_36px_-14px_rgba(232,106,47,0.35)] backdrop-blur-md transition-shadow duration-300 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.55),0_1px_0_0_rgba(232,106,47,0.22),0_24px_60px_-20px_rgba(0,0,0,0.55),0_0_48px_-12px_rgba(232,106,47,0.5)] dark:border-white/10"
     >
-      <h3 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+      <h3 className="mb-2.5 text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
         {t("website.landing.bookingCardTitle")}
       </h3>
 
@@ -155,12 +161,14 @@ export function BookingCard() {
             value={passengers}
             onValueChange={setPassengers}
             options={["1", "2", "3", "4", "5", "6"].map((n) => ({ value: n, label: n }))}
+            className="h-11"
           />
           <Select
             label={t("booking.vehicleLabel")}
             value={vehicleId}
             onValueChange={setVehicleId}
             options={VEHICLE_TYPES.map((v) => ({ value: v.id, label: t(v.nameKey) }))}
+            className="h-11"
           />
         </div>
 
@@ -170,14 +178,14 @@ export function BookingCard() {
             label={t("website.landing.departureDateLabel")}
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="py-2"
+            className="h-11"
           />
           <Input
             type="time"
             label={t("website.landing.departureTimeLabel")}
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="py-2"
+            className="h-11"
           />
         </div>
 
@@ -186,32 +194,61 @@ export function BookingCard() {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={1}
-          className="py-2"
+          className="h-11 resize-none"
         />
 
+        {/* HOME-04 — same computation/conditions as before (no logic
+            change), given clearer visual hierarchy: a bordered surface
+            that only lights up once a real fare exists, a small wallet
+            glyph for context, and a larger, heavier price so the result
+            reads as an intentional reveal rather than a quiet label row. */}
         <motion.div
           key={estimatedFare ?? "empty"}
-          initial={{ opacity: 0.6 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="bg-brand-50 dark:bg-brand-900 flex items-center justify-between rounded-xl px-4 py-2"
+          initial={{ opacity: 0.5, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className={`flex items-center justify-between rounded-xl border px-4 py-2 transition-colors duration-300 ${
+            estimatedFare !== null
+              ? "border-brand/20 bg-brand-50 dark:bg-brand-900/60"
+              : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60"
+          }`}
         >
-          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
-            {t("website.landing.estimatedFareLabel")}
-          </span>
-          <span className="text-brand-700 dark:text-brand-200 text-lg font-bold">
+          <div className="flex items-center gap-2">
+            <span
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                estimatedFare !== null
+                  ? "bg-brand/15 text-brand"
+                  : "bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
+              }`}
+            >
+              <Icon name="wallet" size={14} />
+            </span>
+            <span className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+              {t("website.landing.estimatedFareLabel")}
+            </span>
+          </div>
+          <span className="text-brand-700 dark:text-brand-200 text-xl font-bold tracking-tight">
             {estimatedFare !== null ? `$${estimatedFare.toFixed(2)}` : "—"}
           </span>
         </motion.div>
 
         <div className="tablet:flex-row flex flex-col gap-2">
           <RippleButton className="flex-1">
-            <Button fullWidth onClick={handleFindRide}>
+            <Button
+              fullWidth
+              onClick={handleFindRide}
+              className="duration-normal shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_8px_20px_-8px_rgba(232,106,47,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_12px_28px_-8px_rgba(232,106,47,0.7)]"
+            >
               {t("website.landing.findRideCta")}
             </Button>
           </RippleButton>
           <RippleButton className="flex-1">
-            <Button fullWidth variant="outline" onClick={handlePublishRide}>
+            <Button
+              fullWidth
+              variant="outline"
+              onClick={handlePublishRide}
+              className="border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
               {t("website.landing.publishRideCta")}
             </Button>
           </RippleButton>
@@ -245,24 +282,26 @@ function LocationField({
 }: LocationFieldProps) {
   return (
     <div className="group relative transition-transform duration-200 focus-within:scale-[1.01]">
+      {/* HOME-04 — icon/checkmark `top` recomputed for the field's new
+          unified h-11 height (label row ~26px + half of 44px ≈ 48px). */}
       <Icon
         name={icon}
         size={16}
-        className={`pointer-events-none absolute left-3 top-[42px] z-10 -translate-y-1/2 ${iconClassName ?? "text-neutral-400"}`}
+        className={`pointer-events-none absolute left-3 top-[48px] z-10 -translate-y-1/2 ${iconClassName ?? "text-neutral-400"}`}
       />
       <Input
         label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="py-2 pl-9 pr-9"
+        className="h-11 pl-10 pr-9"
         errorText={errorText}
       />
       {valid && !errorText && (
         <motion.span
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="text-success absolute right-3 top-[42px] -translate-y-1/2"
+          className="text-success absolute right-3 top-[48px] -translate-y-1/2"
         >
           <Icon name="checkCircle" size={16} />
         </motion.span>

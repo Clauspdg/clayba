@@ -25,6 +25,8 @@ export interface SelectProps {
   onValueChange?: (value: string) => void;
   disabled?: boolean;
   name?: string;
+  /** HOME-04 — optional extra classes for the trigger, merged in via `cn` (last wins). Omitting it keeps today's default sizing exactly. */
+  className?: string;
 }
 
 export function Select({
@@ -39,6 +41,7 @@ export function Select({
   onValueChange,
   disabled,
   name,
+  className,
 }: SelectProps) {
   const generatedId = useId();
   const selectId = id ?? generatedId;
@@ -61,6 +64,7 @@ export function Select({
             errorText
               ? "border-danger focus-visible:border-danger focus-visible:ring-danger/40"
               : "border-neutral-200 dark:border-neutral-700",
+            className,
           )}
         >
           <SelectPrimitive.Value placeholder={placeholder} />
