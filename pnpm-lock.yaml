@@ -387,25 +387,16 @@ importers:
 
   functions:
     dependencies:
-      '@the-ride/types':
-        specifier: workspace:*
-        version: link:../packages/types
-      '@the-ride/utils':
-        specifier: workspace:*
-        version: link:../packages/utils
       firebase-admin:
         specifier: ^12.5.0
         version: 12.7.0
       firebase-functions:
         specifier: ^5.1.0
         version: 5.1.1(firebase-admin@12.7.0)
-      zod:
-        specifier: ^3.23.0
-        version: 3.25.76
     devDependencies:
-      '@the-ride/config':
-        specifier: workspace:*
-        version: link:../packages/config
+      esbuild:
+        specifier: ^0.21.5
+        version: 0.21.5
       firebase-functions-test:
         specifier: ^3.3.0
         version: 3.5.0(firebase-admin@12.7.0)(firebase-functions@5.1.1(firebase-admin@12.7.0))(jest@29.7.0(@types/node@22.20.1))
@@ -415,6 +406,9 @@ importers:
       vitest:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.1)(jsdom@20.0.3)(lightningcss@1.27.0)(terser@5.49.0)
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
 
   packages/api:
     dependencies:

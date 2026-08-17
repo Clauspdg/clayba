@@ -1,3 +1,3 @@
-import { nodeConfig } from "@the-ride/config/eslint/node";
+import { nodeConfig } from "../packages/config/eslint/node.mjs";
 
 export default [...nodeConfig];
