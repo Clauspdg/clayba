@@ -18,6 +18,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
+import { isSafeInternalPath } from "@/lib/safe-redirect";
+
 type RoleChoice = "passenger" | "driver";
 
 function RegisterPageContent() {
@@ -52,8 +54,11 @@ function RegisterPageContent() {
       // explicit in-form choice), but otherwise relay whatever `?next=`
       // this page itself was opened with (e.g. BookingCard sending a
       // signed-out visitor here mid-booking) through to verify-email,
-      // which already knows how to honor it.
-      const next = role === "driver" ? "/become-a-driver" : searchParams.get("next");
+      // which already knows how to honor it. BOOKING-03 — validated so a
+      // crafted `/register?next=https://evil.com` link can't ride along.
+      const rawNext = searchParams.get("next");
+      const next =
+        role === "driver" ? "/become-a-driver" : isSafeInternalPath(rawNext) ? rawNext : null;
       router.push(next ? `/verify-email?next=${encodeURIComponent(next)}` : "/verify-email");
     } catch {
       // `error` from useAuth() already carries the message; the form re-renders with it below.

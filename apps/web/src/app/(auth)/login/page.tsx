@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useUserExperience } from "@/hooks/useUserExperience";
+import { isSafeInternalPath } from "@/lib/safe-redirect";
 
 const SOCIAL_PROVIDERS = [
   { id: "google", label: "Google" },
@@ -64,7 +65,8 @@ function LoginPageContent() {
       redirectTimer.current = null;
     }
     if (status !== "authenticated" || experienceLoading) return;
-    const next = searchParams.get("next");
+    const rawNext = searchParams.get("next");
+    const next = isSafeInternalPath(rawNext) ? rawNext : null;
     redirectTimer.current = setTimeout(() => {
       router.replace(next || preferredLandingRoute || "/dashboard");
     }, 1200);

@@ -14,12 +14,17 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
+import { isSafeInternalPath } from "@/lib/safe-redirect";
+
 function VerifyEmailContent() {
   const { t } = useTranslation();
   const { session, error, applyActionCode, sendEmailVerification, reloadUser } = useAuth();
   const searchParams = useSearchParams();
   const oobCode = searchParams.get("oobCode");
-  const nextHref = searchParams.get("next") || "/dashboard";
+  // BOOKING-03 — validated so a crafted `?next=https://evil.com` link
+  // can't turn this into an open redirect once "Continue" is clicked.
+  const rawNext = searchParams.get("next");
+  const nextHref = isSafeInternalPath(rawNext) ? rawNext : "/dashboard";
 
   const [applying, setApplying] = useState(Boolean(oobCode));
   const [applied, setApplied] = useState(false);
