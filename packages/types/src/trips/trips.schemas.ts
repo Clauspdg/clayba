@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-import { DISPATCH_EVENT_TYPES, DispatchQueueStatus, OfferStatus, TripRequestStatus, TripStatus } from "./trips.enums";
+import { firestoreDateSchema } from "../common/firestore-date.schema";
+import {
+  DISPATCH_EVENT_TYPES,
+  DispatchQueueStatus,
+  OfferStatus,
+  TripRequestStatus,
+  TripStatus,
+} from "./trips.enums";
 
 export const tripStatusSchema = z.nativeEnum(TripStatus);
 export const tripRequestStatusSchema = z.nativeEnum(TripRequestStatus);
@@ -29,13 +36,13 @@ export const tripSchema = z.object({
   status: tripStatusSchema,
   pickup: geoLocationSchema,
   dropoff: geoLocationSchema,
-  requestedAt: z.date(),
-  startedAt: z.date().optional(),
-  completedAt: z.date().optional(),
-  cancelledAt: z.date().optional(),
+  requestedAt: firestoreDateSchema,
+  startedAt: firestoreDateSchema.optional(),
+  completedAt: firestoreDateSchema.optional(),
+  cancelledAt: firestoreDateSchema.optional(),
   fareAmount: z.number().min(0).optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: firestoreDateSchema,
+  updatedAt: firestoreDateSchema,
 });
 
 export type Trip = z.infer<typeof tripSchema>;
@@ -90,14 +97,14 @@ export const tripRequestSchema = z.object({
   /** Driver ids offered this request, in dispatch order — see `packages/utils/src/trips/dispatch.ts`. */
   offeredDriverIds: z.array(z.string()).default([]),
   assignedDriverId: z.string().optional(),
-  driverResponseDeadline: z.date().optional(),
-  cancelledAt: z.date().optional(),
+  driverResponseDeadline: firestoreDateSchema.optional(),
+  cancelledAt: firestoreDateSchema.optional(),
   cancellationReason: z.string().optional(),
-  requestedAt: z.date(),
+  requestedAt: firestoreDateSchema,
   /** Optional at `draft`/`estimating` — set once the request enters `searching_driver`. */
-  expiresAt: z.date().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date().optional(),
+  expiresAt: firestoreDateSchema.optional(),
+  createdAt: firestoreDateSchema,
+  updatedAt: firestoreDateSchema.optional(),
 });
 
 export type TripRequest = z.infer<typeof tripRequestSchema>;
@@ -127,7 +134,7 @@ export const ratingSchema = z.object({
   rateeId: z.string().min(1),
   score: z.number().int().min(1).max(5),
   comment: z.string().optional(),
-  createdAt: z.date(),
+  createdAt: firestoreDateSchema,
 });
 
 export type Rating = z.infer<typeof ratingSchema>;
@@ -140,7 +147,7 @@ export const reviewSchema = z.object({
   targetId: z.string().min(1),
   content: z.string().min(1),
   isModerated: z.boolean().default(false),
-  createdAt: z.date(),
+  createdAt: firestoreDateSchema,
 });
 
 export type Review = z.infer<typeof reviewSchema>;
@@ -163,13 +170,13 @@ export const rideOfferSchema = z.object({
   distanceMeters: z.number().min(0),
   etaSeconds: z.number().min(0),
   estimatedEarnings: z.number().min(0),
-  createdAt: z.date(),
-  sentAt: z.date().optional(),
-  viewedAt: z.date().optional(),
-  respondedAt: z.date().optional(),
-  expiresAt: z.date(),
+  createdAt: firestoreDateSchema,
+  sentAt: firestoreDateSchema.optional(),
+  viewedAt: firestoreDateSchema.optional(),
+  respondedAt: firestoreDateSchema.optional(),
+  expiresAt: firestoreDateSchema,
   declineReason: z.string().optional(),
-  updatedAt: z.date(),
+  updatedAt: firestoreDateSchema,
 });
 
 export type RideOffer = z.infer<typeof rideOfferSchema>;
@@ -202,10 +209,10 @@ export const dispatchQueueSchema = z.object({
   expansionAttempt: z.number().int().min(0).default(0),
   offeredDriverIds: z.array(z.string()).default([]),
   currentOfferId: z.string().optional(),
-  nextExpansionAt: z.date().optional(),
-  searchStartedAt: z.date(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  nextExpansionAt: firestoreDateSchema.optional(),
+  searchStartedAt: firestoreDateSchema,
+  createdAt: firestoreDateSchema,
+  updatedAt: firestoreDateSchema,
 });
 
 export type DispatchQueue = z.infer<typeof dispatchQueueSchema>;
@@ -224,12 +231,15 @@ export const dispatchEventSchema = z.object({
   offerId: z.string().optional(),
   type: dispatchEventTypeSchema,
   metadata: z.record(z.unknown()).optional(),
-  createdAt: z.date(),
+  createdAt: firestoreDateSchema,
 });
 
 export type DispatchEvent = z.infer<typeof dispatchEventSchema>;
 
-export const createDispatchEventInputSchema = dispatchEventSchema.omit({ id: true, createdAt: true });
+export const createDispatchEventInputSchema = dispatchEventSchema.omit({
+  id: true,
+  createdAt: true,
+});
 export type CreateDispatchEventInput = z.infer<typeof createDispatchEventInputSchema>;
 
 /** One candidate's evaluated score within a `MatchingLog` — see `packages/utils/src/trips/matching.ts`. */
@@ -255,7 +265,7 @@ export const matchingLogSchema = z.object({
   candidatesEvaluated: z.number().int().min(0),
   candidatesEligible: z.number().int().min(0),
   topCandidates: z.array(matchingLogCandidateSchema).default([]),
-  ranAt: z.date(),
+  ranAt: firestoreDateSchema,
 });
 
 export type MatchingLog = z.infer<typeof matchingLogSchema>;
