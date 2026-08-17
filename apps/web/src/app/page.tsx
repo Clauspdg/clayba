@@ -267,9 +267,21 @@ export default function HomePage() {
     ),
     mobileApp: <MobileAppSection />,
     driverCta: (
-      <section className="mx-auto max-w-6xl px-6 py-24">
-        <Reveal variant="scale">
-          <div className="to-brand-900 shadow-elevation4 relative flex flex-col items-center gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 px-8 py-16 text-center">
+      // HOME-08 — a warm wash at the top continues Mobile App's gradient
+      // instead of handing off to plain white, and two ambient glows behind
+      // the card (same language as Safety/Stats) give it real presence
+      // rather than a flat card dropped on the page.
+      <section className="from-brand-50/60 dark:from-brand-900/10 relative overflow-hidden bg-gradient-to-b to-transparent px-6 py-24">
+        <div
+          aria-hidden="true"
+          className="bg-brand/15 pointer-events-none absolute -left-20 top-8 h-64 w-64 rounded-full blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="bg-brand/10 pointer-events-none absolute -right-16 bottom-0 h-72 w-72 rounded-full blur-3xl"
+        />
+        <Reveal variant="scale" className="relative mx-auto max-w-6xl">
+          <div className="to-brand-900 relative flex flex-col items-center gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 px-8 py-16 text-center shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_32px_64px_-24px_rgba(0,0,0,0.5)]">
             {showDriverVideo && (
               <video
                 src={driverCta.backgroundVideoUrl}

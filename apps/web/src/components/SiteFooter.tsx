@@ -83,8 +83,19 @@ export function SiteFooter() {
   }
 
   return (
-    <footer className="border-t border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
-      <div className="mx-auto max-w-6xl px-6 py-16">
+    <footer className="relative border-t border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
+      {/* HOME-08 — a whisper-thin copper line marks the page's actual end,
+          the same "chapter break" language used elsewhere (Stats' inset
+          highlight, Safety's glows) instead of a plain flat divider. */}
+      <div
+        aria-hidden="true"
+        className="via-brand/40 pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent"
+      />
+      <div
+        aria-hidden="true"
+        className="from-brand/5 dark:from-brand/10 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b to-transparent"
+      />
+      <div className="relative mx-auto max-w-6xl px-6 py-16">
         <div className="laptop:grid-cols-[1.3fr_1fr_1fr_1fr_1.2fr] grid gap-10">
           <div className="flex flex-col gap-3">
             {footer.logoImageUrl ? (
