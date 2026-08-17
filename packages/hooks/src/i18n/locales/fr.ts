@@ -338,12 +338,32 @@ export const fr = {
     driverEta: "Arrivée dans {minutes} min",
     confirmed: "Votre trajet est réservé !",
     currentLocation: "Position actuelle",
-    noPlacesTitle: "Aucun lieu enregistré pour le moment",
-    noPlacesDescription:
-      "Ajoutez d'abord un lieu enregistré pour que nous sachions où vous prendre en charge et vous déposer.",
     selectPlace: "Sélectionner un lieu",
     selected: "Sélectionné",
     useCurrentLocation: "Utiliser la position actuelle",
+    pickupPlaceholder: "Entrez l'adresse de prise en charge",
+    destinationPlaceholder: "Entrez l'adresse de destination",
+    stopPlaceholder: "Entrez un arrêt",
+    savedPlacesHint: "Vos lieux enregistrés",
+    addressLookupUnavailable:
+      "La recherche d'adresse n'est pas encore disponible — essayez « Utiliser la position actuelle » ou un lieu enregistré.",
+    locatingLabel: "Localisation…",
+    locationDenied:
+      "Autorisation de localisation refusée — entrez votre lieu de prise en charge manuellement.",
+    locationUnavailable:
+      "Impossible de déterminer votre position — entrez votre lieu de prise en charge manuellement.",
+    locationTimeout:
+      "La demande de localisation a expiré — entrez votre lieu de prise en charge manuellement.",
+    locationUnsupported:
+      "Votre navigateur ne prend pas en charge les services de localisation — entrez votre lieu de prise en charge manuellement.",
+    passengerCountLabel: "Passagers",
+    scheduleNow: "Maintenant",
+    scheduleLater: "Planifier pour plus tard",
+    scheduledDateLabel: "Date",
+    scheduledTimeLabel: "Heure",
+    scheduledNotSupportedTitle: "Les trajets planifiés ne sont pas encore disponibles",
+    scheduledNotSupportedBody: "Repassez sur « Maintenant » pour réserver immédiatement.",
+    noCategoriesForPassengerCount: "Aucune option de trajet disponible pour {count} passagers.",
   },
   becomeDriver: {
     entryPoint: {
