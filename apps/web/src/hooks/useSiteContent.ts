@@ -359,6 +359,19 @@ export function useDriverCtaContent(): DriverCtaContentResolved {
   };
 }
 
+export interface VehicleCategoriesResult {
+  categories: VehicleCategory[];
+  /**
+   * BOOKING-04 — set only on a genuine Firestore error, never for
+   * "queried fine, zero active categories exist" (that's just `[]`,
+   * which correctly falls back to `fallback` below either way). Lets a
+   * caller show an honest notice instead of presenting fallback data as
+   * if it were confirmed real, which the old bare-array return couldn't
+   * distinguish at all.
+   */
+  error: string | null;
+}
+
 /**
  * Ride Categories (Sprint 7.2) — reads the real `vehicleCategories`
  * collection (see `apps/web/src/lib/site-content.ts`'s comment for why
@@ -366,12 +379,23 @@ export function useDriverCtaContent(): DriverCtaContentResolved {
  * are plain strings, not bilingual — shown as-is regardless of locale.
  * All-or-nothing fallback like the other lists here.
  */
-export function useVehicleCategories(fallback: VehicleCategory[]): VehicleCategory[] {
+export function useVehicleCategories(fallback: VehicleCategory[]): VehicleCategoriesResult {
   const [items, setItems] = useState<VehicleCategory[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => subscribeVehicleCategories(setItems), []);
+  useEffect(
+    () =>
+      subscribeVehicleCategories(
+        (next) => {
+          setItems(next);
+          setError(null);
+        },
+        (message) => setError(message),
+      ),
+    [],
+  );
 
-  return items.length > 0 ? items : fallback;
+  return { categories: items.length > 0 ? items : fallback, error };
 }
 
 export interface ResolvedStatistic {

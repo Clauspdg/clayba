@@ -160,8 +160,16 @@ export function subscribeNavigationContent(
  * site reads it directly rather than a second, CMS-only copy, so displayed
  * pricing never drifts from what booking actually charges.
  */
+/**
+ * BOOKING-04 — `onError` is optional (existing callers that don't need to
+ * distinguish "genuinely zero active categories" from "the query failed"
+ * can omit it, matching every other subscribe* in this file); when passed,
+ * a real Firestore error is reported instead of being silently collapsed
+ * into an empty result.
+ */
 export function subscribeVehicleCategories(
   onNext: (items: VehicleCategory[]) => void,
+  onError?: (message: string) => void,
 ): Unsubscribe {
   return onSnapshot(
     query(
@@ -170,6 +178,9 @@ export function subscribeVehicleCategories(
       orderBy("sortOrder", "asc"),
     ),
     (snapshot) => onNext(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as VehicleCategory)),
-    () => onNext([]),
+    (err) => {
+      onNext([]);
+      onError?.(err.message);
+    },
   );
 }

@@ -1,4 +1,5 @@
 import type { IconName } from "@the-ride/ui";
+import type { VehicleCategory } from "@the-ride/types";
 
 export interface VehicleTypeInfo {
   id: string;
@@ -104,13 +105,74 @@ export const VEHICLE_TYPES: VehicleTypeInfo[] = [
   },
 ];
 
-/** Deterministic simulated fare (Sprint 6: "The fare calculation can remain simulated for now") — stable per input rather than random on every render. */
+/**
+ * Deterministic simulated fare (Sprint 6: "The fare calculation can
+ * remain simulated for now") — stable per input rather than random on
+ * every render. Computation is untouched by BOOKING-04; only the
+ * parameter type was narrowed to the two fields actually read, so a real
+ * `VehicleCategory` (a different, non-`VehicleTypeInfo` shape) can be
+ * passed without fabricating placeholder values for unused fields.
+ */
 export function estimateSimulatedFare(
   pickup: string,
   destination: string,
-  vehicle: VehicleTypeInfo,
+  vehicle: Pick<VehicleTypeInfo, "basePrice" | "perMinuteFactor">,
 ): number {
   const signal = pickup.trim().length + destination.trim().length || 6;
   const simulatedMinutes = 8 + signal * 1.4;
   return Math.round((vehicle.basePrice + simulatedMinutes * vehicle.perMinuteFactor) * 100) / 100;
+}
+
+/**
+ * BOOKING-04 — the shared "zero real categories configured yet" fallback,
+ * shaped as real `VehicleCategory` records so both homepage surfaces
+ * (`VehicleTypeGrid`, `BookingCard`) can hand it straight to
+ * `useVehicleCategories` instead of each hand-rolling their own mapping
+ * from the bundled `VEHICLE_TYPES`. `perMinuteRate` is populated from
+ * `perMinuteFactor` (the grid never read it, since it only ever displays
+ * `baseFare`, but `BookingCard`'s simulated-fare calculation needs it).
+ */
+export function buildDefaultVehicleCategories(t: (key: string) => string): VehicleCategory[] {
+  return VEHICLE_TYPES.map((vehicle, index) => ({
+    id: vehicle.id,
+    name: t(vehicle.nameKey),
+    description: t(vehicle.descriptionKey),
+    icon: vehicle.icon,
+    color: "#E86A2F",
+    imageUrl: vehicle.imageUrl,
+    baseFare: vehicle.basePrice,
+    perKmRate: 0,
+    perMinuteRate: vehicle.perMinuteFactor,
+    minimumFare: 0,
+    maximumPassengers: vehicle.capacity,
+    isActive: true,
+    sortOrder: index,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }));
+}
+
+/**
+ * BOOKING-04 — the safest presentation mapping from a real, admin-entered
+ * Firestore category (arbitrary name, no `imageUrl` of its own) to one of
+ * the six bundled, licensed photos: match against the same semantic names
+ * the bundled set itself uses (EN/FR). A category with no photo AND no
+ * name match falls through to the existing generic `VehicleIllustration`
+ * instead of guessing — never assigning a photo that might not actually
+ * represent the vehicle class an admin meant.
+ */
+const BUNDLED_IMAGE_BY_KEYWORD: { keywords: string[]; imageUrl: string }[] = [
+  { keywords: ["economy", "économique", "eco"], imageUrl: "/media/vehicles/economy.jpg" },
+  { keywords: ["comfort", "confort"], imageUrl: "/media/vehicles/comfort.jpg" },
+  { keywords: ["suv"], imageUrl: "/media/vehicles/suv.jpg" },
+  { keywords: ["van", "fourgonnette"], imageUrl: "/media/vehicles/van.jpg" },
+  { keywords: ["premium"], imageUrl: "/media/vehicles/premium.jpg" },
+  { keywords: ["luxury", "luxe"], imageUrl: "/media/vehicles/luxury.jpg" },
+];
+
+export function getBundledImageForCategoryName(name: string): string | undefined {
+  const normalized = name.trim().toLowerCase();
+  return BUNDLED_IMAGE_BY_KEYWORD.find((entry) =>
+    entry.keywords.some((keyword) => normalized.includes(keyword)),
+  )?.imageUrl;
 }

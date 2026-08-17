@@ -1,5 +1,6 @@
 "use client";
 
+import { useVehicleCategories } from "@/hooks/useSiteContent";
 import {
   Button,
   Icon,
@@ -16,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { RippleButton } from "./RippleButton";
-import { estimateSimulatedFare, VEHICLE_TYPES } from "./vehicle-types";
+import { buildDefaultVehicleCategories, estimateSimulatedFare } from "./vehicle-types";
 
 /**
  * Real, functional homepage booking widget (Sprint 6, polished in Sprint
@@ -37,20 +38,38 @@ export function BookingCard() {
   const [destination, setDestination] = useState("");
   const [stops, setStops] = useState<string[]>([]);
   const [passengers, setPassengers] = useState("1");
-  const [vehicleId, setVehicleId] = useState(VEHICLE_TYPES[0]!.id);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [touched, setTouched] = useState(false);
 
+  // BOOKING-04 — the real `vehicleCategories` collection (same source
+  // `/book` and VehicleTypeGrid read), so this card's dropdown never
+  // diverges from what's actually configured/bookable. Filtered by the
+  // passengers this same form already collects, mirroring /book's own
+  // `eligibleCategories` — a category too small for the chosen party
+  // never appears as pickable here either.
+  const { categories: allCategories, error: categoriesError } = useVehicleCategories(
+    buildDefaultVehicleCategories(t),
+  );
+  const categories = useMemo(
+    () => allCategories.filter((c) => c.maximumPassengers >= Number(passengers)),
+    [allCategories, passengers],
+  );
   const vehicle = useMemo(
-    () => VEHICLE_TYPES.find((v) => v.id === vehicleId) ?? VEHICLE_TYPES[0]!,
-    [vehicleId],
+    () => categories.find((c) => c.id === selectedCategoryId) ?? categories[0] ?? null,
+    [categories, selectedCategoryId],
   );
   const estimatedFare = useMemo(
     () =>
-      pickup.trim() && destination.trim()
-        ? estimateSimulatedFare(pickup, destination, vehicle)
+      vehicle && pickup.trim() && destination.trim()
+        ? // Computation itself untouched this sprint (BOOKING-05 owns fare
+          // integrity) — just fed real basePrice/perMinuteFactor numbers.
+          estimateSimulatedFare(pickup, destination, {
+            basePrice: vehicle.baseFare,
+            perMinuteFactor: vehicle.perMinuteRate,
+          })
         : null,
     [pickup, destination, vehicle],
   );
@@ -77,11 +96,12 @@ export function BookingCard() {
     // BOOKING-01 fix — carry what /book can actually use: pickup/destination
     // text (still resolved there via the same manual-entry/geocode path),
     // real stops, passenger count, and a chosen date/time (mapped to /book's
-    // own Now/Later toggle). Deliberately NOT carried: this card's
-    // `vehicleId` (a different ID space than the real Firestore
-    // `vehicleCategories` /book reads — see docs/booking-handoff-audit.md)
-    // and `notes` (no field for it on /book; adding one is a schema change,
-    // not a handoff fix).
+    // own Now/Later toggle). Deliberately NOT carried: the selected vehicle
+    // category (BOOKING-04 made this card's IDs real, matching /book's, but
+    // carrying a *selection* forward is a separate handoff decision this
+    // sprint didn't ask for — /book already re-derives real pricing for
+    // whatever the passenger picks there) and `notes` (no field for it on
+    // /book; adding one is a schema change, not a handoff fix).
     const params = new URLSearchParams({ pickup: pickup.trim(), destination: destination.trim() });
     for (const stop of stops) {
       if (stop.trim()) params.append("stop", stop.trim());
@@ -185,12 +205,13 @@ export function BookingCard() {
           />
           <Select
             label={t("booking.vehicleLabel")}
-            value={vehicleId}
-            onValueChange={setVehicleId}
-            options={VEHICLE_TYPES.map((v) => ({ value: v.id, label: t(v.nameKey) }))}
+            value={vehicle?.id ?? ""}
+            onValueChange={setSelectedCategoryId}
+            options={categories.map((c) => ({ value: c.id, label: c.name }))}
             className="h-11"
           />
         </div>
+        {categoriesError && <p className="text-danger text-xs">{categoriesError}</p>}
 
         <div className="grid grid-cols-2 gap-3">
           <Input
