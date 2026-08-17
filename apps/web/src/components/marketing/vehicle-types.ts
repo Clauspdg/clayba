@@ -11,7 +11,13 @@ export interface VehicleTypeInfo {
   hasAc: boolean;
   hasWifi: boolean;
   rating: number;
-  /** Simulated base fare (Sprint 6: "fare calculation can remain simulated for now"). */
+  /**
+   * BOOKING-05 — no longer feeds a homepage-displayed fare (the fake
+   * string-length "simulated fare" was removed; see `docs/booking-fare-
+   * integrity.md`). Still real, meaningful default catalog pricing:
+   * `buildDefaultVehicleCategories()` maps this into `baseFare` for both
+   * homepage surfaces' "zero real categories configured yet" fallback.
+   */
   basePrice: number;
   perMinuteFactor: number;
   /** Bundled local photo shown on the homepage Ride Categories card (HOME-05B.1) — purely cosmetic, falls back to VehicleIllustration if unset/unloadable. See docs/vehicle-media-license.md. */
@@ -104,24 +110,6 @@ export const VEHICLE_TYPES: VehicleTypeInfo[] = [
     imageUrl: "/media/vehicles/luxury.jpg",
   },
 ];
-
-/**
- * Deterministic simulated fare (Sprint 6: "The fare calculation can
- * remain simulated for now") — stable per input rather than random on
- * every render. Computation is untouched by BOOKING-04; only the
- * parameter type was narrowed to the two fields actually read, so a real
- * `VehicleCategory` (a different, non-`VehicleTypeInfo` shape) can be
- * passed without fabricating placeholder values for unused fields.
- */
-export function estimateSimulatedFare(
-  pickup: string,
-  destination: string,
-  vehicle: Pick<VehicleTypeInfo, "basePrice" | "perMinuteFactor">,
-): number {
-  const signal = pickup.trim().length + destination.trim().length || 6;
-  const simulatedMinutes = 8 + signal * 1.4;
-  return Math.round((vehicle.basePrice + simulatedMinutes * vehicle.perMinuteFactor) * 100) / 100;
-}
 
 /**
  * BOOKING-04 — the shared "zero real categories configured yet" fallback,

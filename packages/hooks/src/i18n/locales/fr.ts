@@ -592,7 +592,7 @@ export const fr = {
       departureDateLabel: "Date",
       departureTimeLabel: "Heure",
       notesLabel: "Notes (facultatif)",
-      estimatedFareLabel: "Tarif estimé",
+      fareAfterRouteMessage: "Tarif calculé après confirmation de l'itinéraire",
       findRideCta: "Trouver un trajet",
       publishRideCta: "Publier un trajet",
       bookingSignUpPrompt: "Créez un compte gratuit pour finaliser votre réservation.",

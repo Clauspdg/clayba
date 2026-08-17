@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { RippleButton } from "./RippleButton";
-import { buildDefaultVehicleCategories, estimateSimulatedFare } from "./vehicle-types";
+import { buildDefaultVehicleCategories } from "./vehicle-types";
 
 /**
  * Real, functional homepage booking widget (Sprint 6, polished in Sprint
@@ -26,7 +26,9 @@ import { buildDefaultVehicleCategories, estimateSimulatedFare } from "./vehicle-
  * flow (`apps/web/src/app/(passenger)/book`) which does the real booking
  * against real saved places. "Find a ride" routes a signed-in visitor
  * straight into that real flow; a signed-out visitor is sent to register
- * first. Fare is explicitly simulated per the sprint brief.
+ * first. BOOKING-05 — this card has no geocoding, so it never shows a
+ * dollar amount; see docs/booking-fare-integrity.md for why and what
+ * replaced the earlier fabricated estimate.
  */
 export function BookingCard() {
   const { t } = useTranslation();
@@ -60,18 +62,6 @@ export function BookingCard() {
   const vehicle = useMemo(
     () => categories.find((c) => c.id === selectedCategoryId) ?? categories[0] ?? null,
     [categories, selectedCategoryId],
-  );
-  const estimatedFare = useMemo(
-    () =>
-      vehicle && pickup.trim() && destination.trim()
-        ? // Computation itself untouched this sprint (BOOKING-05 owns fare
-          // integrity) — just fed real basePrice/perMinuteFactor numbers.
-          estimateSimulatedFare(pickup, destination, {
-            basePrice: vehicle.baseFare,
-            perMinuteFactor: vehicle.perMinuteRate,
-          })
-        : null,
-    [pickup, destination, vehicle],
   );
 
   function addStop() {
@@ -238,40 +228,21 @@ export function BookingCard() {
           className="h-11 resize-none"
         />
 
-        {/* HOME-04 — same computation/conditions as before (no logic
-            change), given clearer visual hierarchy: a bordered surface
-            that only lights up once a real fare exists, a small wallet
-            glyph for context, and a larger, heavier price so the result
-            reads as an intentional reveal rather than a quiet label row. */}
-        <motion.div
-          key={estimatedFare ?? "empty"}
-          initial={{ opacity: 0.5, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className={`flex items-center justify-between rounded-xl border px-4 py-2 transition-colors duration-300 ${
-            estimatedFare !== null
-              ? "border-brand/20 bg-brand-50 dark:bg-brand-900"
-              : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                estimatedFare !== null
-                  ? "bg-brand/15 text-brand"
-                  : "bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
-              }`}
-            >
-              <Icon name="wallet" size={14} />
-            </span>
-            <span className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
-              {t("website.landing.estimatedFareLabel")}
-            </span>
-          </div>
-          <span className="text-brand-700 dark:text-brand-200 text-xl font-bold tracking-tight">
-            {estimatedFare !== null ? `$${estimatedFare.toFixed(2)}` : "—"}
+        {/* BOOKING-05 — this card has no resolved coordinates (free-text
+            pickup/destination only, no geocoding here) and no route, so it
+            can never produce a real fare. The old "Estimated fare: $X.XX"
+            was computed from string length, not distance — a fabricated
+            number presented as if it meant something. Replaced with an
+            honest, non-monetary notice; the real fare appears on /book
+            once a route actually resolves. */}
+        <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-900/60">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500">
+            <Icon name="info" size={14} />
           </span>
-        </motion.div>
+          <span className="text-sm text-neutral-600 dark:text-neutral-300">
+            {t("website.landing.fareAfterRouteMessage")}
+          </span>
+        </div>
 
         <div className="tablet:flex-row flex flex-col gap-2">
           <RippleButton className="flex-1">

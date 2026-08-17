@@ -575,7 +575,7 @@ export const en = {
       departureDateLabel: "Date",
       departureTimeLabel: "Time",
       notesLabel: "Notes (optional)",
-      estimatedFareLabel: "Estimated fare",
+      fareAfterRouteMessage: "Fare calculated after route confirmation",
       findRideCta: "Find a ride",
       publishRideCta: "Publish a ride",
       bookingSignUpPrompt: "Create a free account to complete your booking.",
