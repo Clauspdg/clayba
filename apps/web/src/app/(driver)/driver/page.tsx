@@ -5,6 +5,7 @@ import { useUserExperience } from "@/hooks/useUserExperience";
 import {
   getActiveSuspensionForDriver,
   getVehicle,
+  setOwnAvailabilityStatus,
   subscribeCurrentDriverTrip,
   subscribeMyRideOffers,
 } from "@the-ride/firebase/client";
@@ -18,6 +19,7 @@ import {
   Icon,
   LoadingState,
   Text,
+  useToast,
   useTranslation,
 } from "@the-ride/ui";
 import {
@@ -164,9 +166,11 @@ function RestrictedDriverHome({ driver }: { driver: Driver }) {
  */
 function ActiveDriverHome({ driver }: { driver: Driver }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [vehicle, setVehicle] = useState<Vehicle | null | undefined>(undefined);
   const [currentTrip, setCurrentTrip] = useState<Trip | null | undefined>(undefined);
   const [pendingOffer, setPendingOffer] = useState<RideOffer | null | undefined>(undefined);
+  const [presenceBusy, setPresenceBusy] = useState(false);
 
   useEffect(() => {
     if (!driver.vehicleId) {
@@ -204,6 +208,27 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
   const eligibility = getOnlineEligibility(driver, vehicle ?? null);
   const expiringDocuments = getExpiringDocuments(driver.documents);
   const isOnline = driver.availabilityStatus !== DriverAvailabilityStatus.OFFLINE;
+
+  /**
+   * FLOW-02A — a genuine Firestore write (`setOwnAvailabilityStatus`),
+   * not local state: `driver.availabilityStatus` above comes from
+   * `useUserExperience()`, which `RequireDriverAccess` already keeps
+   * live via `subscribeOwnDriverRecord` — so a successful write here
+   * flows back through that same real-time path and `isOnline` updates
+   * on its own, no optimistic local state needed.
+   */
+  async function handleToggleOnline(
+    next: DriverAvailabilityStatus.ONLINE | DriverAvailabilityStatus.OFFLINE,
+  ) {
+    setPresenceBusy(true);
+    try {
+      await setOwnAvailabilityStatus(webFirestore, driver.id, next);
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+    } finally {
+      setPresenceBusy(false);
+    }
+  }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -255,16 +280,28 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
                 <Text size="sm" tone="muted">
                   {t("driverSpace.home.waitingForRequestsBody")}
                 </Text>
-              </div>
-            ) : eligibility.eligible ? (
-              <>
-                <Button size="lg" fullWidth disabled>
-                  {t("driverSpace.home.goOnlineCta")}
-                </Button>
                 <Text size="xs" tone="muted">
                   {t("driverSpace.home.liveDispatchGapBody")}
                 </Text>
-              </>
+                <Button
+                  size="lg"
+                  fullWidth
+                  variant="outline"
+                  isLoading={presenceBusy}
+                  onClick={() => void handleToggleOnline(DriverAvailabilityStatus.OFFLINE)}
+                >
+                  {t("driverSpace.home.goOfflineCta")}
+                </Button>
+              </div>
+            ) : eligibility.eligible ? (
+              <Button
+                size="lg"
+                fullWidth
+                isLoading={presenceBusy}
+                onClick={() => void handleToggleOnline(DriverAvailabilityStatus.ONLINE)}
+              >
+                {t("driverSpace.home.goOnlineCta")}
+              </Button>
             ) : (
               <>
                 <Button size="lg" fullWidth disabled>

@@ -92,9 +92,45 @@ service cloud.firestore {
       // reads this doc for every signed-in user to check driver status) —
       // without this guard, that's the common case, not an edge case.
       allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher', 'support']));
-      // All mutations (approve/suspend/reactivate/warn/terminate) go through
-      // DriversRepository server-side only.
-      allow write: if isAdmin();
+
+      // FLOW-02A — the one self-service mutation a driver may make
+      // directly: toggling their OWN `availabilityStatus` between
+      // 'online' and 'offline' (the only two states this sprint covers —
+      // 'available'/'busy'/'on_trip'/etc. all require the dispatch engine
+      // and stay admin-only). Every other field — including
+      // `status` (DriverAccountStatus), documents, score, vehicle — must
+      // be provably unchanged, so this can never be used to self-approve,
+      // self-reactivate, or touch anything but presence.
+      function isOwnAvailabilityToggle() {
+        return isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && resource.data.status == 'active'
+          && request.resource.data.status == resource.data.status
+          && resource.data.availabilityStatus in ['online', 'offline']
+          && request.resource.data.availabilityStatus in ['online', 'offline']
+          && request.resource.data.availabilityStatus != resource.data.availabilityStatus
+          && request.resource.data.isOnline == (request.resource.data.availabilityStatus == 'online')
+          && request.resource.data.isAvailable == false
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.applicationId == resource.data.applicationId
+          && request.resource.data.get('vehicleId', null) == resource.data.get('vehicleId', null)
+          && request.resource.data.documents == resource.data.documents
+          && request.resource.data.rating == resource.data.rating
+          && request.resource.data.completedTrips == resource.data.completedTrips
+          && request.resource.data.warningsCount == resource.data.warningsCount
+          && request.resource.data.score == resource.data.score
+          && request.resource.data.get('lastKnownLocation', null) == resource.data.get('lastKnownLocation', null)
+          && request.resource.data.get('lastLocationUpdatedAt', null) == resource.data.get('lastLocationUpdatedAt', null)
+          && request.resource.data.acceptanceRate == resource.data.acceptanceRate
+          && request.resource.data.cancellationRate == resource.data.cancellationRate
+          && request.resource.data.activeJobsCount == resource.data.activeJobsCount
+          && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      // All other mutations (approve/suspend/reactivate/warn/terminate) go
+      // through DriversRepository server-side only.
+      allow update: if isAdmin() || isOwnAvailabilityToggle();
+      allow create, delete: if isAdmin();
     }
 
     match /driverWarnings/{warningId} {

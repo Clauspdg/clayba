@@ -1503,8 +1503,9 @@ export const fr = {
       onlineControlTitle: "Disponibilité",
       currentStatusLabel: "Statut actuel",
       goOnlineCta: "Passer en ligne",
+      goOfflineCta: "Passer hors ligne",
       liveDispatchGapBody:
-        "Les changements de statut en direct ne sont pas encore connectés à la répartition depuis le web — un écart de plateforme connu, pas un bug.",
+        "La répartition automatique des courses n'est pas encore connectée — vous êtes en ligne, mais les demandes de course n'arriveront qu'une fois l'intégration de la répartition disponible dans une prochaine mise à jour.",
       pendingOfferTitle: "Vous avez une demande de course en attente",
       pendingOfferBody: "Une nouvelle demande de course attend votre réponse.",
       currentRideTitle: "Course en cours",

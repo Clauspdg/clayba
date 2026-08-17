@@ -1,4 +1,5 @@
 import {
+  DriverAvailabilityStatus,
   driverSchema,
   driverSuspensionSchema,
   vehicleSchema,
@@ -13,6 +14,8 @@ import {
   getDocs,
   onSnapshot,
   query,
+  serverTimestamp,
+  updateDoc,
   where,
   type Firestore,
   type Unsubscribe,
@@ -114,4 +117,30 @@ export async function getVehicle(db: Firestore, vehicleId: string): Promise<Vehi
   const snapshot = await getDoc(doc(db, "vehicles", vehicleId));
   if (!snapshot.exists()) return null;
   return vehicleSchema.parse({ id: snapshot.id, ...snapshot.data() });
+}
+
+/**
+ * FLOW-02A — a driver's own real-time online/offline toggle, written
+ * directly by the client (same pattern as `advanceTripStatus` in
+ * `driver-trips.ts`) rather than through `DriversRepository` (admin SDK,
+ * server-only). Scoped to exactly the two states this sprint covers —
+ * `ONLINE`/`OFFLINE` — never `AVAILABLE`/`BUSY`/etc., which require the
+ * dispatch engine (not implemented yet). `isAvailable` is therefore
+ * always `false` here: dispatch-matchability is a distinct, later state
+ * this function deliberately can't reach. `firestore.rules`'s
+ * `drivers/{driverId}` rule enforces both the two-state allowlist and
+ * that every other field (status, documents, score, vehicle, …) is
+ * unchanged — this function relies on that, it doesn't re-validate it.
+ */
+export async function setOwnAvailabilityStatus(
+  db: Firestore,
+  driverId: string,
+  status: DriverAvailabilityStatus.ONLINE | DriverAvailabilityStatus.OFFLINE,
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, driverId), {
+    availabilityStatus: status,
+    isOnline: status === DriverAvailabilityStatus.ONLINE,
+    isAvailable: false,
+    updatedAt: serverTimestamp(),
+  });
 }

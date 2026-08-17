@@ -1454,8 +1454,9 @@ export const en = {
       onlineControlTitle: "Availability",
       currentStatusLabel: "Current status",
       goOnlineCta: "Go Online",
+      goOfflineCta: "Go Offline",
       liveDispatchGapBody:
-        "Live status changes aren't connected to dispatch from the web yet — this is a known platform gap, not a bug.",
+        "Automatic ride matching isn't connected yet — you're online, but ride requests won't start arriving until dispatch integration ships in a future update.",
       pendingOfferTitle: "You have a pending ride request",
       pendingOfferBody: "A new ride request is waiting for your response.",
       currentRideTitle: "Current ride in progress",
