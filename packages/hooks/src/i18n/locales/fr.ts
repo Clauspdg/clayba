@@ -1032,6 +1032,7 @@ export const fr = {
       id: "Demande",
       fare: "Tarif",
       status: "Statut",
+      noRequests: "Aucune demande de course pour le moment.",
     },
     rideRequestStatus: {
       draft: "Brouillon",
@@ -1069,10 +1070,12 @@ export const fr = {
       score: "Score",
       rating: "Note",
       distance: "Distance",
+      noDrivers: "Aucun chauffeur en service pour le moment.",
     },
     offerHistory: {
       offer: "Offre",
       score: "Score",
+      noOffers: "Aucune offre de course pour le moment.",
     },
     offerStatus: {
       created: "Créée",
@@ -1524,8 +1527,14 @@ export const fr = {
       currentStatusLabel: "Statut actuel",
       goOnlineCta: "Passer en ligne",
       goOfflineCta: "Passer hors ligne",
-      liveDispatchGapBody:
-        "La répartition automatique des courses n'est pas encore connectée — vous êtes en ligne, mais les demandes de course n'arriveront qu'une fois l'intégration de la répartition disponible dans une prochaine mise à jour.",
+      locationRequiredTitle: "Localisation requise",
+      locationRequiredBody:
+        "Activez l'accès à la localisation pour commencer à recevoir des demandes de course.",
+      enableLocationCta: "Activer la localisation",
+      locationUnsupported:
+        "Votre navigateur ne prend pas en charge la localisation — vous ne recevrez pas de demandes de course.",
+      locationDenied:
+        "L'accès à la localisation est requis pour recevoir des demandes de course. Vous êtes en ligne, mais aucune course ne vous sera proposée tant que vous ne l'activez pas.",
       pendingOfferTitle: "Vous avez une demande de course en attente",
       pendingOfferBody: "Une nouvelle demande de course attend votre réponse.",
       currentRideTitle: "Course en cours",

@@ -1,7 +1,26 @@
 "use client";
 
-import { TripRequestStatus } from "@the-ride/types";
-import { Badge, Card, CardContent, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, useTranslation, type BadgeProps } from "@the-ride/ui";
+import { adminFirestore } from "@/lib/firebase-client";
+import { TripRequestStatus, tripRequestSchema, type TripRequest } from "@the-ride/types";
+import {
+  Badge,
+  Card,
+  CardContent,
+  EmptyState,
+  ErrorState,
+  Illustration,
+  LoadingState,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  useTranslation,
+  type BadgeProps,
+} from "@the-ride/ui";
+import { collection, limit as fsLimit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
 
 const STATUS_TONE: Record<TripRequestStatus, NonNullable<BadgeProps["tone"]>> = {
   [TripRequestStatus.DRAFT]: "neutral",
@@ -17,62 +36,131 @@ const STATUS_TONE: Record<TripRequestStatus, NonNullable<BadgeProps["tone"]>> = 
   [TripRequestStatus.EXPIRED]: "danger",
 };
 
-const LIVE_REQUESTS = [
-  { id: "REQ-1042", pickup: "123 Main St", radiusKm: 5, status: TripRequestStatus.SEARCHING_DRIVER, elapsedSeconds: 8 },
-  { id: "REQ-1043", pickup: "9 River Rd", radiusKm: 2, status: TripRequestStatus.DRIVER_ASSIGNED, elapsedSeconds: 3 },
-  { id: "REQ-1044", pickup: "500 Park Ave", radiusKm: 10, status: TripRequestStatus.SEARCHING_DRIVER, elapsedSeconds: 22 },
-] as const;
-
+/**
+ * DRIVER-E2E-06 — live `tripRequests` query, replacing the earlier
+ * `LIVE_REQUESTS` fixture. `firestore.rules`'s `tripRequests` read rule
+ * already grants admin/dispatcher roles (Sprint 6 fix), so no rules change
+ * was needed here. Radius/elapsed-time columns from the old mock are
+ * dropped rather than faked — a request's real radius tier lives on the
+ * separate `dispatchQueue/{requestId}` doc, out of scope for this pass.
+ */
 export function LiveRideRequestsTab() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const [requests, setRequests] = useState<TripRequest[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const counters = [
-    { label: t("admin.dispatchCenter.liveCounters.inQueue"), value: "—" },
-    { label: t("admin.dispatchCenter.liveCounters.offersInFlight"), value: "—" },
-    { label: t("admin.dispatchCenter.liveCounters.assignedLastHour"), value: "—" },
-  ];
+  useEffect(() => {
+    const q = query(
+      collection(adminFirestore, "tripRequests"),
+      orderBy("createdAt", "desc"),
+      fsLimit(100),
+    );
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const parsed: TripRequest[] = [];
+        for (const d of snapshot.docs) {
+          try {
+            parsed.push(tripRequestSchema.parse({ id: d.id, ...d.data() }));
+          } catch (err) {
+            console.error("[LiveRideRequestsTab] failed to parse tripRequest", d.id, err);
+          }
+        }
+        setRequests(parsed);
+      },
+      (err) => setError(err.message),
+    );
+    return unsubscribe;
+  }, []);
+
+  const counters = useMemo(() => {
+    const list = requests ?? [];
+    const inQueue = list.filter((r) => r.status === TripRequestStatus.SEARCHING_DRIVER).length;
+    const assigned = list.filter((r) => r.status === TripRequestStatus.DRIVER_ASSIGNED).length;
+    return [
+      {
+        label: t("admin.dispatchCenter.liveCounters.inQueue"),
+        value: requests === null ? "—" : inQueue,
+      },
+      {
+        label: t("admin.dispatchCenter.liveCounters.offersInFlight"),
+        value: requests === null ? "—" : assigned,
+      },
+      {
+        label: t("admin.dispatchCenter.liveCounters.assignedLastHour"),
+        value: requests === null ? "—" : "—",
+      },
+    ];
+  }, [requests, t]);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 tablet:grid-cols-3">
+      <div className="tablet:grid-cols-3 grid gap-4">
         {counters.map((counter) => (
           <Card key={counter.label}>
             <CardContent className="flex flex-col gap-1 p-4">
-              <span className="text-2xl font-semibold text-neutral-900 dark:text-neutral-50">{counter.value}</span>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">{counter.label}</span>
+              <span className="text-2xl font-semibold text-neutral-900 dark:text-neutral-50">
+                {counter.value}
+              </span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                {counter.label}
+              </span>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("admin.rideRequests.id")}</TableHead>
-                <TableHead>{t("booking.pickupLabel")}</TableHead>
-                <TableHead>{t("admin.dispatchCenter.radius")}</TableHead>
-                <TableHead>{t("admin.dispatchCenter.elapsed")}</TableHead>
-                <TableHead>{t("admin.rideRequests.status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {LIVE_REQUESTS.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell className="font-medium text-neutral-900 dark:text-neutral-50">{request.id}</TableCell>
-                  <TableCell>{request.pickup}</TableCell>
-                  <TableCell>{request.radiusKm} km</TableCell>
-                  <TableCell>{request.elapsedSeconds}s</TableCell>
-                  <TableCell>
-                    <Badge tone={STATUS_TONE[request.status]}>{t(`admin.rideRequestStatus.${request.status}`)}</Badge>
-                  </TableCell>
+      {error ? (
+        <ErrorState title={t("admin.emptyStates.errorTitle")} description={error} />
+      ) : requests === null ? (
+        <LoadingState title={t("common.loading")} />
+      ) : requests.length === 0 ? (
+        <EmptyState
+          icon={<Illustration name="empty" size={80} />}
+          title={t("admin.rideRequests.noRequests")}
+        />
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("admin.rideRequests.id")}</TableHead>
+                  <TableHead>{t("booking.pickupLabel")}</TableHead>
+                  <TableHead>{t("admin.documentReview.submittedDate")}</TableHead>
+                  <TableHead>{t("admin.rideRequests.status")}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {requests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="font-medium text-neutral-900 dark:text-neutral-50">
+                      {request.id}
+                    </TableCell>
+                    <TableCell>
+                      {request.pickup.address ??
+                        `${request.pickup.lat.toFixed(4)}, ${request.pickup.lng.toFixed(4)}`}
+                    </TableCell>
+                    <TableCell>
+                      {request.requestedAt
+                        ? request.requestedAt.toLocaleString(locale, {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone={STATUS_TONE[request.status]}>
+                        {t(`admin.rideRequestStatus.${request.status}`)}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

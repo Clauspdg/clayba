@@ -209,20 +209,99 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
   const expiringDocuments = getExpiringDocuments(driver.documents);
   const isOnline = driver.availabilityStatus !== DriverAvailabilityStatus.OFFLINE;
 
+  const isAvailableForOffers = driver.availabilityStatus === DriverAvailabilityStatus.AVAILABLE;
+
   /**
-   * FLOW-02A — a genuine Firestore write (`setOwnAvailabilityStatus`),
-   * not local state: `driver.availabilityStatus` above comes from
-   * `useUserExperience()`, which `RequireDriverAccess` already keeps
-   * live via `subscribeOwnDriverRecord` — so a successful write here
-   * flows back through that same real-time path and `isOnline` updates
-   * on its own, no optimistic local state needed.
+   * FLOW-02A — genuine Firestore writes (`setOwnAvailabilityStatus`), not
+   * local state: `driver.availabilityStatus` above comes from
+   * `useUserExperience()`, which `RequireDriverAccess` already keeps live
+   * via `subscribeOwnDriverRecord` — so a successful write here flows back
+   * through that same real-time path and `isOnline`/`isAvailableForOffers`
+   * update on their own, no optimistic local state needed.
    */
-  async function handleToggleOnline(
-    next: DriverAvailabilityStatus.ONLINE | DriverAvailabilityStatus.OFFLINE,
-  ) {
+  async function handleGoOffline() {
     setPresenceBusy(true);
     try {
-      await setOwnAvailabilityStatus(webFirestore, driver.id, next);
+      await setOwnAvailabilityStatus(webFirestore, driver.id, DriverAvailabilityStatus.OFFLINE);
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+    } finally {
+      setPresenceBusy(false);
+    }
+  }
+
+  /**
+   * DRIVER-E2E-06 — `DispatchService.buildMatchingCandidates` only
+   * considers a driver a candidate when `availabilityStatus === AVAILABLE`
+   * AND `lastKnownLocation` is set (see docs/driver-presence.md,
+   * `packages/utils/src/drivers/availability.ts`'s `isAvailableForOffers`).
+   * Reaching AVAILABLE from OFFLINE is two legal transitions
+   * (`DRIVER_AVAILABILITY_TRANSITIONS`), not one, so this performs both
+   * writes in sequence. Location is captured once, on the first write —
+   * if it's denied/unavailable, the driver still goes ONLINE (harmless,
+   * not matched) but this deliberately stops short of AVAILABLE so the
+   * UI never claims dispatch-readiness the driver doesn't actually have.
+   */
+  async function handleGoOnline() {
+    setPresenceBusy(true);
+    try {
+      if (!("geolocation" in navigator)) {
+        await setOwnAvailabilityStatus(webFirestore, driver.id, DriverAvailabilityStatus.ONLINE);
+        toast({ variant: "danger", title: t("driverSpace.home.locationUnsupported") });
+        return;
+      }
+      const location = await new Promise<{ lat: number; lng: number } | null>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
+        );
+      });
+      if (!location) {
+        await setOwnAvailabilityStatus(webFirestore, driver.id, DriverAvailabilityStatus.ONLINE);
+        toast({ variant: "danger", title: t("driverSpace.home.locationDenied") });
+        return;
+      }
+      await setOwnAvailabilityStatus(
+        webFirestore,
+        driver.id,
+        DriverAvailabilityStatus.ONLINE,
+        location,
+      );
+      await setOwnAvailabilityStatus(webFirestore, driver.id, DriverAvailabilityStatus.AVAILABLE);
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+    } finally {
+      setPresenceBusy(false);
+    }
+  }
+
+  /** Retry path from the "online but not receiving offers" state — same location capture as `handleGoOnline`, just the single ONLINE->AVAILABLE leg. */
+  async function handleEnableLocation() {
+    setPresenceBusy(true);
+    try {
+      if (!("geolocation" in navigator)) {
+        toast({ variant: "danger", title: t("driverSpace.home.locationUnsupported") });
+        return;
+      }
+      const location = await new Promise<{ lat: number; lng: number } | null>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
+        );
+      });
+      if (!location) {
+        toast({ variant: "danger", title: t("driverSpace.home.locationDenied") });
+        return;
+      }
+      await setOwnAvailabilityStatus(
+        webFirestore,
+        driver.id,
+        DriverAvailabilityStatus.ONLINE,
+        location,
+      );
+      await setOwnAvailabilityStatus(webFirestore, driver.id, DriverAvailabilityStatus.AVAILABLE);
     } catch (err) {
       toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
     } finally {
@@ -276,19 +355,35 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
             {isOnline ? (
               <div className="flex flex-col items-center gap-3 py-6 text-center">
                 <Icon name="bell" size={28} className="text-neutral-300 dark:text-neutral-700" />
-                <Text weight="medium">{t("driverSpace.home.waitingForRequestsTitle")}</Text>
-                <Text size="sm" tone="muted">
-                  {t("driverSpace.home.waitingForRequestsBody")}
-                </Text>
-                <Text size="xs" tone="muted">
-                  {t("driverSpace.home.liveDispatchGapBody")}
-                </Text>
+                {isAvailableForOffers ? (
+                  <>
+                    <Text weight="medium">{t("driverSpace.home.waitingForRequestsTitle")}</Text>
+                    <Text size="sm" tone="muted">
+                      {t("driverSpace.home.waitingForRequestsBody")}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text weight="medium">{t("driverSpace.home.locationRequiredTitle")}</Text>
+                    <Text size="sm" tone="muted">
+                      {t("driverSpace.home.locationRequiredBody")}
+                    </Text>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      isLoading={presenceBusy}
+                      onClick={() => void handleEnableLocation()}
+                    >
+                      {t("driverSpace.home.enableLocationCta")}
+                    </Button>
+                  </>
+                )}
                 <Button
                   size="lg"
                   fullWidth
                   variant="outline"
                   isLoading={presenceBusy}
-                  onClick={() => void handleToggleOnline(DriverAvailabilityStatus.OFFLINE)}
+                  onClick={() => void handleGoOffline()}
                 >
                   {t("driverSpace.home.goOfflineCta")}
                 </Button>
@@ -298,7 +393,7 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
                 size="lg"
                 fullWidth
                 isLoading={presenceBusy}
-                onClick={() => void handleToggleOnline(DriverAvailabilityStatus.ONLINE)}
+                onClick={() => void handleGoOnline()}
               >
                 {t("driverSpace.home.goOnlineCta")}
               </Button>

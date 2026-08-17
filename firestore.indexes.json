@@ -57,6 +57,14 @@
       ]
     },
     {
+      "collectionGroup": "drivers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "availabilityStatus", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "driverWarnings",
       "queryScope": "COLLECTION",
       "fields": [

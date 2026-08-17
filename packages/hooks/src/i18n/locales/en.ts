@@ -984,6 +984,7 @@ export const en = {
       id: "Request",
       fare: "Fare",
       status: "Status",
+      noRequests: "No ride requests right now.",
     },
     rideRequestStatus: {
       draft: "Draft",
@@ -1021,10 +1022,12 @@ export const en = {
       score: "Score",
       rating: "Rating",
       distance: "Distance",
+      noDrivers: "No drivers on shift right now.",
     },
     offerHistory: {
       offer: "Offer",
       score: "Score",
+      noOffers: "No ride offers yet.",
     },
     offerStatus: {
       created: "Created",
@@ -1473,8 +1476,13 @@ export const en = {
       currentStatusLabel: "Current status",
       goOnlineCta: "Go Online",
       goOfflineCta: "Go Offline",
-      liveDispatchGapBody:
-        "Automatic ride matching isn't connected yet — you're online, but ride requests won't start arriving until dispatch integration ships in a future update.",
+      locationRequiredTitle: "Location needed",
+      locationRequiredBody: "Enable location access to start receiving ride requests.",
+      enableLocationCta: "Enable location",
+      locationUnsupported:
+        "Your browser doesn't support location — you won't receive ride requests.",
+      locationDenied:
+        "Location access is required to receive ride requests. You're online, but won't be offered rides until you enable it.",
       pendingOfferTitle: "You have a pending ride request",
       pendingOfferBody: "A new ride request is waiting for your response.",
       currentRideTitle: "Current ride in progress",

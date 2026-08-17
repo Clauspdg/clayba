@@ -1,7 +1,26 @@
 "use client";
 
-import { DriverAvailabilityStatus } from "@the-ride/types";
-import { Badge, Card, CardContent, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, useTranslation, type BadgeProps } from "@the-ride/ui";
+import { adminFirestore } from "@/lib/firebase-client";
+import { DriverAvailabilityStatus, driverSchema, type Driver } from "@the-ride/types";
+import {
+  Badge,
+  Card,
+  CardContent,
+  EmptyState,
+  ErrorState,
+  Illustration,
+  LoadingState,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  useTranslation,
+  type BadgeProps,
+} from "@the-ride/ui";
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { useEffect, useState } from "react";
 
 const STATUS_TONE: Record<DriverAvailabilityStatus, NonNullable<BadgeProps["tone"]>> = {
   [DriverAvailabilityStatus.OFFLINE]: "neutral",
@@ -14,16 +33,64 @@ const STATUS_TONE: Record<DriverAvailabilityStatus, NonNullable<BadgeProps["tone
   [DriverAvailabilityStatus.INACTIVE]: "neutral",
 };
 
-/** Illustrative — no live `DriverPresenceRepository` session wired into the dashboard yet. */
-const QUEUE = [
-  { driverId: "DRV-201", name: "Jordan R.", status: DriverAvailabilityStatus.AVAILABLE, score: 92, rating: 4.9, distanceKm: 1.2 },
-  { driverId: "DRV-188", name: "Alex M.", status: DriverAvailabilityStatus.BUSY, score: 87, rating: 4.7, distanceKm: 2.4 },
-  { driverId: "DRV-142", name: "Sam K.", status: DriverAvailabilityStatus.ON_TRIP, score: 95, rating: 5.0, distanceKm: 3.8 },
-  { driverId: "DRV-119", name: "Riley P.", status: DriverAvailabilityStatus.AVAILABLE, score: 74, rating: 4.5, distanceKm: 4.9 },
-] as const;
+const QUEUE_STATUSES = [
+  DriverAvailabilityStatus.ONLINE,
+  DriverAvailabilityStatus.AVAILABLE,
+  DriverAvailabilityStatus.BUSY,
+  DriverAvailabilityStatus.ON_TRIP,
+];
 
+/**
+ * DRIVER-E2E-06 — live `drivers` query (any driver currently on shift:
+ * online/available/busy/on-trip), replacing the earlier `QUEUE` fixture.
+ * `name`/`distanceKm` from the old mock are dropped rather than faked —
+ * `Driver` has no display name field (only `userId`), and distance is only
+ * meaningful relative to a specific request's pickup, which this
+ * driver-wide queue view doesn't have.
+ */
 export function DriverQueueTab() {
   const { t } = useTranslation();
+  const [drivers, setDrivers] = useState<Driver[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const q = query(
+      collection(adminFirestore, "drivers"),
+      where("availabilityStatus", "in", QUEUE_STATUSES),
+      orderBy("score", "desc"),
+    );
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const parsed: Driver[] = [];
+        for (const d of snapshot.docs) {
+          try {
+            parsed.push(driverSchema.parse({ id: d.id, ...d.data() }));
+          } catch (err) {
+            console.error("[DriverQueueTab] failed to parse driver", d.id, err);
+          }
+        }
+        setDrivers(parsed);
+      },
+      (err) => setError(err.message),
+    );
+    return unsubscribe;
+  }, []);
+
+  if (error) {
+    return <ErrorState title={t("admin.emptyStates.errorTitle")} description={error} />;
+  }
+  if (drivers === null) {
+    return <LoadingState title={t("common.loading")} />;
+  }
+  if (drivers.length === 0) {
+    return (
+      <EmptyState
+        icon={<Illustration name="empty" size={80} />}
+        title={t("admin.driverQueue.noDrivers")}
+      />
+    );
+  }
 
   return (
     <Card>
@@ -34,19 +101,21 @@ export function DriverQueueTab() {
               <TableHead>{t("admin.driverQueue.driver")}</TableHead>
               <TableHead>{t("admin.driverQueue.score")}</TableHead>
               <TableHead>{t("admin.driverQueue.rating")}</TableHead>
-              <TableHead>{t("admin.driverQueue.distance")}</TableHead>
               <TableHead>{t("admin.rideRequests.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {QUEUE.map((driver) => (
-              <TableRow key={driver.driverId}>
-                <TableCell className="font-medium text-neutral-900 dark:text-neutral-50">{driver.name}</TableCell>
+            {drivers.map((driver) => (
+              <TableRow key={driver.id}>
+                <TableCell className="font-medium text-neutral-900 dark:text-neutral-50">
+                  {driver.userId}
+                </TableCell>
                 <TableCell>{driver.score}</TableCell>
                 <TableCell>{`★ ${driver.rating.toFixed(1)}`}</TableCell>
-                <TableCell>{driver.distanceKm} km</TableCell>
                 <TableCell>
-                  <Badge tone={STATUS_TONE[driver.status]}>{t(`driverHome.status.${driver.status}`)}</Badge>
+                  <Badge tone={STATUS_TONE[driver.availabilityStatus]}>
+                    {t(`driverHome.status.${driver.availabilityStatus}`)}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}

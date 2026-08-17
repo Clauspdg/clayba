@@ -93,24 +93,35 @@ service cloud.firestore {
       // without this guard, that's the common case, not an edge case.
       allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher', 'support']));
 
-      // FLOW-02A — the one self-service mutation a driver may make
-      // directly: toggling their OWN `availabilityStatus` between
-      // 'online' and 'offline' (the only two states this sprint covers —
-      // 'available'/'busy'/'on_trip'/etc. all require the dispatch engine
-      // and stay admin-only). Every other field — including
-      // `status` (DriverAccountStatus), documents, score, vehicle — must
-      // be provably unchanged, so this can never be used to self-approve,
-      // self-reactivate, or touch anything but presence.
+      // FLOW-02A, extended DRIVER-E2E-06 — the self-service mutations a
+      // driver may make directly: OFFLINE<->ONLINE (unchanged), plus
+      // ONLINE->AVAILABLE and AVAILABLE->OFFLINE (the two additional legal
+      // edges from `DRIVER_AVAILABILITY_TRANSITIONS`/docs/driver-presence.md
+      // needed so a real web driver can reach the one state the matching
+      // engine's `isAvailableForOffers` actually considers eligible —
+      // 'busy'/'on_trip'/etc. still require the dispatch engine and stay
+      // admin-only). `lastKnownLocation`/`lastLocationUpdatedAt` may now be
+      // set by the driver as part of this same toggle (needed for
+      // `DispatchService.buildMatchingCandidates`'s location filter) — every
+      // OTHER field, including `status` (DriverAccountStatus), documents,
+      // score, vehicle, is still provably unchanged, so this can never be
+      // used to self-approve, self-reactivate, or touch anything but
+      // presence/location.
       function isOwnAvailabilityToggle() {
         return isSignedIn()
           && resource.data.userId == request.auth.uid
           && resource.data.status == 'active'
           && request.resource.data.status == resource.data.status
-          && resource.data.availabilityStatus in ['online', 'offline']
-          && request.resource.data.availabilityStatus in ['online', 'offline']
-          && request.resource.data.availabilityStatus != resource.data.availabilityStatus
-          && request.resource.data.isOnline == (request.resource.data.availabilityStatus == 'online')
-          && request.resource.data.isAvailable == false
+          && resource.data.availabilityStatus in ['online', 'offline', 'available']
+          && request.resource.data.availabilityStatus in ['online', 'offline', 'available']
+          && (
+            (resource.data.availabilityStatus == 'offline' && request.resource.data.availabilityStatus == 'online')
+            || (resource.data.availabilityStatus == 'online' && request.resource.data.availabilityStatus == 'offline')
+            || (resource.data.availabilityStatus == 'online' && request.resource.data.availabilityStatus == 'available')
+            || (resource.data.availabilityStatus == 'available' && request.resource.data.availabilityStatus == 'offline')
+          )
+          && request.resource.data.isOnline == (request.resource.data.availabilityStatus != 'offline')
+          && request.resource.data.isAvailable == (request.resource.data.availabilityStatus == 'available')
           && request.resource.data.userId == resource.data.userId
           && request.resource.data.applicationId == resource.data.applicationId
           && request.resource.data.get('vehicleId', null) == resource.data.get('vehicleId', null)
@@ -119,8 +130,6 @@ service cloud.firestore {
           && request.resource.data.completedTrips == resource.data.completedTrips
           && request.resource.data.warningsCount == resource.data.warningsCount
           && request.resource.data.score == resource.data.score
-          && request.resource.data.get('lastKnownLocation', null) == resource.data.get('lastKnownLocation', null)
-          && request.resource.data.get('lastLocationUpdatedAt', null) == resource.data.get('lastLocationUpdatedAt', null)
           && request.resource.data.acceptanceRate == resource.data.acceptanceRate
           && request.resource.data.cancellationRate == resource.data.cancellationRate
           && request.resource.data.activeJobsCount == resource.data.activeJobsCount

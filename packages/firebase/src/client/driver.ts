@@ -119,31 +119,47 @@ export async function getVehicle(db: Firestore, vehicleId: string): Promise<Vehi
 }
 
 /**
- * FLOW-02A — a driver's own real-time online/offline toggle, written
- * directly by the client (same pattern as `advanceTripStatus` in
- * `driver-trips.ts`) rather than through `DriversRepository` (admin SDK,
- * server-only). Scoped to exactly the two states this sprint covers —
- * `ONLINE`/`OFFLINE` — never `AVAILABLE`/`BUSY`/etc., which require the
- * dispatch engine (not implemented yet). `isAvailable` is therefore
- * always `false` here: dispatch-matchability is a distinct, later state
- * this function deliberately can't reach. `firestore.rules`'s
- * `drivers/{driverId}` rule enforces both the two-state allowlist and
- * that every other field (status, documents, score, vehicle, …) is
- * unchanged — this function relies on that, it doesn't re-validate it.
+ * FLOW-02A, extended DRIVER-E2E-06 — a driver's own real-time
+ * online/available/offline toggle, written directly by the client (same
+ * pattern as `advanceTripStatus` in `driver-trips.ts`) rather than through
+ * `DriversRepository` (admin SDK, server-only). Scoped to exactly the
+ * three self-service states `firestore.rules`'s `isOwnAvailabilityToggle()`
+ * allows — `ONLINE`/`AVAILABLE`/`OFFLINE` — never `BUSY`/`ON_TRIP`/etc.,
+ * which require the dispatch engine and stay admin-only.
+ * `isOnline`/`isAvailable` mirror the same formula
+ * `DriversRepository.setAvailabilityStatus()` uses server-side, so the
+ * deprecated booleans agree with the real `availabilityStatus` regardless
+ * of which path wrote the doc. `location` is optional and, when passed,
+ * is the ONLY way `lastKnownLocation`/`lastLocationUpdatedAt` get set for
+ * a driver — required by `DispatchService.buildMatchingCandidates`'s
+ * eligibility filter, which excludes any driver without one.
+ * `firestore.rules`'s `drivers/{driverId}` rule enforces both the
+ * transition allowlist and that every other field (status, documents,
+ * score, vehicle, …) is unchanged — this function relies on that, it
+ * doesn't re-validate it.
  */
 export async function setOwnAvailabilityStatus(
   db: Firestore,
   driverId: string,
-  status: DriverAvailabilityStatus.ONLINE | DriverAvailabilityStatus.OFFLINE,
+  status:
+    | DriverAvailabilityStatus.ONLINE
+    | DriverAvailabilityStatus.AVAILABLE
+    | DriverAvailabilityStatus.OFFLINE,
+  location?: { lat: number; lng: number },
 ): Promise<void> {
-  await updateDoc(doc(db, COLLECTION, driverId), {
+  const update: Record<string, unknown> = {
     availabilityStatus: status,
-    isOnline: status === DriverAvailabilityStatus.ONLINE,
-    isAvailable: false,
+    isOnline: status !== DriverAvailabilityStatus.OFFLINE,
+    isAvailable: status === DriverAvailabilityStatus.AVAILABLE,
     // A plain client Date, not `serverTimestamp()` — `subscribeOwnDriverRecord`'s
     // own-write local echo resolves a pending serverTimestamp() as null, which
     // fails `driverSchema`'s `updatedAt` parse in `useExperienceInputs` (same
     // reasoning as `advanceApplication` in apps/admin's driver-admin.ts).
     updatedAt: new Date(),
-  });
+  };
+  if (location) {
+    update.lastKnownLocation = location;
+    update.lastLocationUpdatedAt = new Date();
+  }
+  await updateDoc(doc(db, COLLECTION, driverId), update);
 }
