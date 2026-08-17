@@ -63,7 +63,11 @@ export async function uploadAndCatalogSiteMedia(
     contentKind: file.type.startsWith("video/") ? "video" : "image",
     fileName: file.name,
     sizeBytes: file.size,
-    durationSeconds: validation.durationSeconds,
+    // Omit entirely rather than passing `undefined` for images — Firestore's
+    // `setDoc()` rejects an explicit `undefined` field value outright.
+    ...(validation.durationSeconds !== undefined
+      ? { durationSeconds: validation.durationSeconds }
+      : {}),
     uploadedBy,
   });
 
