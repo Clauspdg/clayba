@@ -274,7 +274,9 @@ export class RideOffersRepository extends FirestoreRepository<RideOffer> {
   async decline(id: string, reason?: string): Promise<RideOffer> {
     return this.transition(id, OfferStatus.DECLINED, {
       respondedAt: new Date(),
-      declineReason: reason,
+      // Omit the key entirely rather than `declineReason: undefined` — see
+      // the same fix in dispatch.service.ts's dispatchEvents.record call.
+      ...(reason !== undefined ? { declineReason: reason } : {}),
     });
   }
 

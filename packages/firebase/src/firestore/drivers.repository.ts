@@ -21,7 +21,11 @@ import {
   type DriverWarning,
   type Role,
 } from "@the-ride/types";
-import { assertAvailabilityTransition, assertDriverApplicationTransition, calculateDriverScore } from "@the-ride/utils";
+import {
+  assertAvailabilityTransition,
+  assertDriverApplicationTransition,
+  calculateDriverScore,
+} from "@the-ride/utils";
 import { FieldValue, type Firestore, type UpdateData } from "firebase-admin/firestore";
 
 import { FirestoreRepository } from "./base.repository";
@@ -47,7 +51,11 @@ export class DriverApplicationsRepository extends FirestoreRepository<DriverAppl
     assertDriverApplicationTransition(application.status, to);
 
     const updatedAt = new Date();
-    await this.update(applicationId, { ...extra, status: to, updatedAt } as UpdateData<DriverApplication>);
+    await this.update(applicationId, {
+      ...extra,
+      status: to,
+      updatedAt,
+    } as UpdateData<DriverApplication>);
 
     return { ...application, ...extra, status: to, updatedAt };
   }
@@ -63,7 +71,11 @@ export class DriverWarningsRepository extends FirestoreRepository<DriverWarning>
     super(db, DRIVER_WARNINGS_COLLECTION, createFirestoreConverter(driverWarningSchema));
   }
 
-  async issue(params: { driverId: string; reason: string; issuedBy: string }): Promise<DriverWarning> {
+  async issue(params: {
+    driverId: string;
+    reason: string;
+    issuedBy: string;
+  }): Promise<DriverWarning> {
     const id = this.newId();
     const warning = driverWarningSchema.parse({ ...params, id, createdAt: new Date() });
     return this.create(id, warning);
@@ -79,14 +91,27 @@ export class DriverSuspensionsRepository extends FirestoreRepository<DriverSuspe
     super(db, DRIVER_SUSPENSIONS_COLLECTION, createFirestoreConverter(driverSuspensionSchema));
   }
 
-  async open(params: { driverId: string; reason: string; suspendedBy: string; endAt?: Date }): Promise<DriverSuspension> {
+  async open(params: {
+    driverId: string;
+    reason: string;
+    suspendedBy: string;
+    endAt?: Date;
+  }): Promise<DriverSuspension> {
     const id = this.newId();
-    const suspension = driverSuspensionSchema.parse({ ...params, id, startAt: new Date(), createdAt: new Date() });
+    const suspension = driverSuspensionSchema.parse({
+      ...params,
+      id,
+      startAt: new Date(),
+      createdAt: new Date(),
+    });
     return this.create(id, suspension);
   }
 
   async lift(suspensionId: string, liftedBy: string): Promise<void> {
-    await this.update(suspensionId, { liftedAt: new Date(), liftedBy } as UpdateData<DriverSuspension>);
+    await this.update(suspensionId, {
+      liftedAt: new Date(),
+      liftedBy,
+    } as UpdateData<DriverSuspension>);
   }
 
   async findActiveForDriver(driverId: string): Promise<DriverSuspension[]> {
@@ -108,7 +133,11 @@ export class DriverPresenceRepository extends FirestoreRepository<DriverPresence
   }
 
   /** Upserts one device's heartbeat without disturbing other devices the same driver is signed in on ("support multiple devices safely"). */
-  async heartbeat(driverId: string, deviceId: string, platform: "ios" | "android" | "web"): Promise<DriverPresence> {
+  async heartbeat(
+    driverId: string,
+    deviceId: string,
+    platform: "ios" | "android" | "web",
+  ): Promise<DriverPresence> {
     const now = new Date();
     const existing = await this.findById(driverId);
 
@@ -136,20 +165,29 @@ export class DriverPresenceRepository extends FirestoreRepository<DriverPresence
   }
 
   /** Sets `status`/`availabilityReason`/`currentRideId` and maintains `onlineSince` for duration tracking. Does not validate the transition — callers use `DriversRepository.setAvailabilityStatus()` for that. */
-  async setStatus(driverId: string, status: DriverAvailabilityStatus, params: { reason?: string; currentRideId?: string } = {}): Promise<DriverPresence> {
+  async setStatus(
+    driverId: string,
+    status: DriverAvailabilityStatus,
+    params: { reason?: string; currentRideId?: string } = {},
+  ): Promise<DriverPresence> {
     const now = new Date();
     const existing = await this.findById(driverId);
 
     if (!existing) {
+      // Optional fields are omitted entirely rather than set to `undefined`
+      // — the Admin SDK rejects a literal `undefined` field value on
+      // create/set outright, which crashed every first-ever presence write
+      // for a driver (the common case: no `driverPresence` doc exists
+      // until their first real availability change goes through here).
       const presence = driverPresenceSchema.parse({
         id: driverId,
         driverId,
         status,
-        availabilityReason: params.reason,
-        currentRideId: params.currentRideId,
+        ...(params.reason !== undefined ? { availabilityReason: params.reason } : {}),
+        ...(params.currentRideId !== undefined ? { currentRideId: params.currentRideId } : {}),
         lastHeartbeatAt: now,
         lastSeenAt: now,
-        onlineSince: status === DriverAvailabilityStatus.OFFLINE ? undefined : now,
+        ...(status === DriverAvailabilityStatus.OFFLINE ? {} : { onlineSince: now }),
         devices: {},
         updatedAt: now,
       });
@@ -157,11 +195,15 @@ export class DriverPresenceRepository extends FirestoreRepository<DriverPresence
     }
 
     const updateData: Record<string, unknown> = { status, updatedAt: now };
-    updateData.availabilityReason = params.reason === undefined ? FieldValue.delete() : params.reason;
+    updateData.availabilityReason =
+      params.reason === undefined ? FieldValue.delete() : params.reason;
 
     if (params.currentRideId !== undefined) {
       updateData.currentRideId = params.currentRideId;
-    } else if (status !== DriverAvailabilityStatus.BUSY && status !== DriverAvailabilityStatus.ON_TRIP) {
+    } else if (
+      status !== DriverAvailabilityStatus.BUSY &&
+      status !== DriverAvailabilityStatus.ON_TRIP
+    ) {
       updateData.currentRideId = FieldValue.delete();
     }
 
@@ -216,11 +258,18 @@ export class DriversRepository extends FirestoreRepository<Driver> {
    * kept in sync for any Sprint 3 code still reading them), and mirrors
    * the new status onto `DriverPresenceRepository` in one call.
    */
-  async setAvailabilityStatus(params: { driverId: string; status: DriverAvailabilityStatus; reason?: string; currentRideId?: string }): Promise<Driver> {
+  async setAvailabilityStatus(params: {
+    driverId: string;
+    status: DriverAvailabilityStatus;
+    reason?: string;
+    currentRideId?: string;
+  }): Promise<Driver> {
     const driver = await this.requireDriver(params.driverId);
     assertAvailabilityTransition(driver.availabilityStatus, params.status);
 
-    const isOnline = params.status !== DriverAvailabilityStatus.OFFLINE && params.status !== DriverAvailabilityStatus.INACTIVE;
+    const isOnline =
+      params.status !== DriverAvailabilityStatus.OFFLINE &&
+      params.status !== DriverAvailabilityStatus.INACTIVE;
     const isAvailable = params.status === DriverAvailabilityStatus.AVAILABLE;
 
     await this.update(params.driverId, {
@@ -232,15 +281,30 @@ export class DriversRepository extends FirestoreRepository<Driver> {
       updatedAt: new Date(),
     } as UpdateData<Driver>);
 
-    await this.presence.setStatus(params.driverId, params.status, { reason: params.reason, currentRideId: params.currentRideId });
+    await this.presence.setStatus(params.driverId, params.status, {
+      reason: params.reason,
+      currentRideId: params.currentRideId,
+    });
 
-    return { ...driver, availabilityStatus: params.status, availabilityReason: params.reason, isOnline, isAvailable };
+    return {
+      ...driver,
+      availabilityStatus: params.status,
+      availabilityReason: params.reason,
+      isOnline,
+      isAvailable,
+    };
   }
 
-  async approveApplication(params: DriverActionParams & { applicationId: string }): Promise<DriverApplication> {
-    const application = await this.applications.transition(params.applicationId, DriverApplicationStatus.APPROVED, {
-      reviewedBy: params.actorId,
-    });
+  async approveApplication(
+    params: DriverActionParams & { applicationId: string },
+  ): Promise<DriverApplication> {
+    const application = await this.applications.transition(
+      params.applicationId,
+      DriverApplicationStatus.APPROVED,
+      {
+        reviewedBy: params.actorId,
+      },
+    );
     await this.auditLogs.record({
       action: "driver.approved",
       actorId: params.actorId,
@@ -251,11 +315,17 @@ export class DriversRepository extends FirestoreRepository<Driver> {
     return application;
   }
 
-  async rejectApplication(params: DriverActionParams & { applicationId: string; reason: string }): Promise<DriverApplication> {
-    const application = await this.applications.transition(params.applicationId, DriverApplicationStatus.REJECTED, {
-      reviewedBy: params.actorId,
-      rejectionReason: params.reason,
-    });
+  async rejectApplication(
+    params: DriverActionParams & { applicationId: string; reason: string },
+  ): Promise<DriverApplication> {
+    const application = await this.applications.transition(
+      params.applicationId,
+      DriverApplicationStatus.REJECTED,
+      {
+        reviewedBy: params.actorId,
+        rejectionReason: params.reason,
+      },
+    );
     await this.auditLogs.record({
       action: "driver.rejected",
       actorId: params.actorId,
@@ -268,7 +338,9 @@ export class DriversRepository extends FirestoreRepository<Driver> {
   }
 
   /** Approved application -> Activated + creates the `drivers` account record. */
-  async activateApplication(params: DriverActionParams & { applicationId: string; userId: string }): Promise<Driver> {
+  async activateApplication(
+    params: DriverActionParams & { applicationId: string; userId: string },
+  ): Promise<Driver> {
     await this.applications.transition(params.applicationId, DriverApplicationStatus.ACTIVATED);
 
     const id = this.newId();
@@ -302,11 +374,21 @@ export class DriversRepository extends FirestoreRepository<Driver> {
   async suspend(params: DriverActionParams & { reason: string; endAt?: Date }): Promise<Driver> {
     const driver = await this.requireDriver(params.driverId);
     if (driver.status !== DriverAccountStatus.ACTIVE) {
-      throw new Error(`Driver "${params.driverId}" must be active to be suspended (current: ${driver.status}).`);
+      throw new Error(
+        `Driver "${params.driverId}" must be active to be suspended (current: ${driver.status}).`,
+      );
     }
 
-    await this.suspensions.open({ driverId: params.driverId, reason: params.reason, suspendedBy: params.actorId, endAt: params.endAt });
-    await this.update(params.driverId, { status: DriverAccountStatus.SUSPENDED, updatedAt: new Date() } as UpdateData<Driver>);
+    await this.suspensions.open({
+      driverId: params.driverId,
+      reason: params.reason,
+      suspendedBy: params.actorId,
+      endAt: params.endAt,
+    });
+    await this.update(params.driverId, {
+      status: DriverAccountStatus.SUSPENDED,
+      updatedAt: new Date(),
+    } as UpdateData<Driver>);
 
     await this.auditLogs.record({
       action: "driver.suspended",
@@ -323,13 +405,20 @@ export class DriversRepository extends FirestoreRepository<Driver> {
   async reactivate(params: DriverActionParams): Promise<Driver> {
     const driver = await this.requireDriver(params.driverId);
     if (driver.status !== DriverAccountStatus.SUSPENDED) {
-      throw new Error(`Driver "${params.driverId}" must be suspended to be reactivated (current: ${driver.status}).`);
+      throw new Error(
+        `Driver "${params.driverId}" must be suspended to be reactivated (current: ${driver.status}).`,
+      );
     }
 
     const activeSuspensions = await this.suspensions.findActiveForDriver(params.driverId);
-    await Promise.all(activeSuspensions.map((suspension) => this.suspensions.lift(suspension.id, params.actorId)));
+    await Promise.all(
+      activeSuspensions.map((suspension) => this.suspensions.lift(suspension.id, params.actorId)),
+    );
 
-    await this.update(params.driverId, { status: DriverAccountStatus.ACTIVE, updatedAt: new Date() } as UpdateData<Driver>);
+    await this.update(params.driverId, {
+      status: DriverAccountStatus.ACTIVE,
+      updatedAt: new Date(),
+    } as UpdateData<Driver>);
 
     await this.auditLogs.record({
       action: "driver.reactivated",
@@ -344,7 +433,11 @@ export class DriversRepository extends FirestoreRepository<Driver> {
 
   async warn(params: DriverActionParams & { reason: string }): Promise<DriverWarning> {
     const driver = await this.requireDriver(params.driverId);
-    const warning = await this.warnings.issue({ driverId: params.driverId, reason: params.reason, issuedBy: params.actorId });
+    const warning = await this.warnings.issue({
+      driverId: params.driverId,
+      reason: params.reason,
+      issuedBy: params.actorId,
+    });
 
     const warningsCount = driver.warningsCount + 1;
     const score = calculateDriverScore({
@@ -353,7 +446,11 @@ export class DriversRepository extends FirestoreRepository<Driver> {
       cancelledTrips: 0,
       warningsCount,
     });
-    await this.update(params.driverId, { warningsCount, score, updatedAt: new Date() } as UpdateData<Driver>);
+    await this.update(params.driverId, {
+      warningsCount,
+      score,
+      updatedAt: new Date(),
+    } as UpdateData<Driver>);
 
     await this.auditLogs.record({
       action: "driver.warned",
@@ -373,7 +470,10 @@ export class DriversRepository extends FirestoreRepository<Driver> {
       throw new Error(`Driver "${params.driverId}" is already terminated.`);
     }
 
-    await this.update(params.driverId, { status: DriverAccountStatus.TERMINATED, updatedAt: new Date() } as UpdateData<Driver>);
+    await this.update(params.driverId, {
+      status: DriverAccountStatus.TERMINATED,
+      updatedAt: new Date(),
+    } as UpdateData<Driver>);
 
     await this.auditLogs.record({
       action: "driver.terminated",
@@ -425,7 +525,14 @@ export function createDriverRepositories(db: Firestore, auditLogs: AuditLogsRepo
   const warnings = new DriverWarningsRepository(db);
   const suspensions = new DriverSuspensionsRepository(db);
   const presence = new DriverPresenceRepository(db);
-  const drivers = new DriversRepository(db, applications, warnings, suspensions, auditLogs, presence);
+  const drivers = new DriversRepository(
+    db,
+    applications,
+    warnings,
+    suspensions,
+    auditLogs,
+    presence,
+  );
 
   return { applications, warnings, suspensions, presence, drivers };
 }

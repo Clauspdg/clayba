@@ -177,7 +177,10 @@ export const rideOfferSchema = z.object({
   viewedAt: firestoreDateSchema.optional(),
   respondedAt: firestoreDateSchema.optional(),
   expiresAt: firestoreDateSchema,
-  declineReason: z.string().optional(),
+  // Nullable as well as optional: some existing documents have this field
+  // literally `null` rather than absent (DRIVER-E2E-07's decline crash
+  // investigation) — both mean "no reason given."
+  declineReason: z.string().nullable().optional(),
   updatedAt: firestoreDateSchema,
 });
 
