@@ -14,7 +14,6 @@ import {
   getDocs,
   onSnapshot,
   query,
-  serverTimestamp,
   updateDoc,
   where,
   type Firestore,
@@ -141,6 +140,10 @@ export async function setOwnAvailabilityStatus(
     availabilityStatus: status,
     isOnline: status === DriverAvailabilityStatus.ONLINE,
     isAvailable: false,
-    updatedAt: serverTimestamp(),
+    // A plain client Date, not `serverTimestamp()` — `subscribeOwnDriverRecord`'s
+    // own-write local echo resolves a pending serverTimestamp() as null, which
+    // fails `driverSchema`'s `updatedAt` parse in `useExperienceInputs` (same
+    // reasoning as `advanceApplication` in apps/admin's driver-admin.ts).
+    updatedAt: new Date(),
   });
 }
