@@ -149,15 +149,13 @@ export class DispatchService {
       candidatesEvaluated: candidates.length,
       candidatesEligible: ranked.length,
       // `MatchingScoreBreakdown` has fixed keys, all `number` values — a safe match for the log's `Record<string, number>` shape.
-      topCandidates: ranked
-        .slice(0, 5)
-        .map((c) => ({
-          driverId: c.driverId,
-          score: c.total,
-          breakdown: c.breakdown as unknown as Record<string, number>,
-          distanceMeters: c.distanceMeters,
-          etaSeconds: c.etaSeconds,
-        })),
+      topCandidates: ranked.slice(0, 5).map((c) => ({
+        driverId: c.driverId,
+        score: c.total,
+        breakdown: c.breakdown as unknown as Record<string, number>,
+        distanceMeters: c.distanceMeters,
+        etaSeconds: c.etaSeconds,
+      })),
       ranAt: new Date(),
     });
 
@@ -301,7 +299,11 @@ export class DispatchService {
       driverId: offer.driverId,
       offerId,
       type: outcome === "declined" ? "offer_declined" : "offer_expired",
-      metadata: reason ? { reason } : undefined,
+      // Omit the key entirely rather than `metadata: undefined` — the
+      // Admin SDK rejects a literal `undefined` field value outright
+      // (unlike `null`), so this crashed the whole decline/expire path
+      // every time a driver declined without a reason (the common case).
+      ...(reason ? { metadata: { reason } } : {}),
     });
     await this.deps.drivers.setAvailabilityStatus({
       driverId: offer.driverId,
