@@ -2,6 +2,7 @@ import {
   createFirebaseAuthAdapter,
   getClientAuth,
   getClientFirestore,
+  getClientFunctions,
   getClientStorage,
   initializeClientApp,
   type ClientAuthAdapter,
@@ -30,3 +31,4 @@ export const webAuth = getClientAuth();
 export const webAuthAdapter: ClientAuthAdapter = createFirebaseAuthAdapter(webAuth);
 export const webFirestore = getClientFirestore();
 export const webStorage = getClientStorage();
+export const webFunctions = getClientFunctions();

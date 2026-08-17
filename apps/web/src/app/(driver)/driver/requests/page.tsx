@@ -1,9 +1,15 @@
 "use client";
 
-import { webFirestore } from "@/lib/firebase-client";
+import { webFirestore, webFunctions } from "@/lib/firebase-client";
 import { useUserExperience } from "@/hooks/useUserExperience";
-import { getTripRequest, subscribeMyRideOffers } from "@the-ride/firebase/client";
 import {
+  acceptRideOffer,
+  declineRideOffer,
+  getTripRequest,
+  subscribeMyRideOffers,
+} from "@the-ride/firebase/client";
+import {
+  Button,
   Card,
   CardContent,
   EmptyState,
@@ -12,29 +18,57 @@ import {
   Illustration,
   LoadingState,
   Text,
+  useToast,
   useTranslation,
 } from "@the-ride/ui";
 import { DriverAccountStatus, type RideOffer, type TripRequest } from "@the-ride/types";
 import { useEffect, useState } from "react";
 
 /**
- * UX-3 sprint (Dedicated Driver Space), Part 6 — real `rideOffers` for this
- * driver, `status == 'sent'`. Accept/Decline are disclosed rather than
- * wired to a live write: `firestore.rules`' `rideOffers` collection is
- * `allow write: if isAdmin()` ("Offer creation and accept/decline/expire
- * transitions go through DispatchService server-side only"), and
- * `DispatchService` itself isn't deployed to any callable Cloud Function in
- * this environment yet (`functions/src/drivers/index.ts` and
- * `functions/src/trips/index.ts` are both placeholders) — the exact same
- * gap `packages/firebase/src/client/trips.ts`'s own doc comment already
- * discloses for the passenger booking flow. This page is honest about that
- * instead of showing an Accept button that would silently fail.
+ * UX-3 sprint (Dedicated Driver Space), Part 6, completed DRIVER-E2E-07 —
+ * real `rideOffers` for this driver, `status == 'sent'`, with real
+ * Accept/Decline actions. `firestore.rules`' `rideOffers` collection is
+ * still `allow write: if isAdmin()` (accept/decline transitions still go
+ * through `DispatchService` server-side only) — these buttons call the
+ * `acceptRideOffer`/`declineRideOffer` callable Cloud Functions instead of
+ * writing directly, which is the trusted server-side path into that same
+ * unmodified service. `respondingId` guards against a double-submit (rapid
+ * double-click / stale re-render): only one offer can be in flight at a
+ * time, and its own buttons disable immediately.
  */
 export default function DriverRequestsPage() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { driver } = useUserExperience();
   const [offers, setOffers] = useState<RideOffer[] | null>(null);
   const [requests, setRequests] = useState<Record<string, TripRequest | null>>({});
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  async function handleAccept(offerId: string) {
+    if (respondingId) return;
+    setRespondingId(offerId);
+    try {
+      await acceptRideOffer(webFunctions, offerId);
+      toast({ variant: "success", title: t("driverSpace.requests.accepted") });
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+    } finally {
+      setRespondingId(null);
+    }
+  }
+
+  async function handleDecline(offerId: string) {
+    if (respondingId) return;
+    setRespondingId(offerId);
+    try {
+      await declineRideOffer(webFunctions, offerId);
+      toast({ variant: "success", title: t("driverSpace.requests.declined") });
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+    } finally {
+      setRespondingId(null);
+    }
+  }
 
   useEffect(() => {
     if (!driver) return;
@@ -133,9 +167,25 @@ export default function DriverRequestsPage() {
                     </Text>
                   </div>
 
-                  <Text size="xs" tone="muted">
-                    {t("driverSpace.requests.acceptGapNote")}
-                  </Text>
+                  <div className="flex gap-3">
+                    <Button
+                      fullWidth
+                      isLoading={respondingId === offer.id}
+                      disabled={respondingId !== null && respondingId !== offer.id}
+                      onClick={() => void handleAccept(offer.id)}
+                    >
+                      {t("driverSpace.requests.acceptCta")}
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="outline"
+                      isLoading={respondingId === offer.id}
+                      disabled={respondingId !== null && respondingId !== offer.id}
+                      onClick={() => void handleDecline(offer.id)}
+                    >
+                      {t("driverSpace.requests.declineCta")}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );

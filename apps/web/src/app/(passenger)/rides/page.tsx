@@ -3,6 +3,7 @@
 import { webFirestore } from "@/lib/firebase-client";
 import {
   cancelTripRequest,
+  getVehicle,
   subscribeMyTripRequests,
   subscribeMyTrips,
 } from "@the-ride/firebase/client";
@@ -25,7 +26,13 @@ import {
   useTranslation,
 } from "@the-ride/ui";
 import { useAuth } from "@the-ride/hooks";
-import { TripRequestStatus, TripStatus, type Trip, type TripRequest } from "@the-ride/types";
+import {
+  TripRequestStatus,
+  TripStatus,
+  type Trip,
+  type TripRequest,
+  type Vehicle,
+} from "@the-ride/types";
 import { useEffect, useMemo, useState } from "react";
 
 type RideItem = ({ source: "request" } & TripRequest) | ({ source: "trip" } & Trip);
@@ -62,6 +69,18 @@ function isActiveRequest(status: TripRequestStatus): boolean {
   ].includes(status);
 }
 
+/**
+ * DRIVER-E2E-07 — once a driver accepts, `handleOfferAccepted` creates a
+ * real `trips/{id}` doc (status `matched`) for the SAME ride; the
+ * `tripRequests` doc that reached `driver_accepted` is superseded by it,
+ * not a separate ride. Hiding it here avoids listing the same trip twice
+ * (once as a stale request, once as the real trip) — the trip item is what
+ * carries the assigned driver's vehicle onward.
+ */
+function isSupersededByTrip(status: TripRequestStatus): boolean {
+  return status === TripRequestStatus.DRIVER_ACCEPTED;
+}
+
 function isActiveTrip(status: TripStatus): boolean {
   return ![TripStatus.COMPLETED, TripStatus.CANCELLED].includes(status);
 }
@@ -74,6 +93,7 @@ export default function RideHistoryPage() {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [viewing, setViewing] = useState<RideItem | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [viewingVehicle, setViewingVehicle] = useState<Vehicle | null | undefined>(undefined);
 
   useEffect(() => {
     if (!session) return;
@@ -94,7 +114,9 @@ export default function RideHistoryPage() {
 
   const { active, completed, cancelled } = useMemo(() => {
     const items: RideItem[] = [
-      ...(requests ?? []).map((r) => ({ source: "request" as const, ...r })),
+      ...(requests ?? [])
+        .filter((r) => !isSupersededByTrip(r.status))
+        .map((r) => ({ source: "request" as const, ...r })),
       ...(trips ?? []).map((t2) => ({ source: "trip" as const, ...t2 })),
     ];
     return {
@@ -113,6 +135,21 @@ export default function RideHistoryPage() {
       ),
     };
   }, [requests, trips]);
+
+  useEffect(() => {
+    if (!viewing || viewing.source !== "trip" || !viewing.vehicleId) {
+      setViewingVehicle(viewing?.source === "trip" ? null : undefined);
+      return;
+    }
+    let cancelled = false;
+    setViewingVehicle(undefined);
+    getVehicle(webFirestore, viewing.vehicleId)
+      .then((vehicle) => !cancelled && setViewingVehicle(vehicle))
+      .catch(() => !cancelled && setViewingVehicle(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [viewing]);
 
   async function handleCancel(requestId: string) {
     setCancellingId(requestId);
@@ -230,7 +267,7 @@ export default function RideHistoryPage() {
                     : t(`admin.tripStatus.${viewing.status}`)}
                 </dd>
               </div>
-              <div className="flex justify-between py-2">
+              <div className="flex justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
                 <dt className="text-sm text-neutral-500 dark:text-neutral-400">
                   {t("rideHistory.fare")}
                 </dt>
@@ -244,6 +281,20 @@ export default function RideHistoryPage() {
                       : "—"}
                 </dd>
               </div>
+              {viewing.source === "trip" && viewing.vehicleId && (
+                <div className="flex justify-between py-2">
+                  <dt className="text-sm text-neutral-500 dark:text-neutral-400">
+                    {t("rideHistory.vehicle")}
+                  </dt>
+                  <dd className="text-sm font-medium">
+                    {viewingVehicle === undefined
+                      ? t("common.loading")
+                      : viewingVehicle
+                        ? `${viewingVehicle.color} ${viewingVehicle.make} ${viewingVehicle.model} · ${viewingVehicle.plateNumber}`
+                        : t("rideHistory.vehicleUnavailable")}
+                  </dd>
+                </div>
+              )}
             </dl>
           )}
         </DialogContent>

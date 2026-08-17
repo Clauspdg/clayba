@@ -247,6 +247,8 @@ export const fr = {
     status: "Statut",
     fare: "Tarif",
     rideDetails: "Détails du trajet",
+    vehicle: "Véhicule",
+    vehicleUnavailable: "Détails du véhicule indisponibles",
   },
   wallet: {
     balance: "Solde",
@@ -1554,8 +1556,10 @@ export const fr = {
       distanceLabel: "Distance",
       etaLabel: "Arrivée estimée",
       payoutLabel: "Revenu estimé",
-      acceptGapNote:
-        "Accepter/refuser une demande de course depuis le web n'est pas encore connecté à la répartition en direct — un écart de plateforme connu, pas un bug.",
+      acceptCta: "Accepter",
+      declineCta: "Refuser",
+      accepted: "Course acceptée",
+      declined: "Course refusée",
     },
     currentRide: {
       emptyTitle: "Aucune course active pour le moment.",

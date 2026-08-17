@@ -17,6 +17,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
+import { httpsCallable, type Functions } from "firebase/functions";
 
 const TRIPS = "trips";
 const TRIP_REQUESTS = "tripRequests";
@@ -110,6 +111,28 @@ export function subscribeMyRideOffers(
     (snapshot) => onNext(snapshot.docs.map((d) => toRideOffer(d.id, d.data()))),
     (err) => onError(err.message),
   );
+}
+
+/**
+ * DRIVER-E2E-07 — driver Accept/Decline, routed through the callable
+ * Cloud Functions `acceptRideOffer`/`declineRideOffer` rather than a direct
+ * Firestore write: `firestore.rules`'s `rideOffers` rule is `allow write:
+ * if isAdmin()` (accept/decline transitions go through `DispatchService`
+ * server-side only), so this is the one legitimate path a driver has to
+ * respond to their own offer.
+ */
+export async function acceptRideOffer(functions: Functions, offerId: string): Promise<void> {
+  const call = httpsCallable(functions, "acceptRideOffer");
+  await call({ offerId });
+}
+
+export async function declineRideOffer(
+  functions: Functions,
+  offerId: string,
+  reason?: string,
+): Promise<void> {
+  const call = httpsCallable(functions, "declineRideOffer");
+  await call({ offerId, reason });
 }
 
 /** One-shot read of the trip request behind an offer/trip — pickup/dropoff live here, not on the offer or (pre-assignment) the trip. */

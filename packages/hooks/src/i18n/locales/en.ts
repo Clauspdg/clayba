@@ -241,6 +241,8 @@ export const en = {
     status: "Status",
     fare: "Fare",
     rideDetails: "Ride details",
+    vehicle: "Vehicle",
+    vehicleUnavailable: "Vehicle details unavailable",
   },
   wallet: {
     balance: "Balance",
@@ -1502,8 +1504,10 @@ export const en = {
       distanceLabel: "Distance",
       etaLabel: "ETA",
       payoutLabel: "Estimated payout",
-      acceptGapNote:
-        "Accepting/declining ride requests from the web isn't connected to live dispatch yet — a known platform gap, not a bug.",
+      acceptCta: "Accept",
+      declineCta: "Decline",
+      accepted: "Ride accepted",
+      declined: "Ride declined",
     },
     currentRide: {
       emptyTitle: "No active ride right now.",

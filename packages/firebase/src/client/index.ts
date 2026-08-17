@@ -1,6 +1,7 @@
 export * from "./app";
 export * from "./auth";
 export * from "./firestore";
+export * from "./functions";
 export * from "./storage";
 export * from "./analytics";
 export * from "./messaging";

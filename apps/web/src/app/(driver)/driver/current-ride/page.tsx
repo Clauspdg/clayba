@@ -71,7 +71,11 @@ export default function CurrentRidePage() {
       return;
     }
     let cancelled = false;
-    getTripRequest(webFirestore, trip.id)
+    // `trip.id` is the trips/{id} doc's own id, not the tripRequests/{id}
+    // it was created from (DRIVER-E2E-07 added `tripRequestId` for exactly
+    // this lookup) — falls back to `trip.id` only for a hypothetical trip
+    // doc predating that field.
+    getTripRequest(webFirestore, trip.tripRequestId ?? trip.id)
       .then((result) => !cancelled && setRequest(result))
       .catch(() => !cancelled && setRequest(null));
     return () => {

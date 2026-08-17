@@ -20,7 +20,11 @@ import {
   TripRequestsRepository,
   TripsRepository,
 } from "./trips.repository";
-import { CommissionsRepository, TransactionsRepository, WalletsRepository } from "./wallet.repository";
+import {
+  CommissionsRepository,
+  TransactionsRepository,
+  WalletsRepository,
+} from "./wallet.repository";
 import { DispatchService } from "./dispatch.service";
 
 export * from "./converter";
@@ -48,7 +52,10 @@ export * from "./dispatch.service";
 export function createRepositories(db: Firestore) {
   const auditLogs = new AuditLogsRepository(db);
   const users = new UsersRepository(db);
-  const { applications, warnings, suspensions, presence, drivers } = createDriverRepositories(db, auditLogs);
+  const { applications, warnings, suspensions, presence, drivers } = createDriverRepositories(
+    db,
+    auditLogs,
+  );
   const vehicles = new VehiclesRepository(db);
   const passengers = new PassengersRepository(db);
   const trips = new TripsRepository(db);
@@ -69,7 +76,18 @@ export function createRepositories(db: Firestore) {
   const dispatchQueue = new DispatchQueueRepository(db);
   const dispatchEvents = new DispatchEventsRepository(db);
   const matchingLogs = new MatchingLogsRepository(db);
-  const dispatch = new DispatchService({ drivers, vehicles, tripRequests, settings, presence, offers, dispatchQueue, dispatchEvents, matchingLogs });
+  const dispatch = new DispatchService({
+    drivers,
+    vehicles,
+    tripRequests,
+    trips,
+    settings,
+    presence,
+    offers,
+    dispatchQueue,
+    dispatchEvents,
+    matchingLogs,
+  });
 
   return {
     auditLogs,

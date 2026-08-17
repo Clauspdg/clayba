@@ -7,13 +7,27 @@ import {
   type RideOffer,
   type TripRequest,
 } from "@the-ride/types";
-import { getDocumentExpirationStatus, getRadiusForAttempt, hasMoreExpansionTiers, rankMatchingCandidates, type MatchingCandidate, type MatchingCriteria } from "@the-ride/utils";
+import {
+  getDocumentExpirationStatus,
+  getRadiusForAttempt,
+  hasMoreExpansionTiers,
+  rankMatchingCandidates,
+  type MatchingCandidate,
+  type MatchingCriteria,
+} from "@the-ride/utils";
 import { FieldValue, type UpdateData } from "firebase-admin/firestore";
 
 import type { DriverPresenceRepository, DriversRepository } from "./drivers.repository";
 import type { VehiclesRepository } from "./fleet-management.repository";
 import type { SettingsRepository } from "./settings.repository";
-import type { DispatchEventsRepository, DispatchQueueRepository, MatchingLogsRepository, RideOffersRepository, TripRequestsRepository } from "./trips.repository";
+import type {
+  DispatchEventsRepository,
+  DispatchQueueRepository,
+  MatchingLogsRepository,
+  RideOffersRepository,
+  TripRequestsRepository,
+  TripsRepository,
+} from "./trips.repository";
 
 export class NoDriversAvailableError extends Error {
   constructor(tripRequestId: string) {
@@ -26,6 +40,7 @@ export interface DispatchServiceDeps {
   drivers: DriversRepository;
   vehicles: VehiclesRepository;
   tripRequests: TripRequestsRepository;
+  trips: TripsRepository;
   settings: SettingsRepository;
   presence: DriverPresenceRepository;
   offers: RideOffersRepository;
@@ -45,18 +60,29 @@ export interface DispatchServiceDeps {
 export class DispatchService {
   constructor(private readonly deps: DispatchServiceDeps) {}
 
-  private async buildMatchingCandidates(excludeDriverIds: string[] = []): Promise<MatchingCandidate[]> {
+  private async buildMatchingCandidates(
+    excludeDriverIds: string[] = [],
+  ): Promise<MatchingCandidate[]> {
     // Same V1 note as Sprint 3: filter on `status` server-side, the rest in memory.
-    const activeDrivers = await this.deps.drivers.findWhere("status", "==", DriverAccountStatus.ACTIVE);
+    const activeDrivers = await this.deps.drivers.findWhere(
+      "status",
+      "==",
+      DriverAccountStatus.ACTIVE,
+    );
     const eligible = activeDrivers.filter(
-      (driver) => !excludeDriverIds.includes(driver.id) && driver.availabilityStatus === DriverAvailabilityStatus.AVAILABLE && driver.lastKnownLocation,
+      (driver) =>
+        !excludeDriverIds.includes(driver.id) &&
+        driver.availabilityStatus === DriverAvailabilityStatus.AVAILABLE &&
+        driver.lastKnownLocation,
     );
 
     const candidates: MatchingCandidate[] = [];
     for (const driver of eligible) {
       const vehicle = driver.vehicleId ? await this.deps.vehicles.findById(driver.vehicleId) : null;
       const presence = await this.deps.presence.findById(driver.id);
-      const hasValidDocuments = driver.documents.every((document) => getDocumentExpirationStatus(document.expiresAt) !== "expired");
+      const hasValidDocuments = driver.documents.every(
+        (document) => getDocumentExpirationStatus(document.expiresAt) !== "expired",
+      );
 
       candidates.push({
         driverId: driver.id,
@@ -92,7 +118,10 @@ export class DispatchService {
    * sends a `RideOffer`, assigning the trip request to that driver.
    * Throws `NoDriversAvailableError` if nobody is eligible at this radius.
    */
-  async runMatchingAttempt(tripRequestId: string, radiusKm: number): Promise<{ offer: RideOffer; request: TripRequest }> {
+  async runMatchingAttempt(
+    tripRequestId: string,
+    radiusKm: number,
+  ): Promise<{ offer: RideOffer; request: TripRequest }> {
     const request = await this.deps.tripRequests.findById(tripRequestId);
     if (!request) throw new Error(`Trip request "${tripRequestId}" not found.`);
 
@@ -103,8 +132,10 @@ export class DispatchService {
       searchRadiusMeters: radiusKm * 1000,
       minDriverScore: settings?.minDriverScore ?? DEFAULT_PLATFORM_SETTINGS.minDriverScore,
       minAcceptanceRate: settings?.minAcceptanceRate ?? DEFAULT_PLATFORM_SETTINGS.minAcceptanceRate,
-      maxCancellationRate: settings?.maxCancellationRate ?? DEFAULT_PLATFORM_SETTINGS.maxCancellationRate,
-      maxActiveJobsPerDriver: settings?.maxActiveJobsPerDriver ?? DEFAULT_PLATFORM_SETTINGS.maxActiveJobsPerDriver,
+      maxCancellationRate:
+        settings?.maxCancellationRate ?? DEFAULT_PLATFORM_SETTINGS.maxCancellationRate,
+      maxActiveJobsPerDriver:
+        settings?.maxActiveJobsPerDriver ?? DEFAULT_PLATFORM_SETTINGS.maxActiveJobsPerDriver,
       requestedVehicleCategoryId: request.vehicleCategoryId,
     };
 
@@ -120,17 +151,28 @@ export class DispatchService {
       // `MatchingScoreBreakdown` has fixed keys, all `number` values — a safe match for the log's `Record<string, number>` shape.
       topCandidates: ranked
         .slice(0, 5)
-        .map((c) => ({ driverId: c.driverId, score: c.total, breakdown: c.breakdown as unknown as Record<string, number>, distanceMeters: c.distanceMeters, etaSeconds: c.etaSeconds })),
+        .map((c) => ({
+          driverId: c.driverId,
+          score: c.total,
+          breakdown: c.breakdown as unknown as Record<string, number>,
+          distanceMeters: c.distanceMeters,
+          etaSeconds: c.etaSeconds,
+        })),
       ranAt: new Date(),
     });
 
     const [topCandidate] = ranked;
     if (!topCandidate) {
-      await this.deps.dispatchEvents.record({ tripRequestId, type: "no_drivers_found", metadata: { radiusKm } });
+      await this.deps.dispatchEvents.record({
+        tripRequestId,
+        type: "no_drivers_found",
+        metadata: { radiusKm },
+      });
       throw new NoDriversAvailableError(tripRequestId);
     }
 
-    const offerTimeoutSeconds = settings?.assignmentTimeoutSeconds ?? DEFAULT_PLATFORM_SETTINGS.assignmentTimeoutSeconds;
+    const offerTimeoutSeconds =
+      settings?.assignmentTimeoutSeconds ?? DEFAULT_PLATFORM_SETTINGS.assignmentTimeoutSeconds;
     const expiresAt = new Date(Date.now() + offerTimeoutSeconds * 1000);
 
     const created = await this.deps.offers.createOffer({
@@ -145,11 +187,25 @@ export class DispatchService {
     });
     const offer = await this.deps.offers.markSent(created.id);
 
-    await this.deps.dispatchEvents.record({ tripRequestId, driverId: topCandidate.driverId, offerId: offer.id, type: "offer_sent", metadata: { radiusKm, score: topCandidate.total } });
+    await this.deps.dispatchEvents.record({
+      tripRequestId,
+      driverId: topCandidate.driverId,
+      offerId: offer.id,
+      type: "offer_sent",
+      metadata: { radiusKm, score: topCandidate.total },
+    });
     await this.deps.dispatchQueue.recordOffer(tripRequestId, offer.id, topCandidate.driverId);
 
-    const updatedRequest = await this.deps.tripRequests.assignDriver(tripRequestId, topCandidate.driverId, expiresAt);
-    await this.deps.drivers.setAvailabilityStatus({ driverId: topCandidate.driverId, status: DriverAvailabilityStatus.BUSY, currentRideId: tripRequestId });
+    const updatedRequest = await this.deps.tripRequests.assignDriver(
+      tripRequestId,
+      topCandidate.driverId,
+      expiresAt,
+    );
+    await this.deps.drivers.setAvailabilityStatus({
+      driverId: topCandidate.driverId,
+      status: DriverAvailabilityStatus.BUSY,
+      currentRideId: tripRequestId,
+    });
 
     return { offer, request: updatedRequest };
   }
@@ -171,13 +227,21 @@ export class DispatchService {
       const radiusKm = getRadiusForAttempt(attempt);
       if (radiusKm === undefined) {
         await this.deps.dispatchQueue.markExhausted(tripRequestId);
-        await this.deps.dispatchEvents.record({ tripRequestId, type: "no_drivers_found", metadata: { exhausted: true } });
+        await this.deps.dispatchEvents.record({
+          tripRequestId,
+          type: "no_drivers_found",
+          metadata: { exhausted: true },
+        });
         throw new NoDriversAvailableError(tripRequestId);
       }
 
       if (attempt > queue.expansionAttempt) {
         await this.deps.dispatchQueue.expand(tripRequestId, radiusKm, attempt);
-        await this.deps.dispatchEvents.record({ tripRequestId, type: "radius_expanded", metadata: { radiusKm, attempt } });
+        await this.deps.dispatchEvents.record({
+          tripRequestId,
+          type: "radius_expanded",
+          metadata: { radiusKm, attempt },
+        });
       }
 
       try {
@@ -192,18 +256,45 @@ export class DispatchService {
     }
   }
 
-  /** Driver taps Accept (Part 5/8) — accepts the offer, puts the driver on-trip, and moves the trip request forward. */
+  /**
+   * Driver taps Accept (Part 5/8, DRIVER-E2E-07) — accepts the offer, puts
+   * the driver on-trip, moves the trip request forward, and creates the
+   * `trips/{id}` document that bridges into the execution phase (see
+   * `TripsRepository.createFromAcceptedOffer`'s doc comment — the driver
+   * Space's "current ride" read path already expected this document to
+   * exist; only the write side was missing).
+   */
   async handleOfferAccepted(offerId: string): Promise<TripRequest> {
     const offer = await this.deps.offers.accept(offerId);
-    await this.deps.dispatchEvents.record({ tripRequestId: offer.tripRequestId, driverId: offer.driverId, offerId, type: "offer_accepted" });
-    await this.deps.drivers.setAvailabilityStatus({ driverId: offer.driverId, status: DriverAvailabilityStatus.ON_TRIP, currentRideId: offer.tripRequestId });
-    await this.deps.drivers.update(offer.driverId, { activeJobsCount: FieldValue.increment(1) } as UpdateData<Driver>);
-    return this.deps.tripRequests.driverAccept(offer.tripRequestId);
+    await this.deps.dispatchEvents.record({
+      tripRequestId: offer.tripRequestId,
+      driverId: offer.driverId,
+      offerId,
+      type: "offer_accepted",
+    });
+    const driver = await this.deps.drivers.setAvailabilityStatus({
+      driverId: offer.driverId,
+      status: DriverAvailabilityStatus.ON_TRIP,
+      currentRideId: offer.tripRequestId,
+    });
+    await this.deps.drivers.update(offer.driverId, {
+      activeJobsCount: FieldValue.increment(1),
+    } as UpdateData<Driver>);
+    const request = await this.deps.tripRequests.driverAccept(offer.tripRequestId);
+    await this.deps.trips.createFromAcceptedOffer(request, offer.driverId, driver.vehicleId);
+    return request;
   }
 
   /** Driver taps Decline (Part 5/8), or the offer timer expires (Part 6) — frees the driver and automatically re-dispatches (Part 5: "Offer Reassigned"). */
-  private async handleOfferNotAccepted(offerId: string, outcome: "declined" | "expired", reason?: string): Promise<TripRequest> {
-    const offer = outcome === "declined" ? await this.deps.offers.decline(offerId, reason) : await this.deps.offers.expire(offerId);
+  private async handleOfferNotAccepted(
+    offerId: string,
+    outcome: "declined" | "expired",
+    reason?: string,
+  ): Promise<TripRequest> {
+    const offer =
+      outcome === "declined"
+        ? await this.deps.offers.decline(offerId, reason)
+        : await this.deps.offers.expire(offerId);
 
     await this.deps.dispatchEvents.record({
       tripRequestId: offer.tripRequestId,
@@ -212,10 +303,18 @@ export class DispatchService {
       type: outcome === "declined" ? "offer_declined" : "offer_expired",
       metadata: reason ? { reason } : undefined,
     });
-    await this.deps.drivers.setAvailabilityStatus({ driverId: offer.driverId, status: DriverAvailabilityStatus.AVAILABLE });
+    await this.deps.drivers.setAvailabilityStatus({
+      driverId: offer.driverId,
+      status: DriverAvailabilityStatus.AVAILABLE,
+    });
     await this.deps.tripRequests.driverReject(offer.tripRequestId);
     await this.deps.offers.reassign(offer.id);
-    await this.deps.dispatchEvents.record({ tripRequestId: offer.tripRequestId, driverId: offer.driverId, offerId, type: "driver_reassigned" });
+    await this.deps.dispatchEvents.record({
+      tripRequestId: offer.tripRequestId,
+      driverId: offer.driverId,
+      offerId,
+      type: "driver_reassigned",
+    });
 
     return this.dispatch(offer.tripRequestId);
   }

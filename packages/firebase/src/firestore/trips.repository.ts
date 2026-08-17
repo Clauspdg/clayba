@@ -11,6 +11,7 @@ import {
   TRIP_REQUESTS_COLLECTION,
   TRIPS_COLLECTION,
   TripRequestStatus,
+  TripStatus,
   dispatchEventSchema,
   dispatchQueueSchema,
   matchingLogSchema,
@@ -50,6 +51,39 @@ export class TripsRepository extends FirestoreRepository<Trip> {
   async listForDriver(driverId: string): Promise<Trip[]> {
     return this.findWhere("driverId", "==", driverId);
   }
+
+  /**
+   * DRIVER-E2E-07 — the bridge from `tripRequests` (search/match/accept
+   * phase) to `trips` (execution phase). `subscribeCurrentDriverTrip`
+   * (packages/firebase/src/client/driver-trips.ts) already queries this
+   * collection for `MATCHED`/`EN_ROUTE_TO_PICKUP`/`ARRIVED`/`IN_PROGRESS`
+   * as a driver's "current ride" — that read path existed before this
+   * write path did. Starts at `MATCHED`: assigned, not yet en route: this
+   * sprint stops at acceptance, pickup/start/complete are later work.
+   */
+  async createFromAcceptedOffer(
+    request: TripRequest,
+    driverId: string,
+    vehicleId?: string,
+  ): Promise<Trip> {
+    const id = this.newId();
+    const now = new Date();
+    const trip = tripSchema.parse({
+      id,
+      tripRequestId: request.id,
+      passengerId: request.passengerId,
+      driverId,
+      vehicleId,
+      status: TripStatus.MATCHED,
+      pickup: request.pickup,
+      dropoff: request.dropoff,
+      requestedAt: request.requestedAt,
+      fareAmount: request.fareEstimate?.total,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return this.create(id, trip);
+  }
 }
 
 /**
@@ -83,7 +117,11 @@ export class TripRequestsRepository extends FirestoreRepository<TripRequest> {
     return request;
   }
 
-  private async transition(id: string, to: TripRequestStatus, extra: Partial<TripRequest> = {}): Promise<TripRequest> {
+  private async transition(
+    id: string,
+    to: TripRequestStatus,
+    extra: Partial<TripRequest> = {},
+  ): Promise<TripRequest> {
     const request = await this.requireRequest(id);
     assertTripRequestTransition(request.status, to);
 
@@ -95,13 +133,21 @@ export class TripRequestsRepository extends FirestoreRepository<TripRequest> {
   /** Vehicle category chosen and fare/distance/duration computed — `draft` -> `estimating`. */
   async setEstimate(
     id: string,
-    params: { vehicleCategoryId: string; estimatedDistanceMeters: number; estimatedDurationSeconds: number; fareEstimate: FareBreakdown },
+    params: {
+      vehicleCategoryId: string;
+      estimatedDistanceMeters: number;
+      estimatedDurationSeconds: number;
+      fareEstimate: FareBreakdown;
+    },
   ): Promise<TripRequest> {
     return this.transition(id, TripRequestStatus.ESTIMATING, params);
   }
 
   /** Passenger confirms the estimate — `estimating` -> `confirmed`. */
-  async confirm(id: string, expiryInSeconds: number = DEFAULT_TRIP_REQUEST_EXPIRY_SECONDS): Promise<TripRequest> {
+  async confirm(
+    id: string,
+    expiryInSeconds: number = DEFAULT_TRIP_REQUEST_EXPIRY_SECONDS,
+  ): Promise<TripRequest> {
     const expiresAt = new Date(Date.now() + expiryInSeconds * 1000);
     return this.transition(id, TripRequestStatus.CONFIRMED, { expiresAt });
   }
@@ -113,7 +159,10 @@ export class TripRequestsRepository extends FirestoreRepository<TripRequest> {
 
   /** A driver has been offered the ride and must respond by `responseDeadline` — `searching_driver` -> `driver_assigned`. */
   async assignDriver(id: string, driverId: string, responseDeadline: Date): Promise<TripRequest> {
-    return this.transition(id, TripRequestStatus.DRIVER_ASSIGNED, { assignedDriverId: driverId, driverResponseDeadline: responseDeadline });
+    return this.transition(id, TripRequestStatus.DRIVER_ASSIGNED, {
+      assignedDriverId: driverId,
+      driverResponseDeadline: responseDeadline,
+    });
   }
 
   /** `driver_assigned` -> `driver_accepted`. Trip execution itself is out of scope this sprint. */
@@ -139,7 +188,10 @@ export class TripRequestsRepository extends FirestoreRepository<TripRequest> {
 
   /** Passenger cancels — legal from any non-terminal status (Part 1: "Cancel booking before assignment" is the common case, but not the only one). */
   async cancel(id: string, reason?: string): Promise<TripRequest> {
-    return this.transition(id, TripRequestStatus.CANCELLED, { cancelledAt: new Date(), cancellationReason: reason });
+    return this.transition(id, TripRequestStatus.CANCELLED, {
+      cancelledAt: new Date(),
+      cancellationReason: reason,
+    });
   }
 
   /** No driver accepted in time — `searching_driver`/`driver_rejected` -> `expired`. */
@@ -178,7 +230,13 @@ export class RideOffersRepository extends FirestoreRepository<RideOffer> {
   async createOffer(input: CreateRideOfferInput): Promise<RideOffer> {
     const id = this.newId();
     const now = new Date();
-    const offer = rideOfferSchema.parse({ ...input, id, status: OfferStatus.CREATED, createdAt: now, updatedAt: now });
+    const offer = rideOfferSchema.parse({
+      ...input,
+      id,
+      status: OfferStatus.CREATED,
+      createdAt: now,
+      updatedAt: now,
+    });
     return this.create(id, offer);
   }
 
@@ -188,7 +246,11 @@ export class RideOffersRepository extends FirestoreRepository<RideOffer> {
     return offer;
   }
 
-  private async transition(id: string, to: OfferStatus, extra: Partial<RideOffer> = {}): Promise<RideOffer> {
+  private async transition(
+    id: string,
+    to: OfferStatus,
+    extra: Partial<RideOffer> = {},
+  ): Promise<RideOffer> {
     const offer = await this.requireOffer(id);
     assertOfferTransition(offer.status, to);
 
@@ -210,7 +272,10 @@ export class RideOffersRepository extends FirestoreRepository<RideOffer> {
   }
 
   async decline(id: string, reason?: string): Promise<RideOffer> {
-    return this.transition(id, OfferStatus.DECLINED, { respondedAt: new Date(), declineReason: reason });
+    return this.transition(id, OfferStatus.DECLINED, {
+      respondedAt: new Date(),
+      declineReason: reason,
+    });
   }
 
   async expire(id: string): Promise<RideOffer> {
@@ -271,11 +336,19 @@ export class DispatchQueueRepository extends FirestoreRepository<DispatchQueue> 
   }
 
   async expand(tripRequestId: string, radiusKm: number, attempt: number): Promise<DispatchQueue> {
-    await this.update(tripRequestId, { currentRadiusKm: radiusKm, expansionAttempt: attempt, updatedAt: new Date() } as UpdateData<DispatchQueue>);
+    await this.update(tripRequestId, {
+      currentRadiusKm: radiusKm,
+      expansionAttempt: attempt,
+      updatedAt: new Date(),
+    } as UpdateData<DispatchQueue>);
     return this.requireQueue(tripRequestId);
   }
 
-  async recordOffer(tripRequestId: string, offerId: string, driverId: string): Promise<DispatchQueue> {
+  async recordOffer(
+    tripRequestId: string,
+    offerId: string,
+    driverId: string,
+  ): Promise<DispatchQueue> {
     const queue = await this.requireQueue(tripRequestId);
     await this.update(tripRequestId, {
       currentOfferId: offerId,
@@ -286,17 +359,26 @@ export class DispatchQueueRepository extends FirestoreRepository<DispatchQueue> 
   }
 
   async markAssigned(tripRequestId: string): Promise<DispatchQueue> {
-    await this.update(tripRequestId, { status: DispatchQueueStatus.ASSIGNED, updatedAt: new Date() } as UpdateData<DispatchQueue>);
+    await this.update(tripRequestId, {
+      status: DispatchQueueStatus.ASSIGNED,
+      updatedAt: new Date(),
+    } as UpdateData<DispatchQueue>);
     return this.requireQueue(tripRequestId);
   }
 
   async markExhausted(tripRequestId: string): Promise<DispatchQueue> {
-    await this.update(tripRequestId, { status: DispatchQueueStatus.EXHAUSTED, updatedAt: new Date() } as UpdateData<DispatchQueue>);
+    await this.update(tripRequestId, {
+      status: DispatchQueueStatus.EXHAUSTED,
+      updatedAt: new Date(),
+    } as UpdateData<DispatchQueue>);
     return this.requireQueue(tripRequestId);
   }
 
   async cancel(tripRequestId: string): Promise<DispatchQueue> {
-    await this.update(tripRequestId, { status: DispatchQueueStatus.CANCELLED, updatedAt: new Date() } as UpdateData<DispatchQueue>);
+    await this.update(tripRequestId, {
+      status: DispatchQueueStatus.CANCELLED,
+      updatedAt: new Date(),
+    } as UpdateData<DispatchQueue>);
     return this.requireQueue(tripRequestId);
   }
 }

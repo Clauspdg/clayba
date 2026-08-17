@@ -30,6 +30,8 @@ export type GeoLocation = z.infer<typeof geoLocationSchema>;
  */
 export const tripSchema = z.object({
   id: z.string().min(1),
+  /** Links back to the `tripRequests` doc this trip was created from (DRIVER-E2E-07: offer acceptance). Optional so any earlier trip docs without it still validate. */
+  tripRequestId: z.string().min(1).optional(),
   passengerId: z.string().min(1),
   driverId: z.string().optional(),
   vehicleId: z.string().optional(),
