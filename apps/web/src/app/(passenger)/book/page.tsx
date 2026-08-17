@@ -33,8 +33,10 @@ import type {
   VehicleCategory,
 } from "@the-ride/types";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+
+import { useUserExperience } from "@/hooks/useUserExperience";
 
 interface AddressFieldState {
   text: string;
@@ -46,29 +48,57 @@ interface AddressFieldState {
 const EMPTY_ADDRESS: AddressFieldState = { text: "", location: null, busy: false, error: null };
 const PASSENGER_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6];
 
-export default function BookRidePage() {
+function BookRidePageContent() {
   const { t } = useTranslation();
   const { session } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { loading: experienceLoading, capabilities, preferredLandingRoute } = useUserExperience();
 
   const [places, setPlaces] = useState<FavoritePlace[] | null>(null);
   const [categories, setCategories] = useState<VehicleCategory[] | null>(null);
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [pickup, setPickup] = useState<AddressFieldState>(EMPTY_ADDRESS);
-  const [destination, setDestination] = useState<AddressFieldState>(EMPTY_ADDRESS);
-  const [stops, setStops] = useState<AddressFieldState[]>([]);
+  // BOOKING-01 fix — pre-fill from the homepage BookingCard's handoff
+  // (`?pickup=`/`?destination=`/`?stop=`/`?passengers=`/`?scheduledDate=`/
+  // `?scheduledTime=`) when present; a direct visit to /book with no query
+  // params behaves exactly as before (all empty).
+  const [pickup, setPickup] = useState<AddressFieldState>(() => {
+    const text = searchParams.get("pickup");
+    return text ? { ...EMPTY_ADDRESS, text } : EMPTY_ADDRESS;
+  });
+  const [destination, setDestination] = useState<AddressFieldState>(() => {
+    const text = searchParams.get("destination");
+    return text ? { ...EMPTY_ADDRESS, text } : EMPTY_ADDRESS;
+  });
+  const [stops, setStops] = useState<AddressFieldState[]>(() =>
+    searchParams.getAll("stop").map((text) => ({ ...EMPTY_ADDRESS, text })),
+  );
   const [locating, setLocating] = useState(false);
 
-  const [passengerCount, setPassengerCount] = useState(1);
-  const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
+  const [passengerCount, setPassengerCount] = useState(() => {
+    const fromQuery = Number(searchParams.get("passengers"));
+    return PASSENGER_COUNT_OPTIONS.includes(fromQuery) ? fromQuery : 1;
+  });
+  const [scheduleMode, setScheduleMode] = useState<"now" | "later">(() =>
+    searchParams.get("scheduledDate") && searchParams.get("scheduledTime") ? "later" : "now",
+  );
+  const [scheduledDate, setScheduledDate] = useState(() => searchParams.get("scheduledDate") ?? "");
+  const [scheduledTime, setScheduledTime] = useState(() => searchParams.get("scheduledTime") ?? "");
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+
+  // Redirect away if this account can't book rides at all (guest is already
+  // handled by RequireAuth; this covers staff/admin, the one authenticated
+  // state with no passenger capability — see docs/booking-handoff-audit.md).
+  useEffect(() => {
+    if (!experienceLoading && capabilities && !capabilities.canBookRide) {
+      router.replace(preferredLandingRoute ?? "/");
+    }
+  }, [experienceLoading, capabilities, preferredLandingRoute, router]);
 
   useEffect(() => {
     if (!session) return;
@@ -130,6 +160,19 @@ export default function BookRidePage() {
       apply({ text, location: null, busy: false, error: t("booking.addressLookupUnavailable") });
     }
   }
+
+  // Runs once on mount only: resolve real coordinates for whatever text the
+  // homepage handoff pre-filled above, exactly as if the passenger had
+  // typed and blurred each field themselves (same honest success/failure
+  // path — no geocoding key configured in this environment still means an
+  // honest "address lookup unavailable" here, same as manual entry).
+  useEffect(() => {
+    if (pickup.text) void resolveManualAddress(pickup.text, setPickup);
+    if (destination.text) void resolveManualAddress(destination.text, setDestination);
+    stops.forEach((stop, index) => {
+      if (stop.text) void resolveManualAddress(stop.text, (next) => updateStop(index, next));
+    });
+  }, []);
 
   function handleUseCurrentLocation() {
     if (!("geolocation" in navigator)) {
@@ -257,7 +300,7 @@ export default function BookRidePage() {
     );
   }
 
-  if (categories === null) {
+  if (categories === null || experienceLoading || (capabilities && !capabilities.canBookRide)) {
     return <LoadingState title={t("common.loading")} />;
   }
 
@@ -470,5 +513,17 @@ export default function BookRidePage() {
         </div>
       )}
     </div>
+  );
+}
+
+// BOOKING-01 fix — useSearchParams() (used above to read the homepage
+// handoff) requires a Suspense boundary for static export; same pattern as
+// LoginPage/VerifyEmailPage.
+export default function BookRidePage() {
+  const { t } = useTranslation();
+  return (
+    <Suspense fallback={<LoadingState title={t("common.loading")} />}>
+      <BookRidePageContent />
+    </Suspense>
   );
 }

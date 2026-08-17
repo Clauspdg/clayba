@@ -69,6 +69,25 @@ export default function HomePage() {
   // more than once on a fresh sign-in, and `experienceLoading` going false
   // once isn't reliable proof `preferredLandingRoute` is the final answer.
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // BOOKING-01 fix — the redirect below used to fire unconditionally 1200ms
+  // after `preferredLandingRoute` resolved, with no regard for whether the
+  // visitor was actively using the page (e.g. filling in BookingCard) —
+  // yanking a signed-in passenger to /dashboard mid-interaction, found
+  // live while verifying the BookingCard -> /book handoff. Any pointer or
+  // keyboard interaction before the timer fires cancels it for this visit.
+  const userInteracted = useRef(false);
+
+  useEffect(() => {
+    function markInteracted() {
+      userInteracted.current = true;
+    }
+    window.addEventListener("pointerdown", markInteracted, { once: true });
+    window.addEventListener("keydown", markInteracted, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", markInteracted);
+      window.removeEventListener("keydown", markInteracted);
+    };
+  }, []);
 
   useEffect(() => {
     if (redirectTimer.current) {
@@ -77,6 +96,7 @@ export default function HomePage() {
     }
     if (experienceLoading || !preferredLandingRoute || preferredLandingRoute === "/") return;
     redirectTimer.current = setTimeout(() => {
+      if (userInteracted.current) return;
       router.replace(preferredLandingRoute);
     }, 1200);
     return () => {

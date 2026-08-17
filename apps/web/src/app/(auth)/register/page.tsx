@@ -7,6 +7,7 @@ import {
   Heading,
   Icon,
   Input,
+  LoadingState,
   PasswordInput,
   Progress,
   Text,
@@ -14,15 +15,16 @@ import {
 } from "@the-ride/ui";
 import { useAuth } from "@the-ride/hooks";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 
 type RoleChoice = "passenger" | "driver";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const { t } = useTranslation();
   const { error, signUp } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<0 | 1>(0);
   const [role, setRole] = useState<RoleChoice>("passenger");
   const [submitting, setSubmitting] = useState(false);
@@ -46,7 +48,13 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await signUp(email, password, `${firstName} ${lastName}`.trim());
-      router.push(role === "driver" ? "/verify-email?next=/become-a-driver" : "/verify-email");
+      // BOOKING-01 fix — a driver-role signup still takes priority (an
+      // explicit in-form choice), but otherwise relay whatever `?next=`
+      // this page itself was opened with (e.g. BookingCard sending a
+      // signed-out visitor here mid-booking) through to verify-email,
+      // which already knows how to honor it.
+      const next = role === "driver" ? "/become-a-driver" : searchParams.get("next");
+      router.push(next ? `/verify-email?next=${encodeURIComponent(next)}` : "/verify-email");
     } catch {
       // `error` from useAuth() already carries the message; the form re-renders with it below.
     } finally {
@@ -198,5 +206,16 @@ export default function RegisterPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// BOOKING-01 fix — useSearchParams() (used above to relay ?next=) requires
+// a Suspense boundary for static export; same pattern as LoginPage.
+export default function RegisterPage() {
+  const { t } = useTranslation();
+  return (
+    <Suspense fallback={<LoadingState title={t("common.loading")} />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

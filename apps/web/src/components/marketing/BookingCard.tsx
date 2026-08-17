@@ -73,11 +73,31 @@ export function BookingCard() {
       toast({ variant: "danger", title: t("booking.missingLocationsTitle") });
       return;
     }
+
+    // BOOKING-01 fix — carry what /book can actually use: pickup/destination
+    // text (still resolved there via the same manual-entry/geocode path),
+    // real stops, passenger count, and a chosen date/time (mapped to /book's
+    // own Now/Later toggle). Deliberately NOT carried: this card's
+    // `vehicleId` (a different ID space than the real Firestore
+    // `vehicleCategories` /book reads — see docs/booking-handoff-audit.md)
+    // and `notes` (no field for it on /book; adding one is a schema change,
+    // not a handoff fix).
+    const params = new URLSearchParams({ pickup: pickup.trim(), destination: destination.trim() });
+    for (const stop of stops) {
+      if (stop.trim()) params.append("stop", stop.trim());
+    }
+    if (passengers !== "1") params.set("passengers", passengers);
+    if (date && time) {
+      params.set("scheduledDate", date);
+      params.set("scheduledTime", time);
+    }
+    const bookHref = `/book?${params.toString()}`;
+
     if (status === "authenticated") {
-      router.push("/book");
+      router.push(bookHref);
     } else {
       toast({ variant: "default", title: t("website.landing.bookingSignUpPrompt") });
-      router.push("/register");
+      router.push(`/register?next=${encodeURIComponent(bookHref)}`);
     }
   }
 
