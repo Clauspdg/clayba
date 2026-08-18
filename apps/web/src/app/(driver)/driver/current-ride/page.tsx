@@ -5,6 +5,7 @@ import { useUserExperience } from "@/hooks/useUserExperience";
 import {
   advanceTripStatus,
   getTripRequest,
+  setAvailableAfterTripCompletion,
   subscribeCurrentDriverTrip,
   updateTripDriverLocation,
 } from "@the-ride/firebase/client";
@@ -148,9 +149,16 @@ export default function CurrentRidePage() {
   // Once the realtime subscription confirms `trip.status` actually reached
   // `pendingTarget`, wait one more settle beat before unlocking the button
   // — this is what stops a rapid second click from ever reaching whichever
-  // action the button re-renders as next.
+  // action the button re-renders as next. Completing a trip is a special
+  // case: `subscribeCurrentDriverTrip`'s own query excludes `COMPLETED`
+  // (not in `ACTIVE_TRIP_STATUSES`), so `trip` goes straight to `null`
+  // rather than ever showing `status: completed` — that IS the expected
+  // confirmation for that one transition, not a case to keep waiting on.
   useEffect(() => {
-    if (!trip || pendingTarget === null || trip.status !== pendingTarget) return;
+    if (pendingTarget === null) return;
+    const confirmed =
+      pendingTarget === TripStatus.COMPLETED ? trip === null : trip?.status === pendingTarget;
+    if (!confirmed) return;
     const timer = setTimeout(() => {
       setPendingTarget(null);
       setPendingCtaKey(null);
@@ -160,7 +168,7 @@ export default function CurrentRidePage() {
   }, [trip, pendingTarget]);
 
   async function handleAdvance() {
-    if (!trip || busy || pendingTarget !== null) return;
+    if (!trip || !driver || busy || pendingTarget !== null) return;
     const next = NEXT_STAGE[trip.status];
     if (!next || !canTransitionTrip(trip.status, next.to)) return;
     setBusy(true);
@@ -168,6 +176,22 @@ export default function CurrentRidePage() {
     setPendingCtaKey(next.ctaKey);
     try {
       await advanceTripStatus(webFirestore, trip.id, next.to);
+      // DRIVER-E2E-10 — completing a trip is the one transition that also
+      // needs to free the driver: `DRIVER_AVAILABILITY_TRANSITIONS` makes
+      // `ON_TRIP -> AVAILABLE` legal, but until now nothing ever performed
+      // it (dispatch only ever moves a driver INTO `on_trip`). A failure
+      // here is toasted but doesn't undo the trip completion itself, which
+      // already succeeded and is the primary, real outcome.
+      if (next.to === TripStatus.COMPLETED) {
+        try {
+          await setAvailableAfterTripCompletion(webFirestore, driver.id);
+        } catch (err) {
+          toast({
+            variant: "danger",
+            title: err instanceof Error ? err.message : t("common.error"),
+          });
+        }
+      }
       // Left busy/pendingTarget locked here on purpose — the settle effect
       // above is what clears them, once the realtime echo confirms the
       // write actually landed, not just that the request completed.

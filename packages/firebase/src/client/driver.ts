@@ -12,6 +12,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   onSnapshot,
   query,
   updateDoc,
@@ -162,4 +163,27 @@ export async function setOwnAvailabilityStatus(
     update.lastLocationUpdatedAt = new Date();
   }
   await updateDoc(doc(db, COLLECTION, driverId), update);
+}
+
+/**
+ * DRIVER-E2E-10 — a driver's own self-service return to `AVAILABLE` after
+ * completing their current trip. `DRIVER_AVAILABILITY_TRANSITIONS` makes
+ * `ON_TRIP -> AVAILABLE` legal, but nothing ever performed it: dispatch
+ * only ever moves a driver INTO `on_trip` (`handleOfferAccepted`), never
+ * back out. Distinct from `setOwnAvailabilityStatus` because this is the
+ * one self-service path allowed to also touch `activeJobsCount` — by
+ * exactly -1, enforced by `firestore.rules`'s `isOwnAvailabilityToggle()`
+ * — since completing a trip is what actually frees that concurrency slot.
+ */
+export async function setAvailableAfterTripCompletion(
+  db: Firestore,
+  driverId: string,
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, driverId), {
+    availabilityStatus: DriverAvailabilityStatus.AVAILABLE,
+    isOnline: true,
+    isAvailable: true,
+    activeJobsCount: increment(-1),
+    updatedAt: new Date(),
+  });
 }

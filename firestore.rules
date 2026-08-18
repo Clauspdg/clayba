@@ -93,32 +93,36 @@ service cloud.firestore {
       // without this guard, that's the common case, not an edge case.
       allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher', 'support']));
 
-      // FLOW-02A, extended DRIVER-E2E-06 — the self-service mutations a
-      // driver may make directly: OFFLINE<->ONLINE (unchanged), plus
-      // ONLINE->AVAILABLE and AVAILABLE->OFFLINE (the two additional legal
-      // edges from `DRIVER_AVAILABILITY_TRANSITIONS`/docs/driver-presence.md
-      // needed so a real web driver can reach the one state the matching
-      // engine's `isAvailableForOffers` actually considers eligible —
-      // 'busy'/'on_trip'/etc. still require the dispatch engine and stay
-      // admin-only). `lastKnownLocation`/`lastLocationUpdatedAt` may now be
-      // set by the driver as part of this same toggle (needed for
-      // `DispatchService.buildMatchingCandidates`'s location filter) — every
-      // OTHER field, including `status` (DriverAccountStatus), documents,
-      // score, vehicle, is still provably unchanged, so this can never be
-      // used to self-approve, self-reactivate, or touch anything but
-      // presence/location.
+      // FLOW-02A, extended DRIVER-E2E-06 and DRIVER-E2E-10 — the
+      // self-service mutations a driver may make directly: OFFLINE<->ONLINE,
+      // ONLINE->AVAILABLE, AVAILABLE->OFFLINE, and now ON_TRIP->AVAILABLE
+      // (the legal edge from `DRIVER_AVAILABILITY_TRANSITIONS`/
+      // docs/driver-presence.md a driver needs to self-service once they
+      // complete their own current trip — nothing else ever moves a driver
+      // out of `on_trip`, since dispatch only ever moves them in).
+      // 'busy'/etc. still require the dispatch engine and stay admin-only.
+      // `lastKnownLocation`/`lastLocationUpdatedAt` may be set as part of
+      // this same toggle (needed for `DispatchService.buildMatchingCandidates`'s
+      // location filter). `activeJobsCount` may decrease by EXACTLY 1, and
+      // only on the ON_TRIP->AVAILABLE edge — the one case a driver
+      // legitimately frees their own concurrency slot; every other field,
+      // including `status` (DriverAccountStatus), documents, score,
+      // vehicle, is still provably unchanged, so this can never be used to
+      // self-approve, self-reactivate, or touch anything but
+      // presence/location/completing-their-own-job-count.
       function isOwnAvailabilityToggle() {
         return isSignedIn()
           && resource.data.userId == request.auth.uid
           && resource.data.status == 'active'
           && request.resource.data.status == resource.data.status
-          && resource.data.availabilityStatus in ['online', 'offline', 'available']
+          && resource.data.availabilityStatus in ['online', 'offline', 'available', 'on_trip']
           && request.resource.data.availabilityStatus in ['online', 'offline', 'available']
           && (
             (resource.data.availabilityStatus == 'offline' && request.resource.data.availabilityStatus == 'online')
             || (resource.data.availabilityStatus == 'online' && request.resource.data.availabilityStatus == 'offline')
             || (resource.data.availabilityStatus == 'online' && request.resource.data.availabilityStatus == 'available')
             || (resource.data.availabilityStatus == 'available' && request.resource.data.availabilityStatus == 'offline')
+            || (resource.data.availabilityStatus == 'on_trip' && request.resource.data.availabilityStatus == 'available')
           )
           && request.resource.data.isOnline == (request.resource.data.availabilityStatus != 'offline')
           && request.resource.data.isAvailable == (request.resource.data.availabilityStatus == 'available')
@@ -132,7 +136,10 @@ service cloud.firestore {
           && request.resource.data.score == resource.data.score
           && request.resource.data.acceptanceRate == resource.data.acceptanceRate
           && request.resource.data.cancellationRate == resource.data.cancellationRate
-          && request.resource.data.activeJobsCount == resource.data.activeJobsCount
+          && (
+            (resource.data.availabilityStatus == 'on_trip' && request.resource.data.activeJobsCount == resource.data.activeJobsCount - 1)
+            || (resource.data.availabilityStatus != 'on_trip' && request.resource.data.activeJobsCount == resource.data.activeJobsCount)
+          )
           && request.resource.data.createdAt == resource.data.createdAt;
       }
 
