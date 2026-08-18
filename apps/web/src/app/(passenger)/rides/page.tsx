@@ -92,7 +92,18 @@ export default function RideHistoryPage() {
   const { toast } = useToast();
   const [requests, setRequests] = useState<TripRequest[] | null>(null);
   const [trips, setTrips] = useState<Trip[] | null>(null);
-  const [viewing, setViewing] = useState<RideItem | null>(null);
+  // DRIVER-E2E-10 — a key, not a copy of the item: storing the clicked
+  // `RideItem` itself froze the dialog at whatever it looked like the
+  // moment it opened, since neither `requests` nor `trips` updating via
+  // their realtime subscriptions ever touched that separate state. A
+  // driver going en_route/arrived/in_progress/completed while the
+  // passenger already had the dialog open never showed up — the list
+  // rows behind it *did* update live, only the open dialog didn't.
+  // Deriving `viewing` below from the live arrays on every render fixes
+  // that for good, for every status this dialog can show.
+  const [viewingKey, setViewingKey] = useState<{ source: RideItem["source"]; id: string } | null>(
+    null,
+  );
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [viewingVehicle, setViewingVehicle] = useState<Vehicle | null | undefined>(undefined);
 
@@ -137,6 +148,16 @@ export default function RideHistoryPage() {
     };
   }, [requests, trips]);
 
+  const viewing: RideItem | null = useMemo(() => {
+    if (!viewingKey) return null;
+    if (viewingKey.source === "request") {
+      const match = (requests ?? []).find((r) => r.id === viewingKey.id);
+      return match ? { source: "request" as const, ...match } : null;
+    }
+    const match = (trips ?? []).find((t) => t.id === viewingKey.id);
+    return match ? { source: "trip" as const, ...match } : null;
+  }, [viewingKey, requests, trips]);
+
   useEffect(() => {
     if (!viewing || viewing.source !== "trip" || !viewing.vehicleId) {
       setViewingVehicle(viewing?.source === "trip" ? null : undefined);
@@ -179,7 +200,11 @@ export default function RideHistoryPage() {
             key={`${item.source}-${item.id}`}
             className="flex items-center justify-between rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
           >
-            <button type="button" onClick={() => setViewing(item)} className="flex-1 text-left">
+            <button
+              type="button"
+              onClick={() => setViewingKey({ source: item.source, id: item.id })}
+              className="flex-1 text-left"
+            >
               <p className="font-medium text-neutral-900 dark:text-neutral-50">
                 {item.pickup.address ?? t("rideHistory.pickup")} →{" "}
                 {item.dropoff.address ?? t("rideHistory.destination")}
@@ -239,7 +264,7 @@ export default function RideHistoryPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}>
+      <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewingKey(null)}>
         <DialogContent closeLabel={t("common.close")}>
           <DialogHeader>
             <DialogTitle>{t("rideHistory.rideDetails")}</DialogTitle>
