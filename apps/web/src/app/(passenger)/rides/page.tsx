@@ -8,6 +8,7 @@ import {
   subscribeMyTrips,
 } from "@the-ride/firebase/client";
 import {
+  Alert,
   Badge,
   Button,
   Dialog,
@@ -245,6 +246,20 @@ export default function RideHistoryPage() {
           </DialogHeader>
           {viewing && (
             <dl className="grid gap-3">
+              {viewing.source === "trip" && viewing.status === TripStatus.EN_ROUTE_TO_PICKUP && (
+                <Alert tone="brand" title={t("rideHistory.driverOnWayTitle")}>
+                  {viewing.driverLocationUpdatedAt
+                    ? t("rideHistory.driverLocationFreshness", {
+                        time: viewing.driverLocationUpdatedAt.toLocaleTimeString(),
+                      })
+                    : t("rideHistory.driverLocationUnavailable")}
+                </Alert>
+              )}
+              {viewing.source === "trip" && viewing.status === TripStatus.ARRIVED && (
+                <Alert tone="success" title={t("rideHistory.driverArrivedTitle")}>
+                  {t("rideHistory.driverArrivedBody")}
+                </Alert>
+              )}
               <div className="flex justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
                 <dt className="text-sm text-neutral-500 dark:text-neutral-400">
                   {t("rideHistory.pickup")}

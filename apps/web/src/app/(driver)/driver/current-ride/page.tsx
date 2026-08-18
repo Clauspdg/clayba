@@ -6,6 +6,7 @@ import {
   advanceTripStatus,
   getTripRequest,
   subscribeCurrentDriverTrip,
+  updateTripDriverLocation,
 } from "@the-ride/firebase/client";
 import {
   Badge,
@@ -23,7 +24,10 @@ import {
 } from "@the-ride/ui";
 import { TripStatus, type Trip, type TripRequest } from "@the-ride/types";
 import { canTransitionTrip } from "@the-ride/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+/** Skip a `watchPosition` reading if the last write was more recent than this — avoids writing on every GPS tick. */
+const LOCATION_WRITE_THROTTLE_MS = 10_000;
 
 const NEXT_STAGE: Partial<Record<TripStatus, { to: TripStatus; ctaKey: string }>> = {
   [TripStatus.MATCHED]: {
@@ -59,11 +63,51 @@ export default function CurrentRidePage() {
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [request, setRequest] = useState<TripRequest | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const [locationSharing, setLocationSharing] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const lastLocationWriteAt = useRef(0);
 
   useEffect(() => {
     if (!driver) return;
     return subscribeCurrentDriverTrip(webFirestore, driver.id, setTrip, () => setTrip(null));
   }, [driver]);
+
+  /**
+   * DRIVER-E2E-08 — live position only while actually approaching pickup.
+   * Stops itself (via the cleanup function) the moment `trip` changes away
+   * from `EN_ROUTE_TO_PICKUP` — status advance, trip completion/
+   * cancellation, or unmount all naturally end tracking; nothing else has
+   * to remember to turn it off.
+   */
+  useEffect(() => {
+    setLocationError(null);
+    setLocationSharing(false);
+    if (!trip || trip.status !== TripStatus.EN_ROUTE_TO_PICKUP) return;
+    if (!("geolocation" in navigator)) {
+      setLocationError(t("driverSpace.currentRide.locationUnsupported"));
+      return;
+    }
+    const tripId = trip.id;
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setLocationSharing(true);
+        setLocationError(null);
+        const now = Date.now();
+        if (now - lastLocationWriteAt.current < LOCATION_WRITE_THROTTLE_MS) return;
+        lastLocationWriteAt.current = now;
+        void updateTripDriverLocation(webFirestore, tripId, {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        setLocationSharing(false);
+        setLocationError(t("driverSpace.currentRide.locationDenied"));
+      },
+      { enableHighAccuracy: false, maximumAge: 5000 },
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [trip, t]);
 
   useEffect(() => {
     if (!trip) {
@@ -186,10 +230,27 @@ export default function CurrentRidePage() {
             </Text>
           )}
 
+          {trip.arrivedAt && (
+            <Text size="xs" tone="muted">
+              {t("driverSpace.currentRide.arrivedLabel")}:{" "}
+              {trip.arrivedAt.toLocaleTimeString(locale)}
+            </Text>
+          )}
+
           {trip.startedAt && (
             <Text size="xs" tone="muted">
               {t("driverSpace.currentRide.startedLabel")}:{" "}
               {trip.startedAt.toLocaleTimeString(locale)}
+            </Text>
+          )}
+
+          {trip.status === TripStatus.EN_ROUTE_TO_PICKUP && (
+            <Text size="xs" tone={locationError ? "danger" : "muted"}>
+              {locationError
+                ? locationError
+                : locationSharing
+                  ? t("driverSpace.currentRide.locationSharing")
+                  : t("driverSpace.currentRide.locationAcquiring")}
             </Text>
           )}
 

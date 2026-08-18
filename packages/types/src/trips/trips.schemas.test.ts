@@ -105,4 +105,40 @@ describe("tripSchema", () => {
 
     expect(trip.tripRequestId).toBeUndefined();
   });
+
+  it("accepts arrivedAt and driverLocation/driverLocationUpdatedAt (DRIVER-E2E-08)", () => {
+    const trip = tripSchema.parse({
+      id: "trip-1",
+      passengerId: "passenger-1",
+      status: TripStatus.ARRIVED,
+      pickup,
+      dropoff,
+      requestedAt: new Date(),
+      arrivedAt: timestamp(new Date("2026-01-01T00:05:00.000Z")),
+      driverLocation: { lat: 45.51, lng: -73.6 },
+      driverLocationUpdatedAt: timestamp(new Date("2026-01-01T00:04:30.000Z")),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    expect(trip.arrivedAt).toBeInstanceOf(Date);
+    expect(trip.driverLocation).toEqual({ lat: 45.51, lng: -73.6 });
+    expect(trip.driverLocationUpdatedAt).toBeInstanceOf(Date);
+  });
+
+  it("still validates without arrivedAt/driverLocation (backward compatible)", () => {
+    const trip = tripSchema.parse({
+      id: "trip-1",
+      passengerId: "passenger-1",
+      status: TripStatus.MATCHED,
+      pickup,
+      dropoff,
+      requestedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    expect(trip.arrivedAt).toBeUndefined();
+    expect(trip.driverLocation).toBeUndefined();
+  });
 });

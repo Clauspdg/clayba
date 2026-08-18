@@ -40,8 +40,20 @@ export const tripSchema = z.object({
   dropoff: geoLocationSchema,
   requestedAt: firestoreDateSchema,
   startedAt: firestoreDateSchema.optional(),
+  /** Set when the driver marks Arrived at pickup (DRIVER-E2E-08) — en_route_to_pickup -> arrived. */
+  arrivedAt: firestoreDateSchema.optional(),
   completedAt: firestoreDateSchema.optional(),
   cancelledAt: firestoreDateSchema.optional(),
+  /**
+   * Live driver position during the pickup approach (DRIVER-E2E-08) — kept
+   * on the trip doc, not the `Driver` doc, deliberately: `drivers/{uid}` is
+   * only readable by its owner or staff, and broadening that to any
+   * passenger would leak a driver's live position outside their own active
+   * trip. `trips/{tripId}` is already readable by exactly the assigned
+   * passenger and driver, so this scopes location to "this ride" for free.
+   */
+  driverLocation: geoLocationSchema.optional(),
+  driverLocationUpdatedAt: firestoreDateSchema.optional(),
   fareAmount: z.number().min(0).optional(),
   createdAt: firestoreDateSchema,
   updatedAt: firestoreDateSchema,

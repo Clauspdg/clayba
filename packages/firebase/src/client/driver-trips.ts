@@ -61,8 +61,10 @@ function toTrip(id: string, data: Record<string, unknown>): Trip {
     id,
     requestedAt: toDateSafe(data.requestedAt) ?? new Date(0),
     startedAt: toDateSafe(data.startedAt),
+    arrivedAt: toDateSafe(data.arrivedAt),
     completedAt: toDateSafe(data.completedAt),
     cancelledAt: toDateSafe(data.cancelledAt),
+    driverLocationUpdatedAt: toDateSafe(data.driverLocationUpdatedAt),
     createdAt: toDateSafe(data.createdAt) ?? new Date(0),
     updatedAt: toDateSafe(data.updatedAt) ?? new Date(0),
   } as Trip;
@@ -200,10 +202,31 @@ export async function advanceTripStatus(
 ): Promise<void> {
   const now = new Date();
   const extra: Record<string, Date> =
-    to === TripStatus.IN_PROGRESS
-      ? { startedAt: now }
-      : to === TripStatus.COMPLETED
-        ? { completedAt: now }
-        : {};
+    to === TripStatus.ARRIVED
+      ? { arrivedAt: now }
+      : to === TripStatus.IN_PROGRESS
+        ? { startedAt: now }
+        : to === TripStatus.COMPLETED
+          ? { completedAt: now }
+          : {};
   await updateDoc(doc(db, TRIPS, tripId), { status: to, updatedAt: now, ...extra });
+}
+
+/**
+ * DRIVER-E2E-08 — the driver's live position during pickup approach, one
+ * `watchPosition` reading at a time (throttled by the caller, not here —
+ * see `current-ride/page.tsx`). Kept on the trip doc (see `tripSchema`'s
+ * `driverLocation` doc comment) rather than the `Driver` doc, so the
+ * assigned passenger can read it via the same `trips/{tripId}` read rule
+ * that already scopes them to their own ride — no rules change needed.
+ */
+export async function updateTripDriverLocation(
+  db: Firestore,
+  tripId: string,
+  location: { lat: number; lng: number },
+): Promise<void> {
+  await updateDoc(doc(db, TRIPS, tripId), {
+    driverLocation: location,
+    driverLocationUpdatedAt: new Date(),
+  });
 }

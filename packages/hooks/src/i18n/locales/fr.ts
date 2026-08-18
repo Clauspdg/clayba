@@ -249,6 +249,12 @@ export const fr = {
     rideDetails: "Détails du trajet",
     vehicle: "Véhicule",
     vehicleUnavailable: "Détails du véhicule indisponibles",
+    driverOnWayTitle: "Votre chauffeur est en route",
+    driverLocationFreshness: "Dernière mise à jour {time}",
+    driverLocationUnavailable: "Le partage de position n'a pas encore commencé.",
+    driverArrivedTitle: "Votre chauffeur est arrivé",
+    driverArrivedBody:
+      "Rendez-vous à votre point de prise en charge — votre chauffeur vous attend.",
   },
   wallet: {
     balance: "Solde",
@@ -1565,11 +1571,17 @@ export const fr = {
       emptyTitle: "Aucune course active pour le moment.",
       fareLabel: "Tarif",
       startedLabel: "Débutée",
+      arrivedLabel: "Arrivé",
       summaryBody: "Cette course est terminée.",
       navigateToPickupCta: "Naviguer vers le point de prise en charge",
       arrivedCta: "Je suis arrivé",
       startRideCta: "Démarrer la course",
       completeCta: "Terminer la course",
+      locationSharing: "Votre position est partagée avec le passager",
+      locationAcquiring: "Récupération de votre position…",
+      locationUnsupported:
+        "Votre navigateur ne prend pas en charge la localisation — le passager ne verra pas votre position.",
+      locationDenied: "Accès à la localisation refusé — le passager ne verra pas votre position.",
     },
     trips: {
       emptyTitle: "Aucune course terminée pour le moment.",

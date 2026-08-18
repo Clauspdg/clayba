@@ -24,6 +24,42 @@ const TRIP_REQUESTS = "tripRequests";
 const TRIPS = "trips";
 
 /**
+ * Same reasoning as `driver-trips.ts`'s copy: `tripSchema` uses
+ * `firestoreDateSchema`, but this module reads raw `snapshot.data()`
+ * without `.parse()`, so a Firestore `Timestamp` needs converting by hand
+ * for any date field passenger-side code actually calls `.getTime()`/
+ * `.toLocaleString()` on (DRIVER-E2E-08 needs `driverLocationUpdatedAt`
+ * for a location-freshness display).
+ */
+function toDateSafe(value: unknown): Date | undefined {
+  if (value instanceof Date) return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  return undefined;
+}
+
+function toTrip(id: string, data: Record<string, unknown>): Trip {
+  return {
+    ...data,
+    id,
+    requestedAt: toDateSafe(data.requestedAt) ?? new Date(0),
+    startedAt: toDateSafe(data.startedAt),
+    arrivedAt: toDateSafe(data.arrivedAt),
+    completedAt: toDateSafe(data.completedAt),
+    cancelledAt: toDateSafe(data.cancelledAt),
+    driverLocationUpdatedAt: toDateSafe(data.driverLocationUpdatedAt),
+    createdAt: toDateSafe(data.createdAt) ?? new Date(0),
+    updatedAt: toDateSafe(data.updatedAt) ?? new Date(0),
+  } as Trip;
+}
+
+/**
  * Client-side ride booking + history access (Sprint 6) — thin wrapper over
  * the client Firestore SDK. A booking creates a `tripRequest`; matching it
  * to a real `trips` document is the dispatch engine's job
@@ -95,7 +131,7 @@ export function subscribeMyTrips(
   );
   return onSnapshot(
     q,
-    (snapshot) => onNext(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Trip)),
+    (snapshot) => onNext(snapshot.docs.map((d) => toTrip(d.id, d.data()))),
     (err) => onError(err.message),
   );
 }
