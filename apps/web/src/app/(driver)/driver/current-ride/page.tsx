@@ -29,6 +29,17 @@ import { useEffect, useRef, useState } from "react";
 /** Skip a `watchPosition` reading if the last write was more recent than this — avoids writing on every GPS tick. */
 const LOCATION_WRITE_THROTTLE_MS = 10_000;
 
+/**
+ * DRIVER-E2E-08.1 — extra settle time after the realtime subscription
+ * confirms a transition landed, before the NEXT stage's button is allowed
+ * to re-enable. Without this, "I've arrived" succeeding and the
+ * subscription's `trip.status` update updating `next` to "Start ride" can
+ * both happen within the same rapid double-click's two clicks, since
+ * Firestore round-trips (write ack + snapshot echo) can resolve in well
+ * under typical double-click timing.
+ */
+const TRANSITION_SETTLE_MS = 500;
+
 const NEXT_STAGE: Partial<Record<TripStatus, { to: TripStatus; ctaKey: string }>> = {
   [TripStatus.MATCHED]: {
     to: TripStatus.EN_ROUTE_TO_PICKUP,
@@ -63,6 +74,13 @@ export default function CurrentRidePage() {
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [request, setRequest] = useState<TripRequest | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  // DRIVER-E2E-08.1 — the status this page is waiting to observe come back
+  // through the realtime subscription. Non-null covers BOTH the write
+  // in-flight and the "waiting for the echo + settle window" phases, so
+  // the lifecycle button stays locked across the whole gap where a rapid
+  // second click could otherwise land on the newly-revealed next action.
+  const [pendingTarget, setPendingTarget] = useState<TripStatus | null>(null);
+  const [pendingCtaKey, setPendingCtaKey] = useState<string | null>(null);
   const [locationSharing, setLocationSharing] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const lastLocationWriteAt = useRef(0);
@@ -127,17 +145,37 @@ export default function CurrentRidePage() {
     };
   }, [trip]);
 
+  // Once the realtime subscription confirms `trip.status` actually reached
+  // `pendingTarget`, wait one more settle beat before unlocking the button
+  // — this is what stops a rapid second click from ever reaching whichever
+  // action the button re-renders as next.
+  useEffect(() => {
+    if (!trip || pendingTarget === null || trip.status !== pendingTarget) return;
+    const timer = setTimeout(() => {
+      setPendingTarget(null);
+      setPendingCtaKey(null);
+      setBusy(false);
+    }, TRANSITION_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [trip, pendingTarget]);
+
   async function handleAdvance() {
-    if (!trip) return;
+    if (!trip || busy || pendingTarget !== null) return;
     const next = NEXT_STAGE[trip.status];
     if (!next || !canTransitionTrip(trip.status, next.to)) return;
     setBusy(true);
+    setPendingTarget(next.to);
+    setPendingCtaKey(next.ctaKey);
     try {
       await advanceTripStatus(webFirestore, trip.id, next.to);
+      // Left busy/pendingTarget locked here on purpose — the settle effect
+      // above is what clears them, once the realtime echo confirms the
+      // write actually landed, not just that the request completed.
     } catch (err) {
       toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
-    } finally {
       setBusy(false);
+      setPendingTarget(null);
+      setPendingCtaKey(null);
     }
   }
 
@@ -254,10 +292,23 @@ export default function CurrentRidePage() {
             </Text>
           )}
 
-          {next && (
-            <Button size="lg" fullWidth onClick={() => void handleAdvance()} isLoading={busy}>
-              {t(next.ctaKey)}
+          {/*
+            DRIVER-E2E-08.1 — while a transition is pending/settling, the
+            button for the CURRENT stage's action stays put (loading,
+            disabled) rather than swapping to the next stage's action the
+            instant the realtime echo arrives; the next real action only
+            renders once `pendingTarget` clears.
+          */}
+          {pendingTarget !== null ? (
+            <Button size="lg" fullWidth isLoading disabled>
+              {t(pendingCtaKey ?? "common.loading")}
             </Button>
+          ) : (
+            next && (
+              <Button size="lg" fullWidth onClick={() => void handleAdvance()}>
+                {t(next.ctaKey)}
+              </Button>
+            )
           )}
         </CardContent>
       </Card>
