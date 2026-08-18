@@ -3,6 +3,7 @@
 import { webFirestore } from "@/lib/firebase-client";
 import { estimateFareForCategory, estimateRoute } from "@/lib/fare-estimate";
 import { getMapProvider } from "@/lib/map-provider";
+import { getDefaultScheduleSlot, getTodayDateString } from "@/lib/schedule-defaults";
 import {
   createTripRequest,
   getGlobalSettings,
@@ -17,6 +18,7 @@ import {
   DatePicker,
   ErrorState,
   Heading,
+  Icon,
   Input,
   LoadingState,
   RadioGroupField,
@@ -25,8 +27,9 @@ import {
   useToast,
   useTranslation,
 } from "@the-ride/ui";
-import { useAuth } from "@the-ride/hooks";
+import { useAuth, useDebouncedValue } from "@the-ride/hooks";
 import type {
+  AddressSuggestion,
   FavoritePlace,
   GeoLocation,
   PlatformSettings,
@@ -34,9 +37,12 @@ import type {
 } from "@the-ride/types";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { useUserExperience } from "@/hooks/useUserExperience";
+
+const DESTINATION_SEARCH_DEBOUNCE_MS = 300;
+const DESTINATION_SEARCH_MIN_CHARS = 2;
 
 interface AddressFieldState {
   text: string;
@@ -85,11 +91,37 @@ function BookRidePageContent() {
   const [scheduleMode, setScheduleMode] = useState<"now" | "later">(() =>
     searchParams.get("scheduledDate") && searchParams.get("scheduledTime") ? "later" : "now",
   );
-  const [scheduledDate, setScheduledDate] = useState(() => searchParams.get("scheduledDate") ?? "");
-  const [scheduledTime, setScheduledTime] = useState(() => searchParams.get("scheduledTime") ?? "");
+  // BOOKING-UX-01 — default to today / now+5min (rounded to a clean 5-minute
+  // slot) rather than blank fields, so switching to "Schedule for later"
+  // starts from a sensible, immediately-bookable moment instead of an empty
+  // native date/time picker. Computed once from real wall-clock time at
+  // mount, same pattern as the homepage-handoff query-param defaults above.
+  const [scheduledDate, setScheduledDate] = useState(
+    () => searchParams.get("scheduledDate") ?? getDefaultScheduleSlot().date,
+  );
+  const [scheduledTime, setScheduledTime] = useState(
+    () => searchParams.get("scheduledTime") ?? getDefaultScheduleSlot().time,
+  );
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+
+  // BOOKING-UX-01 — destination autocomplete. `lastAppliedDestinationRef`
+  // tracks whatever text a selection (or a resolved geocode) last produced,
+  // so re-running the debounced search effect after a *selection* doesn't
+  // immediately re-search the very text it just set — but resuming typing
+  // (which changes the text away from that value) searches again normally,
+  // so picking a different destination afterward still works.
+  const [destinationSuggestions, setDestinationSuggestions] = useState<AddressSuggestion[]>([]);
+  const [destinationSearchStatus, setDestinationSearchStatus] = useState<
+    "idle" | "loading" | "empty" | "error"
+  >("idle");
+  const [destinationFocused, setDestinationFocused] = useState(false);
+  const lastAppliedDestinationRef = useRef<string | null>(null);
+  const debouncedDestinationText = useDebouncedValue(
+    destination.text,
+    DESTINATION_SEARCH_DEBOUNCE_MS,
+  );
 
   // Redirect away if this account can't book rides at all (guest is already
   // handled by RequireAuth; this covers staff/admin, the one authenticated
@@ -173,6 +205,61 @@ function BookRidePageContent() {
       if (stop.text) void resolveManualAddress(stop.text, (next) => updateStop(index, next));
     });
   }, []);
+
+  // BOOKING-UX-01 — reuses the same `MapProviderClient.autocomplete()` the
+  // passenger-app's location-search screen already calls (see
+  // `apps/passenger-app/src/app/booking/location-search.tsx`); no new
+  // provider or search architecture, just wiring the existing one into web.
+  useEffect(() => {
+    const trimmed = debouncedDestinationText.trim();
+    if (
+      trimmed.length < DESTINATION_SEARCH_MIN_CHARS ||
+      trimmed === lastAppliedDestinationRef.current
+    ) {
+      setDestinationSuggestions([]);
+      setDestinationSearchStatus("idle");
+      return;
+    }
+    let cancelled = false;
+    setDestinationSearchStatus("loading");
+    void (async () => {
+      try {
+        const suggestions = await getMapProvider().autocomplete(trimmed);
+        if (cancelled) return;
+        setDestinationSuggestions(suggestions);
+        setDestinationSearchStatus(suggestions.length === 0 ? "empty" : "idle");
+      } catch {
+        if (cancelled) return;
+        setDestinationSuggestions([]);
+        setDestinationSearchStatus("error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedDestinationText]);
+
+  async function selectDestinationSuggestion(suggestion: AddressSuggestion) {
+    setDestinationSearchStatus("loading");
+    try {
+      const geocoded = await getMapProvider().geocode(suggestion.description);
+      lastAppliedDestinationRef.current = geocoded.formattedAddress;
+      setDestination({
+        text: geocoded.formattedAddress,
+        location: {
+          lat: geocoded.location.lat,
+          lng: geocoded.location.lng,
+          address: geocoded.formattedAddress,
+        },
+        busy: false,
+        error: null,
+      });
+      setDestinationSuggestions([]);
+      setDestinationSearchStatus("idle");
+    } catch {
+      setDestinationSearchStatus("error");
+    }
+  }
 
   function handleUseCurrentLocation() {
     if (!("geolocation" in navigator)) {
@@ -335,51 +422,122 @@ function BookRidePageContent() {
       <Card>
         <CardContent className="flex flex-col gap-4 p-6">
           <div className="flex flex-col gap-2">
-            <div className="tablet:flex-row tablet:items-end flex flex-col gap-2">
-              <div className="flex-1">
-                <Input
-                  label={t("booking.pickupLabel")}
-                  placeholder={t("booking.pickupPlaceholder")}
-                  value={pickup.text}
-                  errorText={pickup.error ?? undefined}
-                  helperText={pickup.busy ? t("booking.locatingLabel") : undefined}
-                  onChange={(e) =>
-                    setPickup((prev) => ({ ...prev, text: e.target.value, error: null }))
-                  }
-                  onBlur={(e) => void resolveManualAddress(e.target.value, setPickup)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void resolveManualAddress(pickup.text, setPickup);
-                  }}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleUseCurrentLocation}
-                isLoading={locating}
-                className="tablet:w-auto w-full"
-              >
-                {t("booking.useCurrentLocation")}
-              </Button>
-            </div>
+            <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+              {t("booking.pickupLabel")}
+            </span>
+            {/* BOOKING-UX-01 — Current Location is now the first, most
+                prominent pickup option (was a secondary button to the right
+                of the manual input); the manual input below stays fully
+                editable, so typing a different pickup still works exactly
+                as before. */}
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleUseCurrentLocation}
+              isLoading={locating}
+              fullWidth
+              className="justify-start gap-2"
+            >
+              <Icon name="navigation" size={16} />
+              {t("booking.useCurrentLocation")}
+            </Button>
+            {pickup.error && <p className="text-danger text-sm">{pickup.error}</p>}
+            <Input
+              placeholder={t("booking.pickupPlaceholder")}
+              value={pickup.text}
+              helperText={pickup.busy ? t("booking.locatingLabel") : undefined}
+              onChange={(e) =>
+                setPickup((prev) => ({ ...prev, text: e.target.value, error: null }))
+              }
+              onBlur={(e) => void resolveManualAddress(e.target.value, setPickup)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void resolveManualAddress(pickup.text, setPickup);
+              }}
+            />
             {renderSavedPlaceChips(setPickup)}
           </div>
 
           <div className="flex flex-col gap-2">
-            <Input
-              label={t("booking.destinationLabel")}
-              placeholder={t("booking.destinationPlaceholder")}
-              value={destination.text}
-              errorText={destination.error ?? undefined}
-              helperText={destination.busy ? t("booking.locatingLabel") : undefined}
-              onChange={(e) =>
-                setDestination((prev) => ({ ...prev, text: e.target.value, error: null }))
-              }
-              onBlur={(e) => void resolveManualAddress(e.target.value, setDestination)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void resolveManualAddress(destination.text, setDestination);
-              }}
-            />
+            <div className="relative">
+              <Input
+                label={t("booking.destinationLabel")}
+                placeholder={t("booking.destinationPlaceholder")}
+                value={destination.text}
+                errorText={destination.error ?? undefined}
+                helperText={destination.busy ? t("booking.locatingLabel") : undefined}
+                autoComplete="off"
+                onChange={(e) =>
+                  setDestination((prev) => ({ ...prev, text: e.target.value, error: null }))
+                }
+                onFocus={() => setDestinationFocused(true)}
+                onBlur={(e) => {
+                  setDestinationFocused(false);
+                  void resolveManualAddress(e.target.value, setDestination);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter")
+                    void resolveManualAddress(destination.text, setDestination);
+                  if (e.key === "Escape") setDestinationSearchStatus("idle");
+                }}
+              />
+              {destinationFocused &&
+                debouncedDestinationText.trim().length >= DESTINATION_SEARCH_MIN_CHARS &&
+                destinationSearchStatus !== "idle" && (
+                  <div
+                    role="listbox"
+                    className="shadow-elevation3 absolute top-full z-20 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900"
+                  >
+                    {destinationSearchStatus === "loading" && (
+                      <p className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">
+                        {t("common.loading")}
+                      </p>
+                    )}
+                    {destinationSearchStatus === "empty" && (
+                      <p className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">
+                        {t("common.noResults")}
+                      </p>
+                    )}
+                    {destinationSearchStatus === "error" && (
+                      <div className="px-3 py-2">
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+                          {t("booking.searchErrorTitle")}
+                        </p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {t("booking.searchErrorBody")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              {destinationFocused && destinationSuggestions.length > 0 && (
+                <ul
+                  role="listbox"
+                  className="shadow-elevation3 absolute top-full z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-1 dark:border-neutral-700 dark:bg-neutral-900"
+                >
+                  {destinationSuggestions.map((suggestion) => (
+                    <li key={suggestion.placeId} role="option" aria-selected={false}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          void selectDestinationSuggestion(suggestion);
+                        }}
+                        className="flex w-full flex-col items-start rounded-md px-3 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      >
+                        <span className="text-neutral-900 dark:text-neutral-50">
+                          {suggestion.mainText}
+                        </span>
+                        {suggestion.secondaryText && (
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                            {suggestion.secondaryText}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             {renderSavedPlaceChips(setDestination)}
           </div>
 
@@ -442,11 +600,17 @@ function BookRidePageContent() {
                 <DatePicker
                   label={t("booking.scheduledDateLabel")}
                   value={scheduledDate}
+                  min={getTodayDateString()}
                   onChange={(e) => setScheduledDate(e.target.value)}
                 />
                 <TimePicker
                   label={t("booking.scheduledTimeLabel")}
                   value={scheduledTime}
+                  min={
+                    scheduledDate === getTodayDateString()
+                      ? getDefaultScheduleSlot().time
+                      : undefined
+                  }
                   onChange={(e) => setScheduledTime(e.target.value)}
                 />
               </div>

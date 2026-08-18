@@ -12,11 +12,15 @@ interface MapProviderClient {
   autocomplete(query: string, options?: { sessionToken?: string }): Promise<AddressSuggestion[]>;
   geocode(address: string): Promise<GeocodingResult>;
   reverseGeocode(location: GeoLocation): Promise<GeocodingResult>;
-  getRoute(origin: GeoLocation, destination: GeoLocation, waypoints?: GeoLocation[]): Promise<RouteResult>;
+  getRoute(
+    origin: GeoLocation,
+    destination: GeoLocation,
+    waypoints?: GeoLocation[],
+  ): Promise<RouteResult>;
 }
 ```
 
-`getRoute` covers route calculation, distance calculation, *and* ETA
+`getRoute` covers route calculation, distance calculation, _and_ ETA
 calculation in one call — that's how both Google Directions and Mapbox
 Directions actually respond (`RouteResult` has `distanceMeters`,
 `durationSeconds`, and an optional `polyline`), so the abstraction doesn't
@@ -50,6 +54,14 @@ environment, so this call fails — the screen's error state is exactly
 what a rider sees if a real key isn't set up yet (see "Empty/Loading/Error
 states" in docs/ride-request.md).
 
+BOOKING-UX-01 wired the same `autocomplete()`/`geocode()` calls into the
+web `/book` destination field (`apps/web/src/app/(passenger)/book/page.tsx`)
+— debounced ~300ms, same `AddressSuggestion` results, same
+select-a-suggestion-then-`geocode()`-its-description pattern as the
+passenger-app screen above. No second provider or search architecture —
+`apps/web/src/lib/map-provider.ts` already exposed the same
+`MapProviderClient`, it just wasn't called from web yet.
+
 ## Route/distance/ETA calculation
 
 The Vehicle Selection screen (`apps/passenger-app/src/app/booking/vehicle.tsx`)
@@ -77,7 +89,7 @@ builds a **static map image URL** (Google Static Maps API / Mapbox Static
 Images API) with pickup/destination/stop pins baked in server-side. It
 renders as a plain `<img>`/`<Image>` — identical code path on web and
 native, zero new native dependencies. This is the right scope for a
-booking *preview* (this sprint explicitly excludes live tracking/GPS
+booking _preview_ (this sprint explicitly excludes live tracking/GPS
 streaming, which is what would actually need a real interactive map SDK)
 — see the "Strict Rules" in this sprint's brief.
 

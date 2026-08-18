@@ -1,6 +1,8 @@
 "use client";
 
 import { useVehicleCategories } from "@/hooks/useSiteContent";
+import { getMapProvider } from "@/lib/map-provider";
+import { getDefaultScheduleSlot, getTodayDateString } from "@/lib/schedule-defaults";
 import {
   Button,
   Icon,
@@ -41,10 +43,54 @@ export function BookingCard() {
   const [stops, setStops] = useState<string[]>([]);
   const [passengers, setPassengers] = useState("1");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  // BOOKING-UX-01 — default to today / now+5min (rounded to a clean
+  // 5-minute slot), same runtime-computed default `/book` now uses, instead
+  // of blank date/time inputs; still freely editable.
+  const [date, setDate] = useState(() => getDefaultScheduleSlot().date);
+  const [time, setTime] = useState(() => getDefaultScheduleSlot().time);
   const [notes, setNotes] = useState("");
   const [touched, setTouched] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  // BOOKING-UX-01 — a quick-fill using the same `getMapProvider()` this
+  // card's own doc comment already scopes real geocoding to on `/book`; this
+  // card still hands off plain text (no `GeoLocation` is cached here), and
+  // `/book` re-resolves it for real on mount (see its `resolveManualAddress`
+  // effect) exactly as it already does for manually-typed pickup text — so
+  // this reuses the existing provider/handoff, it doesn't add a second one.
+  function handleUseCurrentLocation() {
+    if (!("geolocation" in navigator)) {
+      toast({ variant: "danger", title: t("booking.locationUnsupported") });
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude: lat, longitude: lng } = position.coords;
+        void (async () => {
+          try {
+            const result = await getMapProvider().reverseGeocode({ lat, lng });
+            setPickup(result.formattedAddress);
+          } catch {
+            setPickup(t("booking.currentLocation"));
+          } finally {
+            setLocating(false);
+          }
+        })();
+      },
+      (error) => {
+        setLocating(false);
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? t("booking.locationDenied")
+            : error.code === error.TIMEOUT
+              ? t("booking.locationTimeout")
+              : t("booking.locationUnavailable");
+        toast({ variant: "danger", title: message });
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
+    );
+  }
 
   // BOOKING-04 — the real `vehicleCategories` collection (same source
   // `/book` and VehicleTypeGrid read), so this card's dropdown never
@@ -134,6 +180,21 @@ export function BookingCard() {
       </h3>
 
       <div className="flex flex-col gap-2">
+        {/* BOOKING-UX-01 — Current Location as the first, most prominent
+            pickup option, ahead of the manual field below (which stays
+            fully editable either way). */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleUseCurrentLocation}
+          isLoading={locating}
+          fullWidth
+          className="justify-start gap-2 text-xs"
+        >
+          <Icon name="navigation" size={14} />
+          {t("booking.useCurrentLocation")}
+        </Button>
         <LocationField
           icon="mapPin"
           iconClassName="text-brand"
@@ -208,6 +269,7 @@ export function BookingCard() {
             type="date"
             label={t("website.landing.departureDateLabel")}
             value={date}
+            min={getTodayDateString()}
             onChange={(e) => setDate(e.target.value)}
             className="h-11"
           />
@@ -215,6 +277,7 @@ export function BookingCard() {
             type="time"
             label={t("website.landing.departureTimeLabel")}
             value={time}
+            min={date === getTodayDateString() ? getDefaultScheduleSlot().time : undefined}
             onChange={(e) => setTime(e.target.value)}
             className="h-11"
           />
