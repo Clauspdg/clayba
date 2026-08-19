@@ -39,6 +39,18 @@ function isActiveRequest(status: TripRequestStatus): boolean {
   ].includes(status);
 }
 
+// FUNCTIONAL-STABILIZATION — mirrors `rides/page.tsx`'s own
+// `isSupersededByTrip`: `DispatchService.handleOfferAccepted` sets a
+// request's status to `driver_accepted` and creates the real `trips` doc
+// from it in the same operation, and nothing ever advances the request's
+// own status past that afterward — it's a historical artifact once the
+// trip exists, not a second "current ride." Without this, this card
+// treated that frozen `driver_accepted` request as active forever, even
+// long after the real trip it produced had completed.
+function isSupersededByTrip(status: TripRequestStatus): boolean {
+  return status === TripRequestStatus.DRIVER_ACCEPTED;
+}
+
 function isActiveTrip(status: TripStatus): boolean {
   return ![TripStatus.COMPLETED, TripStatus.CANCELLED].includes(status);
 }
@@ -82,7 +94,9 @@ export default function DashboardPage() {
 
   const rideItems = useMemo<RideItem[]>(
     () => [
-      ...(requests ?? []).map((r) => ({ source: "request" as const, ...r })),
+      ...(requests ?? [])
+        .filter((r) => !isSupersededByTrip(r.status))
+        .map((r) => ({ source: "request" as const, ...r })),
       ...(trips ?? []).map((tr) => ({ source: "trip" as const, ...tr })),
     ],
     [requests, trips],
