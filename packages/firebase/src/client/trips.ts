@@ -62,13 +62,13 @@ function toTrip(id: string, data: Record<string, unknown>): Trip {
 /**
  * Client-side ride booking + history access (Sprint 6) — thin wrapper over
  * the client Firestore SDK. A booking creates a `tripRequest`; matching it
- * to a real `trips` document is the dispatch engine's job
- * (`packages/utils/src/trips/dispatch.ts` + a scheduled process), which
- * isn't deployed as a running service in this environment (same
- * disclosed gap as the admin Dispatch Center) — so a booked request will
- * genuinely sit in `searching_driver` rather than progress further. This
- * is real data reflecting real (if incomplete) infrastructure, not a
- * fabricated "matched" state.
+ * to a real `trips` document is the dispatch engine's job. `onTripRequestCreated`
+ * (`functions/src/trips/index.ts`) is a real, deployed `onDocumentCreated`
+ * trigger on this same collection that runs `DispatchService` the moment
+ * this write lands — a booked request is actively matched, not left
+ * sitting in `searching_driver` (see docs/dispatch-engine.md and the
+ * DRIVER-E2E sprints, which verified the full request -> offer -> accept ->
+ * trip pipeline live end to end).
  */
 
 export interface NewTripRequestInput {
@@ -76,6 +76,8 @@ export interface NewTripRequestInput {
   pickup: GeoLocation;
   dropoff: GeoLocation;
   stops: GeoLocation[];
+  /** How many riders this request is for — see `tripRequestSchema.passengerCount`. Optional so any existing caller that doesn't pass it still compiles. */
+  passengerCount?: number;
   vehicleCategoryId: string;
   estimatedDistanceMeters: number;
   estimatedDurationSeconds: number;

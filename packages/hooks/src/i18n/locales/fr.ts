@@ -372,6 +372,8 @@ export const fr = {
     scheduledNotSupportedTitle: "Les trajets planifiés ne sont pas encore disponibles",
     scheduledNotSupportedBody: "Repassez sur « Maintenant » pour réserver immédiatement.",
     noCategoriesForPassengerCount: "Aucune option de trajet disponible pour {count} passagers.",
+    permissionErrorBody:
+      "Vous n'avez pas la permission de faire cela — essayez de vous reconnecter.",
   },
   becomeDriver: {
     entryPoint: {

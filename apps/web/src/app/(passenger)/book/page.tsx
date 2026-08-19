@@ -1,7 +1,8 @@
 "use client";
 
+import { clearBookingDraft, loadBookingDraft, saveBookingDraft } from "@/lib/booking-draft";
 import { webFirestore } from "@/lib/firebase-client";
-import { estimateFareForCategory, estimateRoute } from "@/lib/fare-estimate";
+import { estimateFareForCategory, resolveRoute, type RouteEstimate } from "@/lib/fare-estimate";
 import { getMapProvider } from "@/lib/map-provider";
 import { getDefaultScheduleSlot, getTodayDateString } from "@/lib/schedule-defaults";
 import {
@@ -35,6 +36,7 @@ import type {
   PlatformSettings,
   VehicleCategory,
 } from "@the-ride/types";
+import { FirebaseError } from "firebase/app";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -43,6 +45,10 @@ import { useUserExperience } from "@/hooks/useUserExperience";
 
 const DESTINATION_SEARCH_DEBOUNCE_MS = 300;
 const DESTINATION_SEARCH_MIN_CHARS = 2;
+const MAX_STOPS = 3;
+// THE RIDE's current launch market — biases (never restricts) address
+// search results toward Nassau/New Providence. See docs/maps.md.
+const NASSAU_SEARCH_BIAS = { lat: 25.0343, lng: -77.3963, radiusMeters: 50_000 };
 
 interface AddressFieldState {
   text: string;
@@ -53,6 +59,22 @@ interface AddressFieldState {
 
 const EMPTY_ADDRESS: AddressFieldState = { text: "", location: null, busy: false, error: null };
 const PASSENGER_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6];
+
+/**
+ * FUNCTIONAL-STABILIZATION — `err.message` from a `FirebaseError` (e.g.
+ * "Missing or insufficient permissions.", "FirebaseError: ...") is
+ * developer-facing, not user-facing; it was previously shown verbatim in
+ * both the load-error banner and the Confirm Ride failure toast. Logs the
+ * real error for debugging, shows a translated, honest message to the
+ * passenger — same split as `describeSaveError` in become-a-driver/page.tsx.
+ */
+function describeBookingError(err: unknown, t: (key: string) => string): string {
+  console.error("[book] request failed", err);
+  if (err instanceof FirebaseError && err.code === "permission-denied") {
+    return t("booking.permissionErrorBody");
+  }
+  return t("common.error");
+}
 
 function BookRidePageContent() {
   const { t } = useTranslation();
@@ -70,40 +92,66 @@ function BookRidePageContent() {
   // BOOKING-01 fix — pre-fill from the homepage BookingCard's handoff
   // (`?pickup=`/`?destination=`/`?stop=`/`?passengers=`/`?scheduledDate=`/
   // `?scheduledTime=`) when present; a direct visit to /book with no query
-  // params behaves exactly as before (all empty).
+  // params behaves exactly as before (all empty), UNLESS a saved draft from
+  // an earlier /book visit this tab session exists — FUNCTIONAL-
+  // STABILIZATION: a reload or accidental back-navigation previously lost
+  // every field the passenger had already entered. An explicit handoff
+  // always wins over a stale draft (it reflects the passenger's current
+  // intent from the homepage, not a leftover from before).
+  const hasHandoffParams = Boolean(
+    searchParams.get("pickup") || searchParams.get("destination") || searchParams.get("stop"),
+  );
+  const initialDraft = hasHandoffParams ? null : loadBookingDraft();
+
   const [pickup, setPickup] = useState<AddressFieldState>(() => {
     const text = searchParams.get("pickup");
-    return text ? { ...EMPTY_ADDRESS, text } : EMPTY_ADDRESS;
+    if (text) return { ...EMPTY_ADDRESS, text };
+    return initialDraft ? { ...EMPTY_ADDRESS, ...initialDraft.pickup } : EMPTY_ADDRESS;
   });
   const [destination, setDestination] = useState<AddressFieldState>(() => {
     const text = searchParams.get("destination");
-    return text ? { ...EMPTY_ADDRESS, text } : EMPTY_ADDRESS;
+    if (text) return { ...EMPTY_ADDRESS, text };
+    return initialDraft ? { ...EMPTY_ADDRESS, ...initialDraft.destination } : EMPTY_ADDRESS;
   });
-  const [stops, setStops] = useState<AddressFieldState[]>(() =>
-    searchParams.getAll("stop").map((text) => ({ ...EMPTY_ADDRESS, text })),
-  );
+  const [stops, setStops] = useState<AddressFieldState[]>(() => {
+    const fromQuery = searchParams.getAll("stop").map((text) => ({ ...EMPTY_ADDRESS, text }));
+    if (fromQuery.length > 0) return fromQuery;
+    return initialDraft?.stops.map((s) => ({ ...EMPTY_ADDRESS, ...s })) ?? [];
+  });
   const [locating, setLocating] = useState(false);
 
   const [passengerCount, setPassengerCount] = useState(() => {
     const fromQuery = Number(searchParams.get("passengers"));
-    return PASSENGER_COUNT_OPTIONS.includes(fromQuery) ? fromQuery : 1;
+    if (PASSENGER_COUNT_OPTIONS.includes(fromQuery)) return fromQuery;
+    return initialDraft && PASSENGER_COUNT_OPTIONS.includes(initialDraft.passengerCount)
+      ? initialDraft.passengerCount
+      : 1;
   });
-  const [scheduleMode, setScheduleMode] = useState<"now" | "later">(() =>
-    searchParams.get("scheduledDate") && searchParams.get("scheduledTime") ? "later" : "now",
-  );
+  const [scheduleMode, setScheduleMode] = useState<"now" | "later">(() => {
+    if (searchParams.get("scheduledDate") && searchParams.get("scheduledTime")) return "later";
+    return initialDraft?.scheduleMode ?? "now";
+  });
   // BOOKING-UX-01 — default to today / now+5min (rounded to a clean 5-minute
   // slot) rather than blank fields, so switching to "Schedule for later"
   // starts from a sensible, immediately-bookable moment instead of an empty
   // native date/time picker. Computed once from real wall-clock time at
   // mount, same pattern as the homepage-handoff query-param defaults above.
   const [scheduledDate, setScheduledDate] = useState(
-    () => searchParams.get("scheduledDate") ?? getDefaultScheduleSlot().date,
+    () =>
+      searchParams.get("scheduledDate") ??
+      initialDraft?.scheduledDate ??
+      getDefaultScheduleSlot().date,
   );
   const [scheduledTime, setScheduledTime] = useState(
-    () => searchParams.get("scheduledTime") ?? getDefaultScheduleSlot().time,
+    () =>
+      searchParams.get("scheduledTime") ??
+      initialDraft?.scheduledTime ??
+      getDefaultScheduleSlot().time,
   );
 
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    () => initialDraft?.selectedCategoryId ?? null,
+  );
   const [confirming, setConfirming] = useState(false);
 
   // BOOKING-UX-01 — destination autocomplete. `lastAppliedDestinationRef`
@@ -147,7 +195,7 @@ function BookRidePageContent() {
         unsubPlaces = subscribeFavoritePlaces(webFirestore, session.uid, setPlaces, setLoadError);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setLoadError(describeBookingError(err, t));
       });
 
     const q = query(
@@ -159,7 +207,7 @@ function BookRidePageContent() {
       q,
       (snapshot) =>
         setCategories(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as VehicleCategory)),
-      (err) => setLoadError(err.message),
+      (err) => setLoadError(describeBookingError(err, t)),
     );
     void getGlobalSettings(webFirestore).then(setSettings);
     return () => {
@@ -198,13 +246,51 @@ function BookRidePageContent() {
   // typed and blurred each field themselves (same honest success/failure
   // path — no geocoding key configured in this environment still means an
   // honest "address lookup unavailable" here, same as manual entry).
+  // FUNCTIONAL-STABILIZATION — skip whenever `location` is already set: a
+  // restored booking draft (see `loadBookingDraft` above) already carries
+  // real coordinates, and re-geocoding here would silently throw them away
+  // the moment this effect ran (a real regression this fix avoids — no
+  // geocoding key is configured in this environment, so every one of these
+  // calls would fail and wipe a perfectly good saved location).
   useEffect(() => {
-    if (pickup.text) void resolveManualAddress(pickup.text, setPickup);
-    if (destination.text) void resolveManualAddress(destination.text, setDestination);
+    if (pickup.text && !pickup.location) void resolveManualAddress(pickup.text, setPickup);
+    if (destination.text && !destination.location)
+      void resolveManualAddress(destination.text, setDestination);
     stops.forEach((stop, index) => {
-      if (stop.text) void resolveManualAddress(stop.text, (next) => updateStop(index, next));
+      if (stop.text && !stop.location)
+        void resolveManualAddress(stop.text, (next) => updateStop(index, next));
     });
   }, []);
+
+  // FUNCTIONAL-STABILIZATION — persist the in-progress draft on every
+  // meaningful change so a reload/back-navigation doesn't lose it (see
+  // `booking-draft.ts`). Only `text`/`location` are kept per address field —
+  // `busy`/`error` are transient UI state, not part of "what the passenger
+  // entered." Cleared on a successful `createTripRequest` (`handleConfirm`)
+  // so a draft is never confused with an already-confirmed Ride.
+  useEffect(() => {
+    saveBookingDraft({
+      pickup: { text: pickup.text, location: pickup.location },
+      destination: { text: destination.text, location: destination.location },
+      stops: stops.map((s) => ({ text: s.text, location: s.location })),
+      passengerCount,
+      scheduleMode,
+      scheduledDate,
+      scheduledTime,
+      selectedCategoryId,
+    });
+  }, [
+    pickup.text,
+    pickup.location,
+    destination.text,
+    destination.location,
+    stops,
+    passengerCount,
+    scheduleMode,
+    scheduledDate,
+    scheduledTime,
+    selectedCategoryId,
+  ]);
 
   // BOOKING-UX-01 — reuses the same `MapProviderClient.autocomplete()` the
   // passenger-app's location-search screen already calls (see
@@ -224,7 +310,9 @@ function BookRidePageContent() {
     setDestinationSearchStatus("loading");
     void (async () => {
       try {
-        const suggestions = await getMapProvider().autocomplete(trimmed);
+        const suggestions = await getMapProvider().autocomplete(trimmed, {
+          bias: NASSAU_SEARCH_BIAS,
+        });
         if (cancelled) return;
         setDestinationSuggestions(suggestions);
         setDestinationSearchStatus(suggestions.length === 0 ? "empty" : "idle");
@@ -308,6 +396,7 @@ function BookRidePageContent() {
   }
 
   function addStop() {
+    if (stops.length >= MAX_STOPS) return;
     setStops([...stops, EMPTY_ADDRESS]);
   }
 
@@ -324,9 +413,29 @@ function BookRidePageContent() {
     [stops],
   );
 
-  const route = useMemo(() => {
-    if (!pickup.location || !destination.location) return null;
-    return estimateRoute([pickup.location, ...stopLocations, destination.location]);
+  // FUNCTIONAL-STABILIZATION — real route (distance/duration) via the
+  // configured map provider's `getRoute()`, honest straight-line fallback
+  // when it's unavailable (see `resolveRoute`'s doc comment). Async because
+  // a real routing call is a network request, unlike the old synchronous
+  // haversine-only `useMemo` this replaces.
+  const [route, setRoute] = useState<RouteEstimate | null>(null);
+  const [routeStatus, setRouteStatus] = useState<"idle" | "loading" | "ready">("idle");
+  useEffect(() => {
+    if (!pickup.location || !destination.location) {
+      setRoute(null);
+      setRouteStatus("idle");
+      return;
+    }
+    let cancelled = false;
+    setRouteStatus("loading");
+    void resolveRoute([pickup.location, ...stopLocations, destination.location]).then((result) => {
+      if (cancelled) return;
+      setRoute(result);
+      setRouteStatus("ready");
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [pickup.location, destination.location, stopLocations]);
 
   const eligibleCategories = useMemo(
@@ -364,15 +473,17 @@ function BookRidePageContent() {
         pickup: pickup.location,
         dropoff: destination.location,
         stops: stopLocations,
+        passengerCount,
         vehicleCategoryId: selectedCategoryId,
         estimatedDistanceMeters: route.distanceMeters,
         estimatedDurationSeconds: route.durationSeconds,
         fareEstimate,
       });
+      clearBookingDraft();
       toast({ variant: "success", title: t("booking.confirmed") });
       router.push("/rides");
     } catch (err) {
-      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+      toast({ variant: "danger", title: describeBookingError(err, t) });
     } finally {
       setConfirming(false);
     }
@@ -570,9 +681,11 @@ function BookRidePageContent() {
               {renderSavedPlaceChips((next) => updateStop(index, next))}
             </div>
           ))}
-          <Button variant="outline" size="sm" onClick={addStop} className="self-start">
-            {t("booking.addStop")}
-          </Button>
+          {stops.length < MAX_STOPS && (
+            <Button variant="outline" size="sm" onClick={addStop} className="self-start">
+              {t("booking.addStop")}
+            </Button>
+          )}
 
           <div className="tablet:grid-cols-2 grid gap-4">
             <Select
@@ -625,9 +738,24 @@ function BookRidePageContent() {
         </CardContent>
       </Card>
 
+      {routeStatus === "loading" && (
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          {t("booking.calculatingRoute")}
+        </p>
+      )}
+
       {route && fareByCategory && (
         <div className="flex flex-col gap-4">
-          <Heading level={3}>{t("booking.chooseVehicleTitle")}</Heading>
+          <div>
+            <Heading level={3}>{t("booking.chooseVehicleTitle")}</Heading>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {t("booking.estimatedDistance", { km: (route.distanceMeters / 1000).toFixed(1) })}
+              {" · "}
+              {t("booking.estimatedDuration", {
+                minutes: String(Math.round(route.durationSeconds / 60)),
+              })}
+            </p>
+          </div>
           {eligibleCategories.length === 0 ? (
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
               {t("booking.noCategoriesForPassengerCount", { count: passengerCount })}
@@ -656,7 +784,7 @@ function BookRidePageContent() {
                           {category.description}
                         </span>
                         <span className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
-                          {fare ? `$${fare.total.toFixed(2)}` : "—"}
+                          {fare ? `${fare.total.toFixed(2)} ${fare.currency}` : "—"}
                         </span>
                       </CardContent>
                     </Card>
@@ -665,6 +793,54 @@ function BookRidePageContent() {
               })}
             </div>
           )}
+
+          {selectedCategoryId &&
+            fareByCategory.get(selectedCategoryId) &&
+            (() => {
+              const fare = fareByCategory.get(selectedCategoryId)!;
+              return (
+                <Card>
+                  <CardContent className="flex flex-col gap-2 p-4">
+                    <FareLine
+                      label={t("booking.fareBase")}
+                      value={fare.baseFare}
+                      currency={fare.currency}
+                    />
+                    <FareLine
+                      label={t("booking.fareDistance")}
+                      value={fare.distanceFare}
+                      currency={fare.currency}
+                    />
+                    <FareLine
+                      label={t("booking.fareTime")}
+                      value={fare.timeFare}
+                      currency={fare.currency}
+                    />
+                    {fare.bookingFee > 0 && (
+                      <FareLine
+                        label={t("booking.fareBookingFee")}
+                        value={fare.bookingFee}
+                        currency={fare.currency}
+                      />
+                    )}
+                    {fare.serviceFee > 0 && (
+                      <FareLine
+                        label={t("booking.fareServiceFee")}
+                        value={fare.serviceFee}
+                        currency={fare.currency}
+                      />
+                    )}
+                    <div className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
+                    <FareLine
+                      label={t("booking.fareTotal")}
+                      value={fare.total}
+                      currency={fare.currency}
+                      emphasize
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
           <Button
             onClick={() => void handleConfirm()}
@@ -676,6 +852,42 @@ function BookRidePageContent() {
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** One line of the itemized fare breakdown — real `FareBreakdown` fields only, no invented values. */
+function FareLine({
+  label,
+  value,
+  currency,
+  emphasize,
+}: {
+  label: string;
+  value: number;
+  currency: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span
+        className={
+          emphasize
+            ? "font-semibold text-neutral-900 dark:text-neutral-50"
+            : "text-neutral-500 dark:text-neutral-400"
+        }
+      >
+        {label}
+      </span>
+      <span
+        className={
+          emphasize
+            ? "font-semibold text-neutral-900 dark:text-neutral-50"
+            : "text-neutral-700 dark:text-neutral-300"
+        }
+      >
+        {value.toFixed(2)} {currency}
+      </span>
     </div>
   );
 }

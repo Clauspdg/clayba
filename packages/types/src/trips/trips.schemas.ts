@@ -104,6 +104,8 @@ export const tripRequestSchema = z.object({
   dropoff: geoLocationSchema,
   /** Optional intermediate stops, in visiting order (Part 1: "Add optional stops"). */
   stops: z.array(geoLocationSchema).default([]),
+  /** How many riders this request is for — drives `vehicleCategoryId` eligibility (a category's `maximumPassengers` must be >= this). Optional so pre-existing trip request docs without it still validate. */
+  passengerCount: z.number().int().min(1).optional(),
   vehicleCategoryId: z.string().optional(),
   estimatedDistanceMeters: z.number().min(0).optional(),
   estimatedDurationSeconds: z.number().min(0).optional(),

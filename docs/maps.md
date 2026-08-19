@@ -62,6 +62,15 @@ passenger-app screen above. No second provider or search architecture —
 `apps/web/src/lib/map-provider.ts` already exposed the same
 `MapProviderClient`, it just wasn't called from web yet.
 
+**Geographic bias** — `AutocompleteOptions.bias` (`provider.types.ts`)
+lets a caller pass `{ lat, lng, radiusMeters? }` to rank results toward an
+area without restricting the search to it (Google: `location`+`radius` on
+Places Autocomplete, no `strictbounds`; Mapbox: `proximity`, which has no
+radius concept — it's a pure ranking bias there). Web's `/book` passes a
+Nassau/New Providence bias constant on the destination search, since
+that's THE RIDE's current launch market — a search for an address
+anywhere else still returns real results, it's just not favored.
+
 ## Route/distance/ETA calculation
 
 The Vehicle Selection screen (`apps/passenger-app/src/app/booking/vehicle.tsx`)

@@ -188,13 +188,14 @@ are data shapes only.
 
 ### tripRequests
 
-| Field                   | Type              | Notes |
-| ----------------------- | ----------------- | ----- |
-| id, passengerId         | string            |       |
-| status                  | TripRequestStatus |       |
-| pickup / dropoff        | GeoLocation       |       |
-| requestedAt / expiresAt | Date              |       |
-| createdAt               | Date              |       |
+| Field                   | Type              | Notes                                                                           |
+| ----------------------- | ----------------- | ------------------------------------------------------------------------------- |
+| id, passengerId         | string            |                                                                                 |
+| status                  | TripRequestStatus |                                                                                 |
+| pickup / dropoff        | GeoLocation       |                                                                                 |
+| passengerCount          | number?           | FUNCTIONAL-STABILIZATION — how many riders; drives vehicle category eligibility |
+| requestedAt / expiresAt | Date              |                                                                                 |
+| createdAt               | Date              |                                                                                 |
 
 ### ratings
 

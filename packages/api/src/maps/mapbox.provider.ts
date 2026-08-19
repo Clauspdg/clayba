@@ -1,6 +1,6 @@
 import type { AddressSuggestion, GeocodingResult, GeoLocation, RouteResult } from "@the-ride/types";
 
-import type { FetchLike, MapProviderClient } from "./provider.types";
+import type { AutocompleteOptions, FetchLike, MapProviderClient } from "./provider.types";
 
 export interface MapboxProviderConfig {
   accessToken: string;
@@ -42,20 +42,37 @@ export class MapboxProvider implements MapProviderClient {
   }
 
   private toAddressSuggestion(feature: MapboxGeocodingFeature): AddressSuggestion {
-    const secondaryText = feature.place_name.startsWith(feature.text) ? feature.place_name.slice(feature.text.length).replace(/^,\s*/, "") : undefined;
-    return { placeId: feature.id, description: feature.place_name, mainText: feature.text, secondaryText };
+    const secondaryText = feature.place_name.startsWith(feature.text)
+      ? feature.place_name.slice(feature.text.length).replace(/^,\s*/, "")
+      : undefined;
+    return {
+      placeId: feature.id,
+      description: feature.place_name,
+      mainText: feature.text,
+      secondaryText,
+    };
   }
 
   private toGeocodingResult(feature: MapboxGeocodingFeature): GeocodingResult {
-    return { location: { lat: feature.center[1], lng: feature.center[0] }, formattedAddress: feature.place_name, placeId: feature.id };
+    return {
+      location: { lat: feature.center[1], lng: feature.center[0] },
+      formattedAddress: feature.place_name,
+      placeId: feature.id,
+    };
   }
 
-  async autocomplete(query: string, options?: { sessionToken?: string }): Promise<AddressSuggestion[]> {
+  async autocomplete(query: string, options?: AutocompleteOptions): Promise<AddressSuggestion[]> {
     const params = new URLSearchParams({ access_token: this.accessToken, autocomplete: "true" });
     if (options?.sessionToken) params.set("session_token", options.sessionToken);
+    // Mapbox has no radius knob for `proximity` — it's a pure ranking bias,
+    // never a hard filter, so `radiusMeters` (if given) is a no-op here.
+    if (options?.bias) params.set("proximity", `${options.bias.lng},${options.bias.lat}`);
 
-    const response = await this.fetchImpl(`${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params.toString()}`);
-    if (!response.ok) throw new Error(`Mapbox Geocoding (autocomplete) failed with status ${response.status}`);
+    const response = await this.fetchImpl(
+      `${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params.toString()}`,
+    );
+    if (!response.ok)
+      throw new Error(`Mapbox Geocoding (autocomplete) failed with status ${response.status}`);
 
     const data = (await response.json()) as MapboxGeocodingResponse;
     return data.features.map((feature) => this.toAddressSuggestion(feature));
@@ -63,7 +80,9 @@ export class MapboxProvider implements MapProviderClient {
 
   async geocode(address: string): Promise<GeocodingResult> {
     const params = new URLSearchParams({ access_token: this.accessToken, limit: "1" });
-    const response = await this.fetchImpl(`${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?${params.toString()}`);
+    const response = await this.fetchImpl(
+      `${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?${params.toString()}`,
+    );
     if (!response.ok) throw new Error(`Mapbox Geocoding failed with status ${response.status}`);
 
     const data = (await response.json()) as MapboxGeocodingResponse;
@@ -74,26 +93,44 @@ export class MapboxProvider implements MapProviderClient {
 
   async reverseGeocode(location: GeoLocation): Promise<GeocodingResult> {
     const params = new URLSearchParams({ access_token: this.accessToken, limit: "1" });
-    const response = await this.fetchImpl(`${this.baseUrl}/geocoding/v5/mapbox.places/${formatLngLat(location)}.json?${params.toString()}`);
-    if (!response.ok) throw new Error(`Mapbox Reverse Geocoding failed with status ${response.status}`);
+    const response = await this.fetchImpl(
+      `${this.baseUrl}/geocoding/v5/mapbox.places/${formatLngLat(location)}.json?${params.toString()}`,
+    );
+    if (!response.ok)
+      throw new Error(`Mapbox Reverse Geocoding failed with status ${response.status}`);
 
     const data = (await response.json()) as MapboxGeocodingResponse;
     const feature = data.features[0];
-    if (!feature) throw new Error(`No reverse geocoding result for location ${formatLngLat(location)}`);
+    if (!feature)
+      throw new Error(`No reverse geocoding result for location ${formatLngLat(location)}`);
     return this.toGeocodingResult(feature);
   }
 
-  async getRoute(origin: GeoLocation, destination: GeoLocation, waypoints: GeoLocation[] = []): Promise<RouteResult> {
+  async getRoute(
+    origin: GeoLocation,
+    destination: GeoLocation,
+    waypoints: GeoLocation[] = [],
+  ): Promise<RouteResult> {
     const coordinates = [origin, ...waypoints, destination].map(formatLngLat).join(";");
-    const params = new URLSearchParams({ access_token: this.accessToken, geometries: "polyline", overview: "simplified" });
+    const params = new URLSearchParams({
+      access_token: this.accessToken,
+      geometries: "polyline",
+      overview: "simplified",
+    });
 
-    const response = await this.fetchImpl(`${this.baseUrl}/directions/v5/mapbox/driving/${coordinates}?${params.toString()}`);
+    const response = await this.fetchImpl(
+      `${this.baseUrl}/directions/v5/mapbox/driving/${coordinates}?${params.toString()}`,
+    );
     if (!response.ok) throw new Error(`Mapbox Directions failed with status ${response.status}`);
 
     const data = (await response.json()) as MapboxDirectionsResponse;
     const route = data.routes[0];
     if (!route) throw new Error("No route found between the given points");
 
-    return { distanceMeters: route.distance, durationSeconds: route.duration, polyline: route.geometry };
+    return {
+      distanceMeters: route.distance,
+      durationSeconds: route.duration,
+      polyline: route.geometry,
+    };
   }
 }

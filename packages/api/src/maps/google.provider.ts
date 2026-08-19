@@ -1,6 +1,6 @@
 import type { AddressSuggestion, GeocodingResult, GeoLocation, RouteResult } from "@the-ride/types";
 
-import type { FetchLike, MapProviderClient } from "./provider.types";
+import type { AutocompleteOptions, FetchLike, MapProviderClient } from "./provider.types";
 
 export interface GoogleMapsProviderConfig {
   apiKey: string;
@@ -19,7 +19,11 @@ interface GooglePlacesAutocompleteResponse {
 }
 
 interface GoogleGeocodingResponse {
-  results: Array<{ formatted_address: string; place_id: string; geometry: { location: { lat: number; lng: number } } }>;
+  results: Array<{
+    formatted_address: string;
+    place_id: string;
+    geometry: { location: { lat: number; lng: number } };
+  }>;
 }
 
 interface GoogleDirectionsResponse {
@@ -45,12 +49,21 @@ export class GoogleMapsProvider implements MapProviderClient {
     this.baseUrl = config.baseUrl ?? "https://maps.googleapis.com/maps/api";
   }
 
-  async autocomplete(query: string, options?: { sessionToken?: string }): Promise<AddressSuggestion[]> {
+  async autocomplete(query: string, options?: AutocompleteOptions): Promise<AddressSuggestion[]> {
     const params = new URLSearchParams({ input: query, key: this.apiKey });
     if (options?.sessionToken) params.set("sessiontoken", options.sessionToken);
+    if (options?.bias) {
+      // `location` + `radius` BIAS ranking toward this area (no `strictbounds`,
+      // so broader/global matches still come back — see `AutocompleteOptions`).
+      params.set("location", formatLatLng(options.bias));
+      params.set("radius", String(options.bias.radiusMeters ?? 50_000));
+    }
 
-    const response = await this.fetchImpl(`${this.baseUrl}/place/autocomplete/json?${params.toString()}`);
-    if (!response.ok) throw new Error(`Google Places Autocomplete failed with status ${response.status}`);
+    const response = await this.fetchImpl(
+      `${this.baseUrl}/place/autocomplete/json?${params.toString()}`,
+    );
+    if (!response.ok)
+      throw new Error(`Google Places Autocomplete failed with status ${response.status}`);
 
     const data = (await response.json()) as GooglePlacesAutocompleteResponse;
     return data.predictions.map((prediction) => ({
@@ -80,11 +93,13 @@ export class GoogleMapsProvider implements MapProviderClient {
   async reverseGeocode(location: GeoLocation): Promise<GeocodingResult> {
     const params = new URLSearchParams({ latlng: formatLatLng(location), key: this.apiKey });
     const response = await this.fetchImpl(`${this.baseUrl}/geocode/json?${params.toString()}`);
-    if (!response.ok) throw new Error(`Google Reverse Geocoding failed with status ${response.status}`);
+    if (!response.ok)
+      throw new Error(`Google Reverse Geocoding failed with status ${response.status}`);
 
     const data = (await response.json()) as GoogleGeocodingResponse;
     const result = data.results[0];
-    if (!result) throw new Error(`No reverse geocoding result for location ${formatLatLng(location)}`);
+    if (!result)
+      throw new Error(`No reverse geocoding result for location ${formatLatLng(location)}`);
 
     return {
       location: { lat: result.geometry.location.lat, lng: result.geometry.location.lng },
@@ -93,7 +108,11 @@ export class GoogleMapsProvider implements MapProviderClient {
     };
   }
 
-  async getRoute(origin: GeoLocation, destination: GeoLocation, waypoints: GeoLocation[] = []): Promise<RouteResult> {
+  async getRoute(
+    origin: GeoLocation,
+    destination: GeoLocation,
+    waypoints: GeoLocation[] = [],
+  ): Promise<RouteResult> {
     const params = new URLSearchParams({
       origin: formatLatLng(origin),
       destination: formatLatLng(destination),

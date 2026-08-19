@@ -357,6 +357,7 @@ export const en = {
     scheduledNotSupportedTitle: "Scheduled rides aren't available yet",
     scheduledNotSupportedBody: 'Switch back to "Now" to book immediately.',
     noCategoriesForPassengerCount: "No ride options available for {count} passengers.",
+    permissionErrorBody: "You don't have permission to do that — try signing in again.",
   },
   becomeDriver: {
     entryPoint: {
