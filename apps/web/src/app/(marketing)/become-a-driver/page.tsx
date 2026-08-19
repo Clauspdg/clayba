@@ -151,6 +151,28 @@ function fromApplication(app: DriverApplication): FormState {
 }
 
 /**
+ * FUNCTIONAL-STABILIZATION — resuming a draft always reopened the wizard at
+ * `STEP_KEYS[0]` ("personal") regardless of how much was already saved: data
+ * wasn't lost (`fromApplication` above pre-fills every field), but a
+ * passenger who'd finished 3 of 5 sections still had to click Next through
+ * work they'd already done. This mirrors `useApplicationCompleteness`'s own
+ * "done" checks (same section order, same fields) so the step this opens on
+ * always agrees with the completeness list `ContinueApplicationScreen`
+ * already shows — first incomplete section, or "review" if all 5 are done.
+ */
+function firstIncompleteStepIndex(app: DriverApplication): number {
+  const done = [
+    Boolean(app.personalInfo),
+    Boolean(app.license?.photoUrl),
+    Boolean(app.vehicleInfo),
+    Boolean(app.insurance?.photoUrl),
+    Boolean(app.profilePhotoUrl),
+  ];
+  const firstIncomplete = done.findIndex((isDone) => !isDone);
+  return firstIncomplete === -1 ? STEP_KEYS.indexOf("review") : firstIncomplete;
+}
+
+/**
  * Lifecycle-aware entry point (User State Experience sprint, Parts 4-9) —
  * routes to a dedicated screen per `ExperienceState` instead of always
  * dropping every authenticated visitor straight into the six-step wizard.
@@ -650,6 +672,7 @@ function ApplicationWizard({
 }) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { refresh: refreshExperience } = useUserExperience();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -686,6 +709,7 @@ function ApplicationWizard({
           }
           setApplicationId(existingApplication.id);
           setForm(fromApplication(existingApplication));
+          setStepIndex(firstIncompleteStepIndex(existingApplication));
         } else {
           const id = await createDraftApplication(webFirestore, userId);
           if (!cancelled) setApplicationId(id);
@@ -796,6 +820,17 @@ function ApplicationWizard({
     try {
       await submitApplication(webFirestore, applicationId);
       setSubmitted(true);
+      // FUNCTIONAL-STABILIZATION — `useUserExperience()`'s shared context is
+      // the single source every "Become a Driver" entry point (sidebar,
+      // header CTA, this page's own status branch) reads from; without this,
+      // a real Firestore write to `status: submitted` had happened, but the
+      // cached `currentApplication` everywhere else on the site still read
+      // `draft` until a full page reload — the sidebar kept offering
+      // "Continue Application," and revisiting this URL would route back
+      // into `ContinueApplicationScreen` instead of the submitted status
+      // view. `refresh()` is documented for exactly this ("call after an
+      // action that changes lifecycle stage") but wasn't actually wired here.
+      refreshExperience();
       toast({ variant: "success", title: t("becomeDriver.applicationSubmitted") });
     } catch (err) {
       console.error("[become-a-driver] failed to submit application", err);
