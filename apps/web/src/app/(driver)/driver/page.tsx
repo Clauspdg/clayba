@@ -1,16 +1,22 @@
 "use client";
 
-import { webFirestore } from "@/lib/firebase-client";
+import { webFirestore, webFunctions } from "@/lib/firebase-client";
+import { useDriverEarningsSummary } from "@/hooks/useDriverEarningsSummary";
 import { useUserExperience } from "@/hooks/useUserExperience";
 import {
+  acceptRideOffer,
+  declineRideOffer,
   getActiveSuspensionForDriver,
+  getTripRequest,
   getVehicle,
   setOwnAvailabilityStatus,
   subscribeCurrentDriverTrip,
+  subscribeDriverTripHistory,
   subscribeMyRideOffers,
 } from "@the-ride/firebase/client";
 import {
   Alert,
+  Avatar,
   Badge,
   Button,
   Card,
@@ -21,19 +27,23 @@ import {
   Text,
   useToast,
   useTranslation,
+  type IconName,
 } from "@the-ride/ui";
+import { useAuth } from "@the-ride/hooks";
 import {
   DriverAccountStatus,
   DriverAvailabilityStatus,
+  TripStatus,
   type Driver,
   type DriverSuspension,
   type RideOffer,
   type Trip,
+  type TripRequest,
   type Vehicle,
 } from "@the-ride/types";
 import { getExpiringDocuments, getOnlineEligibility } from "@the-ride/utils";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const ONLINE_BLOCK_REASON_KEY: Record<string, string> = {
   suspended: "driverSpace.onlineBlocked.suspended",
@@ -42,6 +52,28 @@ const ONLINE_BLOCK_REASON_KEY: Record<string, string> = {
   vehicle_not_approved: "driverSpace.onlineBlocked.vehicleNotApproved",
   document_expired: "driverSpace.onlineBlocked.documentExpired",
 };
+
+/**
+ * DRIVER COMMAND CENTER — pure label lookup mirroring `current-ride/page.tsx`'s
+ * `NEXT_STAGE` map (deliberately NOT the mutation logic itself — see that
+ * page's `handleAdvance` for the real, double-click-guarded transition
+ * write). This only decides which CTA text this preview card shows; the
+ * button always navigates to `/driver/current-ride`, where the one real,
+ * hardened action handler lives. Keeping the actual state-advancing logic
+ * in exactly one place is deliberate — see the sprint report for why.
+ */
+const NEXT_STAGE_CTA_KEY: Partial<Record<TripStatus, string>> = {
+  [TripStatus.MATCHED]: "driverSpace.currentRide.navigateToPickupCta",
+  [TripStatus.EN_ROUTE_TO_PICKUP]: "driverSpace.currentRide.arrivedCta",
+  [TripStatus.ARRIVED]: "driverSpace.currentRide.startRideCta",
+  [TripStatus.IN_PROGRESS]: "driverSpace.currentRide.completeCta",
+};
+
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 export default function DriverHomePage() {
   const { t } = useTranslation();
@@ -62,7 +94,7 @@ export default function DriverHomePage() {
   return <ActiveDriverHome driver={driver} />;
 }
 
-/** Parts 16-17 — suspended (with real reason/dates) or inactive (terminated). Go Online is never reachable from here. */
+/** State I — suspended (with real reason/dates) or inactive (terminated). Go Online is never reachable from here. */
 function RestrictedDriverHome({ driver }: { driver: Driver }) {
   const { t, locale } = useTranslation();
   const isSuspended = driver.status === DriverAccountStatus.SUSPENDED;
@@ -153,24 +185,30 @@ function RestrictedDriverHome({ driver }: { driver: Driver }) {
 }
 
 /**
- * UX Simplification sprint, Part 4 — was five cards showing simultaneously
- * (online control, pending offer, current ride, vehicle, today's stats),
- * all at equal visual weight regardless of which one actually mattered
- * right now. Rebuilt state-driven: exactly ONE primary card renders,
- * chosen by real precedence (a ride offer outranks an idle "online"
- * state; an active trip outranks both) — matching the state table this
- * sprint's spec lists (offline/online-idle/offer/current-ride). Vehicle
- * and earnings summaries are gone from this page entirely — they're a
- * "manage X" concern that belongs on their own nav pages (Part 5), not a
- * dashboard preview competing with the operational state.
+ * DRIVER COMMAND CENTER — the driver's real operating picture in one
+ * screen: identity, real online/offline control, whichever operational
+ * card actually applies right now (current ride > available ride > idle),
+ * today's real numbers, quick links, and compact real vehicle/document
+ * status. Every figure here already exists elsewhere in the Driver Space
+ * (Requests, Current Ride, Earnings, Trips, Vehicle, Documents,
+ * Performance) — this page surfaces it, it doesn't compute anything new.
  */
 function ActiveDriverHome({ driver }: { driver: Driver }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { session } = useAuth();
   const { toast } = useToast();
   const [vehicle, setVehicle] = useState<Vehicle | null | undefined>(undefined);
   const [currentTrip, setCurrentTrip] = useState<Trip | null | undefined>(undefined);
-  const [pendingOffer, setPendingOffer] = useState<RideOffer | null | undefined>(undefined);
+  const [currentTripRequest, setCurrentTripRequest] = useState<TripRequest | null | undefined>(
+    undefined,
+  );
+  const [offers, setOffers] = useState<RideOffer[] | null>(null);
+  const [offerRequest, setOfferRequest] = useState<TripRequest | null | undefined>(undefined);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
   const [presenceBusy, setPresenceBusy] = useState(false);
+  const [tripHistory, setTripHistory] = useState<Trip[] | null>(null);
+
+  const { summary: earningsSummary } = useDriverEarningsSummary(driver.userId);
 
   useEffect(() => {
     if (!driver.vehicleId) {
@@ -194,31 +232,61 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
     [driver.id],
   );
 
+  useEffect(() => {
+    if (!currentTrip) {
+      setCurrentTripRequest(currentTrip === null ? null : undefined);
+      return;
+    }
+    let cancelled = false;
+    getTripRequest(webFirestore, currentTrip.tripRequestId ?? currentTrip.id)
+      .then((result) => !cancelled && setCurrentTripRequest(result))
+      .catch(() => !cancelled && setCurrentTripRequest(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [currentTrip]);
+
   useEffect(
-    () =>
-      subscribeMyRideOffers(
-        webFirestore,
-        driver.id,
-        (offers) => setPendingOffer(offers[0] ?? null),
-        () => setPendingOffer(null),
-      ),
+    () => subscribeMyRideOffers(webFirestore, driver.id, setOffers, () => setOffers([])),
     [driver.id],
   );
+
+  const pendingOffer = offers?.[0] ?? null;
+
+  useEffect(() => {
+    if (!pendingOffer) {
+      setOfferRequest(undefined);
+      return;
+    }
+    let cancelled = false;
+    getTripRequest(webFirestore, pendingOffer.tripRequestId)
+      .then((result) => !cancelled && setOfferRequest(result))
+      .catch(() => !cancelled && setOfferRequest(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingOffer]);
+
+  useEffect(
+    () =>
+      subscribeDriverTripHistory(webFirestore, driver.id, setTripHistory, () => setTripHistory([])),
+    [driver.id],
+  );
+
+  const completedToday = useMemo(() => {
+    if (!tripHistory) return null;
+    const dayStart = startOfToday();
+    return tripHistory.filter(
+      (trip) =>
+        trip.status === TripStatus.COMPLETED && trip.completedAt && trip.completedAt >= dayStart,
+    ).length;
+  }, [tripHistory]);
 
   const eligibility = getOnlineEligibility(driver, vehicle ?? null);
   const expiringDocuments = getExpiringDocuments(driver.documents);
   const isOnline = driver.availabilityStatus !== DriverAvailabilityStatus.OFFLINE;
-
   const isAvailableForOffers = driver.availabilityStatus === DriverAvailabilityStatus.AVAILABLE;
 
-  /**
-   * FLOW-02A — genuine Firestore writes (`setOwnAvailabilityStatus`), not
-   * local state: `driver.availabilityStatus` above comes from
-   * `useUserExperience()`, which `RequireDriverAccess` already keeps live
-   * via `subscribeOwnDriverRecord` — so a successful write here flows back
-   * through that same real-time path and `isOnline`/`isAvailableForOffers`
-   * update on their own, no optimistic local state needed.
-   */
   async function handleGoOffline() {
     setPresenceBusy(true);
     try {
@@ -230,18 +298,6 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
     }
   }
 
-  /**
-   * DRIVER-E2E-06 — `DispatchService.buildMatchingCandidates` only
-   * considers a driver a candidate when `availabilityStatus === AVAILABLE`
-   * AND `lastKnownLocation` is set (see docs/driver-presence.md,
-   * `packages/utils/src/drivers/availability.ts`'s `isAvailableForOffers`).
-   * Reaching AVAILABLE from OFFLINE is two legal transitions
-   * (`DRIVER_AVAILABILITY_TRANSITIONS`), not one, so this performs both
-   * writes in sequence. Location is captured once, on the first write —
-   * if it's denied/unavailable, the driver still goes ONLINE (harmless,
-   * not matched) but this deliberately stops short of AVAILABLE so the
-   * UI never claims dispatch-readiness the driver doesn't actually have.
-   */
   async function handleGoOnline() {
     setPresenceBusy(true);
     try {
@@ -276,7 +332,6 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
     }
   }
 
-  /** Retry path from the "online but not receiving offers" state — same location capture as `handleGoOnline`, just the single ONLINE->AVAILABLE leg. */
   async function handleEnableLocation() {
     setPresenceBusy(true);
     try {
@@ -309,9 +364,71 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
     }
   }
 
+  /** Same real callable + single-flight guard as `driver/requests/page.tsx` — see that page's doc comment for why this goes through a Cloud Function rather than a direct write. */
+  async function handleAcceptOffer(offerId: string) {
+    if (respondingId) return;
+    setRespondingId(offerId);
+    try {
+      await acceptRideOffer(webFunctions, offerId);
+      toast({ variant: "success", title: t("driverSpace.requests.accepted") });
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+    } finally {
+      setRespondingId(null);
+    }
+  }
+
+  async function handleDeclineOffer(offerId: string) {
+    if (respondingId) return;
+    setRespondingId(offerId);
+    try {
+      await declineRideOffer(webFunctions, offerId);
+      toast({ variant: "success", title: t("driverSpace.requests.declined") });
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+    } finally {
+      setRespondingId(null);
+    }
+  }
+
+  const label = session?.displayName ?? session?.email ?? "";
+
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <Heading level={1}>{t("driverSpace.home.title")}</Heading>
+      {/* Driver Identity */}
+      <div className="flex items-center gap-4">
+        <Avatar
+          size="lg"
+          src={session?.photoURL ?? undefined}
+          alt={label}
+          fallback={label
+            .split(/[\s@.]+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join("")
+            .toUpperCase()}
+        />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <Heading level={2} className="truncate">
+              {label}
+            </Heading>
+            <Badge tone="success">{t("driverSpace.home.identityVerifiedBadge")}</Badge>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500 dark:text-neutral-400">
+            {vehicle && (
+              <span className="truncate">
+                {vehicle.make} {vehicle.model} • {vehicle.plateNumber}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1">
+              <Icon name="star" size={14} className="text-brand" />
+              {driver.rating.toFixed(1)}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {expiringDocuments.length > 0 && (
         <Alert tone="warning" title={t("driverSpace.home.documentWarningTitle")}>
@@ -322,99 +439,400 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
         </Alert>
       )}
 
-      {pendingOffer ? (
-        <Card className="border-brand shadow-elevation2 border-2">
-          <CardContent className="flex flex-col gap-4 p-8">
-            <div className="flex items-center gap-2">
-              <Icon name="bell" size={20} className="text-brand" />
-              <Text weight="medium">{t("driverSpace.home.pendingOfferTitle")}</Text>
-            </div>
-            <Text tone="muted" size="sm">
-              {t("driverSpace.home.pendingOfferBody")}
-            </Text>
-            <Button size="lg" asChild>
-              <Link href="/driver/requests">{t("driverSpace.nav.requests")}</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : currentTrip ? (
-        <Card className="shadow-elevation1">
-          <CardContent className="flex flex-col gap-4 p-8">
-            <div className="flex items-center justify-between">
-              <Text weight="medium">{t("driverSpace.home.currentRideTitle")}</Text>
-              <Badge tone="brand">{t(`driverSpace.tripStatus.${currentTrip.status}`)}</Badge>
-            </div>
-            <Button size="lg" asChild>
-              <Link href="/driver/current-ride">{t("driverSpace.nav.currentRide")}</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="shadow-elevation1">
-          <CardContent className="flex flex-col gap-4 p-8">
-            {isOnline ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <Icon name="bell" size={28} className="text-neutral-300 dark:text-neutral-700" />
-                {isAvailableForOffers ? (
-                  <>
-                    <Text weight="medium">{t("driverSpace.home.waitingForRequestsTitle")}</Text>
-                    <Text size="sm" tone="muted">
-                      {t("driverSpace.home.waitingForRequestsBody")}
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text weight="medium">{t("driverSpace.home.locationRequiredTitle")}</Text>
-                    <Text size="sm" tone="muted">
-                      {t("driverSpace.home.locationRequiredBody")}
-                    </Text>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      isLoading={presenceBusy}
-                      onClick={() => void handleEnableLocation()}
-                    >
-                      {t("driverSpace.home.enableLocationCta")}
-                    </Button>
-                  </>
-                )}
+      {/* Online / Offline — the primary control */}
+      <Card className={isOnline ? "border-success border-2" : undefined}>
+        <CardContent className="flex flex-col gap-3 p-6">
+          <div className="flex items-center justify-between">
+            <Text weight="medium">{t("driverSpace.home.onlineControlTitle")}</Text>
+            <Badge tone={isOnline ? "success" : "neutral"}>
+              {t(isOnline ? "driverSpace.status.online" : "driverSpace.status.offline")}
+            </Badge>
+          </div>
+
+          {isOnline ? (
+            <>
+              <Text size="sm" tone="muted">
+                {isAvailableForOffers
+                  ? t("driverSpace.home.waitingForRequestsBody")
+                  : t("driverSpace.home.locationRequiredBody")}
+              </Text>
+              {!isAvailableForOffers && (
                 <Button
-                  size="lg"
-                  fullWidth
+                  size="sm"
                   variant="outline"
                   isLoading={presenceBusy}
-                  onClick={() => void handleGoOffline()}
+                  onClick={() => void handleEnableLocation()}
                 >
-                  {t("driverSpace.home.goOfflineCta")}
+                  {t("driverSpace.home.enableLocationCta")}
                 </Button>
-              </div>
-            ) : eligibility.eligible ? (
+              )}
               <Button
                 size="lg"
                 fullWidth
+                variant="outline"
                 isLoading={presenceBusy}
-                onClick={() => void handleGoOnline()}
+                onClick={() => void handleGoOffline()}
               >
+                {t("driverSpace.home.goOfflineCta")}
+              </Button>
+            </>
+          ) : eligibility.eligible ? (
+            <Button
+              size="lg"
+              fullWidth
+              isLoading={presenceBusy}
+              onClick={() => void handleGoOnline()}
+            >
+              {t("driverSpace.home.goOnlineCta")}
+            </Button>
+          ) : (
+            <>
+              <Button size="lg" fullWidth disabled>
                 {t("driverSpace.home.goOnlineCta")}
               </Button>
-            ) : (
-              <>
-                <Button size="lg" fullWidth disabled>
-                  {t("driverSpace.home.goOnlineCta")}
-                </Button>
-                <ul className="flex flex-col gap-1.5">
-                  {eligibility.reasons.map((reason) => (
-                    <li key={reason} className="text-danger flex items-start gap-2 text-sm">
-                      <Icon name="alertTriangle" size={16} className="mt-0.5 shrink-0" />
-                      {t(ONLINE_BLOCK_REASON_KEY[reason] ?? reason)}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+              <ul className="flex flex-col gap-1.5">
+                {eligibility.reasons.map((reason) => (
+                  <li key={reason} className="text-danger flex items-start gap-2 text-sm">
+                    <Icon name="alertTriangle" size={16} className="mt-0.5 shrink-0" />
+                    {t(ONLINE_BLOCK_REASON_KEY[reason] ?? reason)}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Current Ride OR Available Ride OR idle state — exactly one, real precedence */}
+      {currentTrip ? (
+        <CurrentRideCard trip={currentTrip} request={currentTripRequest} t={t} />
+      ) : pendingOffer ? (
+        <AvailableRideCard
+          offer={pendingOffer}
+          request={offerRequest}
+          busy={respondingId === pendingOffer.id}
+          disabled={respondingId !== null && respondingId !== pendingOffer.id}
+          onAccept={() => void handleAcceptOffer(pendingOffer.id)}
+          onDecline={() => void handleDeclineOffer(pendingOffer.id)}
+          t={t}
+        />
+      ) : isOnline ? (
+        <Card className="shadow-elevation1">
+          <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
+            <Icon name="bell" size={28} className="text-neutral-300 dark:text-neutral-700" />
+            <Text weight="medium">{t("driverSpace.home.waitingForRequestsTitle")}</Text>
+            <Text size="sm" tone="muted">
+              {t("driverSpace.home.waitingForRequestsBody")}
+            </Text>
           </CardContent>
         </Card>
-      )}
+      ) : null}
+
+      {/* Today Overview */}
+      <div>
+        <Text weight="medium" className="mb-2 block">
+          {t("driverSpace.home.todayCardTitle")}
+        </Text>
+        <div className="tablet:grid-cols-3 grid grid-cols-2 gap-3">
+          <StatCard
+            label={t("driverSpace.home.todayEarningsLabel")}
+            value={
+              earningsSummary
+                ? new Intl.NumberFormat(locale, { style: "currency", currency: "USD" }).format(
+                    earningsSummary.today,
+                  )
+                : "—"
+            }
+          />
+          <StatCard
+            label={t("driverSpace.home.completedTodayLabel")}
+            value={completedToday !== null ? String(completedToday) : "—"}
+          />
+          <StatCard label={t("driverSpace.home.ratingLabel")} value={driver.rating.toFixed(1)} />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <Text weight="medium" className="mb-2 block">
+          {t("driverSpace.home.quickActionsTitle")}
+        </Text>
+        <div className="tablet:grid-cols-4 grid grid-cols-2 gap-3">
+          <QuickAction
+            href="/driver/requests"
+            icon="bell"
+            label={t("driverSpace.home.quickActionAvailableRides")}
+          />
+          <QuickAction
+            href="/driver/earnings"
+            icon="dollarSign"
+            label={t("driverSpace.nav.earnings")}
+          />
+          <QuickAction href="/driver/trips" icon="clock" label={t("driverSpace.nav.trips")} />
+          <QuickAction href="/driver/vehicle" icon="car" label={t("driverSpace.nav.vehicle")} />
+          <QuickAction
+            href="/driver/documents"
+            icon="fileText"
+            label={t("driverSpace.nav.documents")}
+          />
+          <QuickAction href="/driver/account" icon="user" label={t("driverSpace.nav.account")} />
+          <QuickAction
+            href="/driver/support"
+            icon="lifeBuoy"
+            label={t("driverSpace.nav.support")}
+          />
+        </div>
+      </div>
+
+      {/* Driver Performance */}
+      <div>
+        <Text weight="medium" className="mb-2 block">
+          {t("driverSpace.nav.performance")}
+        </Text>
+        <div className="tablet:grid-cols-4 grid grid-cols-2 gap-3">
+          <StatCard label={t("driverSpace.home.ratingLabel")} value={driver.rating.toFixed(1)} />
+          <StatCard
+            label={t("driverSpace.home.acceptanceRateLabel")}
+            value={`${Math.round(driver.acceptanceRate * 100)}%`}
+          />
+          <StatCard
+            label={t("driverSpace.performance.cancellationRateLabel")}
+            value={`${Math.round(driver.cancellationRate * 100)}%`}
+          />
+          <StatCard
+            label={t("driverSpace.performance.completedTripsLabel")}
+            value={String(driver.completedTrips)}
+          />
+        </div>
+      </div>
+
+      {/* Vehicle / Documents */}
+      <div className="tablet:grid-cols-2 grid gap-4">
+        <Card>
+          <CardContent className="flex flex-col gap-2 p-5">
+            <Text size="sm" weight="medium" tone="muted">
+              {t("driverSpace.home.vehicleCardTitle")}
+            </Text>
+            {vehicle ? (
+              <>
+                <Text weight="medium">
+                  {vehicle.make} {vehicle.model} ({vehicle.year})
+                </Text>
+                <Text size="sm" tone="muted">
+                  {vehicle.plateNumber}
+                </Text>
+              </>
+            ) : (
+              <Text size="sm" tone="muted">
+                {t("driverSpace.home.noVehicle")}
+              </Text>
+            )}
+            <Button variant="outline" size="sm" asChild className="self-start">
+              <Link href="/driver/vehicle">{t("driverSpace.home.viewVehicleCta")}</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col gap-2 p-5">
+            <Text size="sm" weight="medium" tone="muted">
+              {t("driverSpace.nav.documents")}
+            </Text>
+            <Text size="sm" tone="muted">
+              {driver.documents.length > 0
+                ? t("driverSpace.home.documentWarningBody", { count: expiringDocuments.length })
+                : t("driverSpace.documents.emptyTitle")}
+            </Text>
+            <Button variant="outline" size="sm" asChild className="self-start">
+              <Link href="/driver/documents">{t("driverSpace.home.viewDocumentsCta")}</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-1 p-4">
+        <Text size="lg" weight="medium">
+          {value}
+        </Text>
+        <Text size="xs" tone="muted">
+          {label}
+        </Text>
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuickAction({ href, icon, label }: { href: string; icon: IconName; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="duration-fast hover:border-brand hover:bg-brand-50 dark:hover:bg-brand-900 flex flex-col items-center gap-2 rounded-xl border border-neutral-200 p-4 text-center transition-colors dark:border-neutral-800"
+    >
+      <Icon name={icon} size={20} className="text-brand" />
+      <Text size="xs" weight="medium">
+        {label}
+      </Text>
+    </Link>
+  );
+}
+
+function CurrentRideCard({
+  trip,
+  request,
+  t,
+}: {
+  trip: Trip;
+  request: TripRequest | null | undefined;
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  const ctaKey = NEXT_STAGE_CTA_KEY[trip.status];
+  return (
+    <Card className="border-brand shadow-elevation2 border-2">
+      <CardContent className="flex flex-col gap-3 p-6">
+        <div className="flex items-center justify-between">
+          <Text weight="medium">{t("driverSpace.home.currentRideTitle")}</Text>
+          <Badge tone="brand">{t(`driverSpace.tripStatus.${trip.status}`)}</Badge>
+        </div>
+
+        {request && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-start gap-2">
+              <Icon name="mapPin" size={16} className="text-success mt-0.5 shrink-0" />
+              <Text size="sm">
+                {request.pickup.address ?? `${request.pickup.lat}, ${request.pickup.lng}`}
+              </Text>
+            </div>
+            <div className="flex items-start gap-2">
+              <Icon name="flag" size={16} className="text-danger mt-0.5 shrink-0" />
+              <Text size="sm">
+                {request.dropoff.address ?? `${request.dropoff.lat}, ${request.dropoff.lng}`}
+              </Text>
+            </div>
+          </div>
+        )}
+
+        {trip.fareAmount !== undefined && (
+          <Text size="sm" tone="muted">
+            {t("driverSpace.currentRide.fareLabel")}: ${trip.fareAmount.toFixed(2)}
+          </Text>
+        )}
+
+        <div className="flex gap-3">
+          {ctaKey && (
+            <Button size="lg" fullWidth asChild>
+              <Link href="/driver/current-ride">{t(ctaKey)}</Link>
+            </Button>
+          )}
+          {!ctaKey && (
+            <Button size="lg" fullWidth variant="outline" asChild>
+              <Link href="/driver/current-ride">
+                {t("driverSpace.home.viewCurrentRideDetails")}
+              </Link>
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AvailableRideCard({
+  offer,
+  request,
+  busy,
+  disabled,
+  onAccept,
+  onDecline,
+  t,
+}: {
+  offer: RideOffer;
+  request: TripRequest | null | undefined;
+  busy: boolean;
+  disabled: boolean;
+  onAccept: () => void;
+  onDecline: () => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <Card className="border-brand shadow-elevation2 border-2">
+      <CardContent className="flex flex-col gap-3 p-6">
+        <div className="flex items-center gap-2">
+          <Icon name="bell" size={18} className="text-brand" />
+          <Text weight="medium">{t("driverSpace.home.availableRideTitle")}</Text>
+        </div>
+
+        {request === undefined ? (
+          <Text size="sm" tone="muted">
+            {t("common.loading")}
+          </Text>
+        ) : request ? (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-start gap-2">
+              <Icon name="mapPin" size={16} className="text-success mt-0.5 shrink-0" />
+              <Text size="sm">
+                {request.pickup.address ?? `${request.pickup.lat}, ${request.pickup.lng}`}
+              </Text>
+            </div>
+            <div className="flex items-start gap-2">
+              <Icon name="flag" size={16} className="text-danger mt-0.5 shrink-0" />
+              <Text size="sm">
+                {request.dropoff.address ?? `${request.dropoff.lat}, ${request.dropoff.lng}`}
+              </Text>
+            </div>
+          </div>
+        ) : (
+          <Text size="sm" tone="muted">
+            {t("driverSpace.requests.detailsUnavailable")}
+          </Text>
+        )}
+
+        <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+          <Text size="sm" tone="muted">
+            {t("driverSpace.home.pickupDistanceLabel", {
+              distance: `${(offer.distanceMeters / 1000).toFixed(1)} km`,
+            })}
+          </Text>
+          {request?.estimatedDistanceMeters !== undefined && (
+            <Text size="sm" tone="muted">
+              {t("driverSpace.home.tripDistanceLabel", {
+                distance: `${(request.estimatedDistanceMeters / 1000).toFixed(1)} km`,
+              })}
+            </Text>
+          )}
+          <Text size="sm" tone="muted">
+            {t("driverSpace.requests.etaLabel")}: {Math.round(offer.etaSeconds / 60)} min
+          </Text>
+          {request?.passengerCount !== undefined && (
+            <Text size="sm" tone="muted">
+              {t("booking.passengerCountLabel")}: {request.passengerCount}
+            </Text>
+          )}
+        </div>
+
+        <Text size="lg" weight="medium">
+          {t("driverSpace.requests.payoutLabel")}: ${offer.estimatedEarnings.toFixed(2)}
+        </Text>
+
+        <div className="flex gap-3">
+          <Button fullWidth isLoading={busy} disabled={disabled} onClick={onAccept}>
+            {t("driverSpace.requests.acceptCta")}
+          </Button>
+          <Button
+            fullWidth
+            variant="outline"
+            isLoading={busy}
+            disabled={disabled}
+            onClick={onDecline}
+          >
+            {t("driverSpace.requests.declineCta")}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

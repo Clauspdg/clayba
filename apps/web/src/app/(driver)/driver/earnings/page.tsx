@@ -1,8 +1,9 @@
 "use client";
 
 import { webFirestore } from "@/lib/firebase-client";
+import { useDriverEarningsSummary } from "@/hooks/useDriverEarningsSummary";
 import { useUserExperience } from "@/hooks/useUserExperience";
-import { subscribeMyTransactions, subscribeMyWallet } from "@the-ride/firebase/client";
+import { subscribeMyTransactions } from "@the-ride/firebase/client";
 import {
   Badge,
   Card,
@@ -16,8 +17,8 @@ import {
   Text,
   useTranslation,
 } from "@the-ride/ui";
-import { TransactionType, type Transaction, type Wallet } from "@the-ride/types";
-import { useEffect, useMemo, useState } from "react";
+import { TransactionType, type Transaction } from "@the-ride/types";
+import { useEffect, useState } from "react";
 
 const TRANSACTION_TONE: Record<TransactionType, "success" | "danger" | "neutral" | "warning"> = {
   [TransactionType.CREDIT]: "success",
@@ -27,21 +28,6 @@ const TRANSACTION_TONE: Record<TransactionType, "success" | "danger" | "neutral"
   [TransactionType.ADJUSTMENT]: "warning",
 };
 
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-function startOfWeek(date: Date): Date {
-  const d = startOfDay(date);
-  const day = d.getDay();
-  d.setDate(d.getDate() - day);
-  return d;
-}
-function startOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
 /**
  * UX-3 sprint (Dedicated Driver Space), Part 9 — real `wallets`/
  * `transactions` data, the same client functions the passenger Wallet page
@@ -49,17 +35,16 @@ function startOfMonth(date: Date): Date {
  * in). No client-side wallet creation, matching that page's own doc
  * comment: a driver with no wallet document yet genuinely has none —
  * shown as an honest empty state, not a fabricated $0 wallet.
+ *
+ * DRIVER COMMAND CENTER — the today/week/month summary now comes from
+ * `useDriverEarningsSummary`, shared with the Driver Home page's "Today"
+ * card so there's exactly one place that computes it.
  */
 export default function DriverEarningsPage() {
   const { t, locale } = useTranslation();
   const { driver } = useUserExperience();
-  const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
+  const { wallet, summary } = useDriverEarningsSummary(driver?.userId);
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
-
-  useEffect(() => {
-    if (!driver) return;
-    return subscribeMyWallet(webFirestore, driver.userId, setWallet, () => setWallet(null));
-  }, [driver]);
 
   useEffect(() => {
     if (!wallet) {
@@ -70,23 +55,6 @@ export default function DriverEarningsPage() {
       setTransactions([]),
     );
   }, [wallet]);
-
-  const summary = useMemo(() => {
-    if (!transactions) return null;
-    const now = new Date();
-    const dayStart = startOfDay(now);
-    const weekStart = startOfWeek(now);
-    const monthStart = startOfMonth(now);
-    const payouts = transactions.filter((tx) => tx.type === TransactionType.PAYOUT);
-    const sumSince = (since: Date) =>
-      payouts.filter((tx) => tx.createdAt >= since).reduce((s, tx) => s + tx.amount, 0);
-    return {
-      today: sumSince(dayStart),
-      week: sumSince(weekStart),
-      month: sumSince(monthStart),
-      total: payouts.reduce((s, tx) => s + tx.amount, 0),
-    };
-  }, [transactions]);
 
   const currency = wallet?.currency ?? "USD";
   const formatMoney = (amount: number) =>
