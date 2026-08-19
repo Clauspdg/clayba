@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// The Ride — DEV Seed Script (Sprint 5, Part 5)
+// Clayba — DEV Seed Script (Sprint 5, Part 5)
 //
 // Seeds the-ride-dev with: 1 admin, 1 dispatcher, 1 support, 2 drivers
 // (with vehicles + activated applications), 2 passengers, vehicle
@@ -65,7 +65,12 @@ async function ensureAuthUser(seed: SeedUser): Promise<string> {
     const existing = await auth.getUserByEmail(seed.email);
     return existing.uid;
   } catch {
-    const created = await auth.createUser({ email: seed.email, password: DEV_PASSWORD, displayName: seed.displayName, emailVerified: true });
+    const created = await auth.createUser({
+      email: seed.email,
+      password: DEV_PASSWORD,
+      displayName: seed.displayName,
+      emailVerified: true,
+    });
     await assignUserRole(created.uid, seed.role);
     return created.uid;
   }
@@ -189,7 +194,9 @@ async function main() {
       rating: 4.9,
       completedTrips: 42,
       score: 98,
-      availabilityStatus: seed.available ? DriverAvailabilityStatus.AVAILABLE : DriverAvailabilityStatus.OFFLINE,
+      availabilityStatus: seed.available
+        ? DriverAvailabilityStatus.AVAILABLE
+        : DriverAvailabilityStatus.OFFLINE,
       lastKnownLocation: seed.location,
       lastLocationUpdatedAt: now,
       acceptanceRate: 0.95,
@@ -198,7 +205,9 @@ async function main() {
       updatedAt: now,
     });
     await repos.drivers.create(uid, driver);
-    console.log(`  driver     ${seed.email} -> ${seed.plateNumber} (${seed.available ? "available" : "offline"})`);
+    console.log(
+      `  driver     ${seed.email} -> ${seed.plateNumber} (${seed.available ? "available" : "offline"})`,
+    );
   }
 
   for (const email of ["passenger1@dev.theride.app", "passenger2@dev.theride.app"]) {

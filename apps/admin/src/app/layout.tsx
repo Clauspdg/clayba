@@ -15,8 +15,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "The Ride — Admin",
-  description: "Operations dashboard for The Ride.",
+  title: "Clayba — Admin",
+  description: "Operations dashboard for Clayba.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

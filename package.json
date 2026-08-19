@@ -2,7 +2,7 @@
   "name": "the-ride",
   "private": true,
   "version": "0.1.0",
-  "description": "The Ride — production-grade ride-hailing platform monorepo.",
+  "description": "Clayba — production-grade ride-hailing platform monorepo.",
   "license": "UNLICENSED",
   "packageManager": "pnpm@9.15.0",
   "engines": {

@@ -1,6 +1,6 @@
 export const en = {
   common: {
-    appName: "The Ride",
+    appName: "Clayba",
     loading: "Loading…",
     error: "Something went wrong",
     retry: "Retry",
@@ -78,12 +78,12 @@ export const en = {
     newsletterSuccess: "You're subscribed — thank you!",
   },
   auth: {
-    welcomeTitle: "Welcome to The Ride",
+    welcomeTitle: "Welcome to Clayba",
     welcomeSubtitle: "Your ride, your way — anytime, anywhere.",
     loginTitle: "Log in",
     loginSubtitle: "Enter your details to continue.",
     registerTitle: "Create your account",
-    registerSubtitle: "Join The Ride in just a few steps.",
+    registerSubtitle: "Join Clayba in just a few steps.",
     forgotPasswordTitle: "Forgot your password?",
     forgotPasswordSubtitle: "We'll send you a link to reset it.",
     verifyEmailTitle: "Verify your email",
@@ -131,7 +131,7 @@ export const en = {
     socialComingSoon: "Social sign-in is coming soon.",
     continueCta: "Continue",
     registerStepProgress: "Step {current} of {total}",
-    roleSelectorPrompt: "How do you want to use The Ride?",
+    roleSelectorPrompt: "How do you want to use Clayba?",
     roleRider: "I'm a rider",
     roleRiderBody: "Book rides around your city.",
     roleDriver: "I want to drive",
@@ -155,7 +155,7 @@ export const en = {
     appearance: "Appearance",
     logOut: "Log out",
     about: "About",
-    privacyDescription: "Control what The Ride can contact you about.",
+    privacyDescription: "Control what Clayba can contact you about.",
     quietRideDefault: "Prefer quiet rides by default",
   },
   about: {
@@ -361,7 +361,7 @@ export const en = {
   },
   becomeDriver: {
     entryPoint: {
-      cardTitle: "Drive with The Ride",
+      cardTitle: "Drive with Clayba",
       cardBody: "Earn on your schedule by becoming a verified driver.",
       cardCtaApply: "Become a Driver",
       cardCtaContinue: "Continue Application",
@@ -453,7 +453,7 @@ export const en = {
     // Lifecycle screens (User State Experience sprint) — one dedicated
     // screen per ExperienceState instead of always jumping straight into
     // the wizard, per apps/web/src/app/(marketing)/become-a-driver.
-    eligibilityTitle: "Drive with The Ride",
+    eligibilityTitle: "Drive with Clayba",
     eligibilityBody: "Earn on your own schedule. Here's what you need to know before you apply.",
     eligibilityHeading: "Eligibility",
     eligibility1: "21 years or older",
@@ -565,11 +565,11 @@ export const en = {
   website: {
     landing: {
       heroTitle: "Your city, on your schedule",
-      heroSubtitle: "The Ride connects passengers and drivers with a premium, reliable experience.",
+      heroSubtitle: "Clayba connects passengers and drivers with a premium, reliable experience.",
       heroEyebrow: "Premium rides, everywhere",
       ctaPassenger: "Ride with us",
       ctaDriver: "Drive with us",
-      featuresTitle: "Why The Ride",
+      featuresTitle: "Why Clayba",
       feature1Title: "Safety first",
       feature1Body: "Every trip is verified, tracked, and insured.",
       feature2Title: "Always on time",
@@ -623,14 +623,14 @@ export const en = {
       testimonialsEyebrow: "Loved by riders and drivers",
       testimonialsTitle: "What people are saying",
       testimonial1:
-        "The Ride is my go-to for airport runs — always on time and the fare is exactly what I expect.",
+        "Clayba is my go-to for airport runs — always on time and the fare is exactly what I expect.",
       testimonial2:
-        "Driving with The Ride let me set my own schedule and actually see transparent payouts.",
+        "Driving with Clayba let me set my own schedule and actually see transparent payouts.",
       testimonial3: "Booking takes seconds and I always feel safe with live trip tracking.",
       testimonialRolePassenger: "Passenger",
       testimonialRoleDriver: "Driver partner",
       downloadEyebrow: "Take it with you",
-      downloadTitle: "Get The Ride app",
+      downloadTitle: "Get Clayba app",
       downloadSubtitle: "Book faster, track live, and manage your trips on the go.",
       appComingSoon: "Coming soon",
       appStoreEyebrow: "Download on the",
@@ -644,8 +644,8 @@ export const en = {
       driverCtaButton: "Start driving today",
     },
     about: {
-      title: "About The Ride",
-      body: "The Ride is building the next generation of urban mobility — safe, reliable, and built around the people who use it every day.",
+      title: "About Clayba",
+      body: "Clayba is building the next generation of urban mobility — safe, reliable, and built around the people who use it every day.",
       eyebrow: "Our story",
       missionTitle: "Our mission",
       missionBody:
@@ -666,14 +666,14 @@ export const en = {
       timelineEyebrow: "Our journey",
       timelineTitle: "Milestones",
       milestone1Title: "Founded",
-      milestone1Body: "The Ride launches in its first city with a handful of drivers.",
+      milestone1Body: "Clayba launches in its first city with a handful of drivers.",
       milestone2Title: "Rapid growth",
       milestone2Body: "Expansion to a dozen cities and a growing driver community.",
       milestone3Title: "Safety platform",
       milestone3Body: "Launch of live trip sharing, SOS, and 24/7 safety support.",
       milestone4Title: "Nationwide",
-      milestone4Body: "The Ride reaches riders and drivers across 40+ cities.",
-      teamEyebrow: "The people behind The Ride",
+      milestone4Body: "Clayba reaches riders and drivers across 40+ cities.",
+      teamEyebrow: "The people behind Clayba",
       teamTitle: "Our leadership",
       teamSubtitle: "A small team obsessed with building a platform people trust.",
       teamRoleCeo: "Co-founder & CEO",
@@ -686,7 +686,7 @@ export const en = {
       statDrivers: "Drivers",
     },
     safety: {
-      title: "Safety at The Ride",
+      title: "Safety at Clayba",
       body: "Every driver is background-checked, every trip is tracked, and help is always one tap away.",
       eyebrow: "Built for peace of mind",
       featuresEyebrow: "How we keep you safe",
@@ -718,7 +718,7 @@ export const en = {
     },
     services: {
       title: "Services",
-      body: "From everyday rides to scheduled trips, The Ride is built to move your whole city.",
+      body: "From everyday rides to scheduled trips, Clayba is built to move your whole city.",
       eyebrow: "What we offer",
       passengerTitle: "Passenger rides",
       passengerBody: "On-demand rides across town, day or night.",
@@ -744,13 +744,13 @@ export const en = {
         "Create an account or reach out — we're happy to help you find the right service.",
     },
     becomeDriverPage: {
-      title: "Drive with The Ride",
+      title: "Drive with Clayba",
       body: "Set your own hours and earn on your terms.",
       cta: "Apply now",
     },
     faq: {
       title: "Frequently asked questions",
-      subtitle: "Everything you need to know about riding and driving with The Ride.",
+      subtitle: "Everything you need to know about riding and driving with Clayba.",
       searchLabel: "Search questions",
       searchPlaceholder: "Search the FAQ…",
       noResults: "No questions match your search.",
@@ -773,7 +773,7 @@ export const en = {
       qBooking3: "Can I cancel a ride after booking?",
       aBooking3: "Yes, you can cancel from your ride history any time before a driver arrives.",
       q4: "What payment methods are accepted?",
-      a4: "The Ride supports major credit and debit cards, plus in-app wallet balance.",
+      a4: "Clayba supports major credit and debit cards, plus in-app wallet balance.",
       qPayments2: "How do refunds work?",
       aPayments2:
         "Refunds are reviewed by our support team and issued back to your original payment method.",
@@ -805,7 +805,7 @@ export const en = {
     },
     privacyPolicy: {
       title: "Privacy Policy",
-      body: "This page describes how The Ride collects, uses, and protects your information.",
+      body: "This page describes how Clayba collects, uses, and protects your information.",
       s1Title: "Information we collect",
       s1Body:
         "We collect account details, trip data, location information while you use the app, and payment information needed to process rides.",
@@ -823,7 +823,7 @@ export const en = {
     },
     cookies: {
       title: "Cookie Policy",
-      body: "The Ride uses cookies and similar technologies to keep you signed in, remember your preferences, and understand how our site is used.",
+      body: "Clayba uses cookies and similar technologies to keep you signed in, remember your preferences, and understand how our site is used.",
       s1Title: "What are cookies?",
       s1Body:
         "Cookies are small files stored on your device that help websites remember information about your visit.",
@@ -838,12 +838,12 @@ export const en = {
     },
     termsOfService: {
       title: "Terms of Service",
-      body: "These terms govern your use of The Ride's services.",
+      body: "These terms govern your use of Clayba's services.",
       s1Title: "Acceptance of terms",
-      s1Body: "By creating an account or using The Ride, you agree to these terms of service.",
+      s1Body: "By creating an account or using Clayba, you agree to these terms of service.",
       s2Title: "Using our services",
       s2Body:
-        "You must be legally able to enter into a contract and comply with all applicable laws while using The Ride.",
+        "You must be legally able to enter into a contract and comply with all applicable laws while using Clayba.",
       s3Title: "Payments and fares",
       s3Body:
         "Fares are calculated based on distance, time, and demand, and are charged to your selected payment method.",
@@ -852,7 +852,7 @@ export const en = {
         "We may suspend or terminate accounts that violate these terms or put the safety of our community at risk.",
       s5Title: "Changes to these terms",
       s5Body:
-        "We may update these terms from time to time; continued use of The Ride means you accept the changes.",
+        "We may update these terms from time to time; continued use of Clayba means you accept the changes.",
     },
     legal: {
       lastUpdated: "Last updated: {date}",

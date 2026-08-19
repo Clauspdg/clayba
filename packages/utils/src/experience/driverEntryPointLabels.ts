@@ -2,7 +2,7 @@ import { ExperienceState } from "@the-ride/types";
 
 /**
  * Passenger → Driver entry point sprint, Part 1 — the Passenger Dashboard's
- * "Drive with The Ride" card CTA needs its own (longer, more descriptive)
+ * "Drive with Clayba" card CTA needs its own (longer, more descriptive)
  * label per lifecycle stage, distinct from the compact header CTA
  * (`getDriverCtaLabelKey`) and the sidebar nav label
  * (`getDriverNavLabelKey`) below — three different UI surfaces, three

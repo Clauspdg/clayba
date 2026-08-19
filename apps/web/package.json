@@ -2,7 +2,7 @@
   "name": "@the-ride/web",
   "version": "0.1.0",
   "private": true,
-  "description": "The Ride — public passenger-facing web application (Next.js 15).",
+  "description": "Clayba — public passenger-facing web application (Next.js 15).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

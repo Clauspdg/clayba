@@ -17,7 +17,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "The Ride",
+  title: "Clayba",
   description: "Book a ride, anytime, anywhere.",
 };
 

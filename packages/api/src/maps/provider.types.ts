@@ -9,7 +9,7 @@ import type { AddressSuggestion, GeocodingResult, GeoLocation, RouteResult } fro
  */
 export interface AutocompleteOptions {
   sessionToken?: string;
-  /** Biases (does not restrict) results toward this area — e.g. Nassau/Bahamas for THE RIDE's current launch market. Broader searches still return results. */
+  /** Biases (does not restrict) results toward this area — e.g. Nassau/Bahamas for Clayba's current launch market. Broader searches still return results. */
   bias?: { lat: number; lng: number; radiusMeters?: number };
 }
 

@@ -46,7 +46,7 @@ import { useUserExperience } from "@/hooks/useUserExperience";
 const DESTINATION_SEARCH_DEBOUNCE_MS = 300;
 const DESTINATION_SEARCH_MIN_CHARS = 2;
 const MAX_STOPS = 3;
-// THE RIDE's current launch market — biases (never restricts) address
+// Clayba's current launch market — biases (never restricts) address
 // search results toward Nassau/New Providence. See docs/maps.md.
 const NASSAU_SEARCH_BIAS = { lat: 25.0343, lng: -77.3963, radiusMeters: 50_000 };
 

@@ -212,7 +212,7 @@ export function NavigationContentPage() {
           label="Logo text"
           value={form.logoText ?? ""}
           onChange={(e) => setForm({ ...form, logoText: e.target.value })}
-          placeholder="The Ride"
+          placeholder="Clayba"
         />
       </div>
 

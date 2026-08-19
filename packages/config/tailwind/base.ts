@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-// Shared Tailwind design tokens for The Ride. Apps import and extend this
+// Shared Tailwind design tokens for Clayba. Apps import and extend this
 // base config rather than redefining the design system per app.
 //
 // IMPORTANT: the `colors` values below must mirror

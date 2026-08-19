@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * The three environments The Ride runs in. Distinct from Node's own
+ * The three environments Clayba runs in. Distinct from Node's own
  * `NODE_ENV` (which only distinguishes development/test/production) —
  * `APP_ENV` additionally distinguishes staging from production so a
  * staging deploy can still run with `NODE_ENV=production` optimizations.

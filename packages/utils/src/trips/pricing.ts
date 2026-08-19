@@ -34,12 +34,17 @@ function round2(value: number): number {
 }
 
 /**
- * The Ride's fare calculator (Sprint 3, Part 4). Pure function — no
+ * Clayba's fare calculator (Sprint 3, Part 4). Pure function — no
  * Firestore/network access — so the passenger app, admin dashboard, and
  * dispatch engine can all compute (or re-verify) the same estimate the
  * same way. See docs/pricing-engine.md for the worked formula.
  */
-export function calculateFare({ distanceMeters, durationSeconds, category, settings }: CalculateFareInput): FareBreakdown {
+export function calculateFare({
+  distanceMeters,
+  durationSeconds,
+  category,
+  settings,
+}: CalculateFareInput): FareBreakdown {
   const surgeMultiplier = settings.surgeMultiplier ?? 1;
   const discount = settings.discount ?? 0;
   const promoCodeDiscount = settings.promoCodeDiscount ?? 0;

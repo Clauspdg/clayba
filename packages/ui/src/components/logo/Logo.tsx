@@ -15,14 +15,46 @@ export interface LogoProps {
  */
 export function Logo({ size = 32, withWordmark = false, className }: LogoProps) {
   return (
-    <span className={className} style={{ display: "inline-flex", alignItems: "center", gap: size * 0.3 }}>
-      <svg width={size} height={size} viewBox="0 0 32 32" fill="none" role="img" aria-label="The Ride">
+    <span
+      className={className}
+      style={{ display: "inline-flex", alignItems: "center", gap: size * 0.3 }}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 32 32"
+        fill="none"
+        role="img"
+        aria-label="Clayba"
+      >
         <rect width="32" height="32" rx="9" fill={brand.DEFAULT} />
-        <path d="M11 21L17 16L11 11" stroke={brand.foreground} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M18 21L24 16L18 11" stroke={brand.foreground} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+        <path
+          d="M11 21L17 16L11 11"
+          stroke={brand.foreground}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M18 21L24 16L18 11"
+          stroke={brand.foreground}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.6"
+        />
       </svg>
       {withWordmark && (
-        <span style={{ fontWeight: 700, fontSize: size * 0.55, color: "currentColor", letterSpacing: "-0.02em" }}>The Ride</span>
+        <span
+          style={{
+            fontWeight: 700,
+            fontSize: size * 0.55,
+            color: "currentColor",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Clayba
+        </span>
       )}
     </span>
   );

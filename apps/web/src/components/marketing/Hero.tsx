@@ -219,7 +219,7 @@ export function Hero({
              * HOME-03.1 — real media (bundled default or CMS-published)
              * gets a deliberately lighter treatment than the crafted
              * fallback above: just enough dark gradient for text/booking-
-             * card legibility, plus one soft copper wash as THE RIDE's
+             * card legibility, plus one soft copper wash as Clayba's
              * accent lighting — never the multi-layer composition that
              * would bury real footage behind gradients.
              */}

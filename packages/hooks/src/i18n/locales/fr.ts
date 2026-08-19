@@ -2,7 +2,7 @@ import type { en } from "./en";
 
 export const fr = {
   common: {
-    appName: "The Ride",
+    appName: "Clayba",
     loading: "Chargement…",
     error: "Une erreur est survenue",
     retry: "Réessayer",
@@ -81,12 +81,12 @@ export const fr = {
     newsletterSuccess: "Vous êtes abonné — merci !",
   },
   auth: {
-    welcomeTitle: "Bienvenue sur The Ride",
+    welcomeTitle: "Bienvenue sur Clayba",
     welcomeSubtitle: "Votre trajet, à votre façon — à tout moment, n'importe où.",
     loginTitle: "Connexion",
     loginSubtitle: "Entrez vos informations pour continuer.",
     registerTitle: "Créez votre compte",
-    registerSubtitle: "Rejoignez The Ride en quelques étapes.",
+    registerSubtitle: "Rejoignez Clayba en quelques étapes.",
     forgotPasswordTitle: "Mot de passe oublié ?",
     forgotPasswordSubtitle: "Nous vous enverrons un lien de réinitialisation.",
     verifyEmailTitle: "Vérifiez votre e-mail",
@@ -136,7 +136,7 @@ export const fr = {
     socialComingSoon: "La connexion sociale arrive bientôt.",
     continueCta: "Continuer",
     registerStepProgress: "Étape {current} sur {total}",
-    roleSelectorPrompt: "Comment souhaitez-vous utiliser The Ride ?",
+    roleSelectorPrompt: "Comment souhaitez-vous utiliser Clayba ?",
     roleRider: "Je suis passager",
     roleRiderBody: "Réservez des trajets dans votre ville.",
     roleDriver: "Je veux conduire",
@@ -161,7 +161,7 @@ export const fr = {
     appearance: "Apparence",
     logOut: "Déconnexion",
     about: "À propos",
-    privacyDescription: "Contrôlez ce que The Ride peut vous envoyer comme communications.",
+    privacyDescription: "Contrôlez ce que Clayba peut vous envoyer comme communications.",
     quietRideDefault: "Préférer les trajets silencieux par défaut",
   },
   about: {
@@ -377,7 +377,7 @@ export const fr = {
   },
   becomeDriver: {
     entryPoint: {
-      cardTitle: "Conduisez avec The Ride",
+      cardTitle: "Conduisez avec Clayba",
       cardBody: "Gagnez de l'argent selon votre horaire en devenant chauffeur vérifié.",
       cardCtaApply: "Devenir chauffeur",
       cardCtaContinue: "Continuer la candidature",
@@ -468,7 +468,7 @@ export const fr = {
       "Nous n'avons pas pu enregistrer vos modifications — déconnectez-vous puis reconnectez-vous et réessayez.",
     saveErrorGeneric: "Nous n'avons pas pu enregistrer vos modifications. Veuillez réessayer.",
 
-    eligibilityTitle: "Conduisez avec The Ride",
+    eligibilityTitle: "Conduisez avec Clayba",
     eligibilityBody:
       "Gagnez de l'argent selon votre horaire. Voici ce qu'il faut savoir avant de postuler.",
     eligibilityHeading: "Admissibilité",
@@ -584,11 +584,11 @@ export const fr = {
     landing: {
       heroTitle: "Votre ville, à votre rythme",
       heroSubtitle:
-        "The Ride connecte passagers et chauffeurs pour une expérience premium et fiable.",
+        "Clayba connecte passagers et chauffeurs pour une expérience premium et fiable.",
       heroEyebrow: "Des trajets premium, partout",
       ctaPassenger: "Voyager avec nous",
       ctaDriver: "Conduire avec nous",
-      featuresTitle: "Pourquoi The Ride",
+      featuresTitle: "Pourquoi Clayba",
       feature1Title: "La sécurité avant tout",
       feature1Body: "Chaque trajet est vérifié, suivi et assuré.",
       feature2Title: "Toujours à l'heure",
@@ -646,15 +646,15 @@ export const fr = {
       testimonialsEyebrow: "Apprécié par les passagers et les chauffeurs",
       testimonialsTitle: "Ce que les gens en disent",
       testimonial1:
-        "The Ride est mon choix pour les trajets vers l'aéroport — toujours à l'heure et le tarif est exactement celui annoncé.",
+        "Clayba est mon choix pour les trajets vers l'aéroport — toujours à l'heure et le tarif est exactement celui annoncé.",
       testimonial2:
-        "Conduire avec The Ride m'a permis de fixer mon propre horaire et de voir des paiements réellement transparents.",
+        "Conduire avec Clayba m'a permis de fixer mon propre horaire et de voir des paiements réellement transparents.",
       testimonial3:
         "La réservation prend quelques secondes et je me sens toujours en sécurité grâce au suivi en direct.",
       testimonialRolePassenger: "Passager",
       testimonialRoleDriver: "Chauffeur partenaire",
       downloadEyebrow: "Emportez-la partout",
-      downloadTitle: "Téléchargez l'application The Ride",
+      downloadTitle: "Téléchargez l'application Clayba",
       downloadSubtitle:
         "Réservez plus vite, suivez en direct et gérez vos trajets où que vous soyez.",
       appComingSoon: "Bientôt disponible",
@@ -670,8 +670,8 @@ export const fr = {
       driverCtaButton: "Commencez à conduire aujourd'hui",
     },
     about: {
-      title: "À propos de The Ride",
-      body: "The Ride construit la prochaine génération de mobilité urbaine — sûre, fiable et pensée pour ceux qui l'utilisent chaque jour.",
+      title: "À propos de Clayba",
+      body: "Clayba construit la prochaine génération de mobilité urbaine — sûre, fiable et pensée pour ceux qui l'utilisent chaque jour.",
       eyebrow: "Notre histoire",
       missionTitle: "Notre mission",
       missionBody:
@@ -693,7 +693,7 @@ export const fr = {
       timelineEyebrow: "Notre parcours",
       timelineTitle: "Étapes clés",
       milestone1Title: "Fondation",
-      milestone1Body: "The Ride se lance dans sa première ville avec une poignée de chauffeurs.",
+      milestone1Body: "Clayba se lance dans sa première ville avec une poignée de chauffeurs.",
       milestone2Title: "Croissance rapide",
       milestone2Body:
         "Expansion vers une douzaine de villes et une communauté de chauffeurs grandissante.",
@@ -701,8 +701,8 @@ export const fr = {
       milestone3Body:
         "Lancement du partage de trajet en direct, du bouton SOS et de l'assistance sécurité 24/7.",
       milestone4Title: "Présence nationale",
-      milestone4Body: "The Ride atteint passagers et chauffeurs dans plus de 40 villes.",
-      teamEyebrow: "Les personnes derrière The Ride",
+      milestone4Body: "Clayba atteint passagers et chauffeurs dans plus de 40 villes.",
+      teamEyebrow: "Les personnes derrière Clayba",
       teamTitle: "Notre direction",
       teamSubtitle: "Une petite équipe obsédée par la construction d'une plateforme de confiance.",
       teamRoleCeo: "Cofondateur et PDG",
@@ -715,7 +715,7 @@ export const fr = {
       statDrivers: "Chauffeurs",
     },
     safety: {
-      title: "La sécurité chez The Ride",
+      title: "La sécurité chez Clayba",
       body: "Chaque chauffeur est vérifié, chaque trajet est suivi, et l'aide est toujours à portée de main.",
       eyebrow: "Conçu pour votre tranquillité d'esprit",
       featuresEyebrow: "Comment nous assurons votre sécurité",
@@ -750,7 +750,7 @@ export const fr = {
     },
     services: {
       title: "Services",
-      body: "Des trajets quotidiens aux déplacements planifiés, The Ride est conçu pour faire bouger toute votre ville.",
+      body: "Des trajets quotidiens aux déplacements planifiés, Clayba est conçu pour faire bouger toute votre ville.",
       eyebrow: "Ce que nous proposons",
       passengerTitle: "Trajets passagers",
       passengerBody: "Des trajets à la demande dans toute la ville, jour et nuit.",
@@ -778,13 +778,13 @@ export const fr = {
         "Créez un compte ou contactez-nous — nous serons ravis de vous aider à trouver le bon service.",
     },
     becomeDriverPage: {
-      title: "Conduisez avec The Ride",
+      title: "Conduisez avec Clayba",
       body: "Fixez vos propres horaires et gagnez de l'argent à votre façon.",
       cta: "Postuler maintenant",
     },
     faq: {
       title: "Questions fréquentes",
-      subtitle: "Tout ce que vous devez savoir pour voyager et conduire avec The Ride.",
+      subtitle: "Tout ce que vous devez savoir pour voyager et conduire avec Clayba.",
       searchLabel: "Rechercher des questions",
       searchPlaceholder: "Rechercher dans la FAQ…",
       noResults: "Aucune question ne correspond à votre recherche.",
@@ -809,7 +809,7 @@ export const fr = {
       aBooking3:
         "Oui, vous pouvez annuler depuis votre historique de trajets à tout moment avant l'arrivée d'un chauffeur.",
       q4: "Quels modes de paiement sont acceptés ?",
-      a4: "The Ride accepte les principales cartes de crédit et de débit, ainsi que le solde du portefeuille dans l'application.",
+      a4: "Clayba accepte les principales cartes de crédit et de débit, ainsi que le solde du portefeuille dans l'application.",
       qPayments2: "Comment fonctionnent les remboursements ?",
       aPayments2:
         "Les remboursements sont examinés par notre équipe d'assistance et crédités sur votre moyen de paiement d'origine.",
@@ -843,7 +843,7 @@ export const fr = {
     },
     privacyPolicy: {
       title: "Politique de confidentialité",
-      body: "Cette page décrit comment The Ride collecte, utilise et protège vos informations.",
+      body: "Cette page décrit comment Clayba collecte, utilise et protège vos informations.",
       s1Title: "Informations que nous collectons",
       s1Body:
         "Nous collectons les informations de compte, les données de trajet, la localisation pendant l'utilisation de l'application et les informations de paiement nécessaires aux trajets.",
@@ -862,7 +862,7 @@ export const fr = {
     },
     cookies: {
       title: "Politique de cookies",
-      body: "The Ride utilise des cookies et des technologies similaires pour vous garder connecté, mémoriser vos préférences et comprendre l'utilisation de notre site.",
+      body: "Clayba utilise des cookies et des technologies similaires pour vous garder connecté, mémoriser vos préférences et comprendre l'utilisation de notre site.",
       s1Title: "Que sont les cookies ?",
       s1Body:
         "Les cookies sont de petits fichiers stockés sur votre appareil qui aident les sites à se souvenir d'informations sur votre visite.",
@@ -877,13 +877,13 @@ export const fr = {
     },
     termsOfService: {
       title: "Conditions d'utilisation",
-      body: "Ces conditions régissent votre utilisation des services de The Ride.",
+      body: "Ces conditions régissent votre utilisation des services de Clayba.",
       s1Title: "Acceptation des conditions",
       s1Body:
-        "En créant un compte ou en utilisant The Ride, vous acceptez ces conditions d'utilisation.",
+        "En créant un compte ou en utilisant Clayba, vous acceptez ces conditions d'utilisation.",
       s2Title: "Utilisation de nos services",
       s2Body:
-        "Vous devez avoir la capacité légale de contracter et respecter toutes les lois applicables en utilisant The Ride.",
+        "Vous devez avoir la capacité légale de contracter et respecter toutes les lois applicables en utilisant Clayba.",
       s3Title: "Paiements et tarifs",
       s3Body:
         "Les tarifs sont calculés en fonction de la distance, de la durée et de la demande, et facturés à votre moyen de paiement sélectionné.",
@@ -892,7 +892,7 @@ export const fr = {
         "Nous pouvons suspendre ou résilier les comptes qui enfreignent ces conditions ou mettent en danger la sécurité de notre communauté.",
       s5Title: "Modifications de ces conditions",
       s5Body:
-        "Nous pouvons mettre à jour ces conditions de temps à autre ; continuer à utiliser The Ride signifie que vous acceptez les modifications.",
+        "Nous pouvons mettre à jour ces conditions de temps à autre ; continuer à utiliser Clayba signifie que vous acceptez les modifications.",
     },
     legal: {
       lastUpdated: "Dernière mise à jour : {date}",

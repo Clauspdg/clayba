@@ -234,7 +234,7 @@ export function FooterContentPage() {
           label="Logo text"
           value={form.logoText}
           onChange={(e) => setForm({ ...form, logoText: e.target.value })}
-          placeholder="The Ride"
+          placeholder="Clayba"
         />
         <BilingualTextField
           label="Copyright text"
