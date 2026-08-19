@@ -24,16 +24,35 @@ export interface BuildStaticMapUrlOptions {
  * identically as an `<img>`/`<Image>` on web and native with zero extra
  * native dependencies).
  */
-export function buildStaticMapUrl(credentials: MapProviderCredentials, { markers, width = 600, height = 300 }: BuildStaticMapUrlOptions): string {
+export function buildStaticMapUrl(
+  credentials: MapProviderCredentials,
+  { markers, width = 600, height = 300 }: BuildStaticMapUrlOptions,
+): string {
   if (credentials.provider === MapProvider.GOOGLE) {
     const params = new URLSearchParams({ size: `${width}x${height}`, key: credentials.apiKey });
     for (const marker of markers) {
-      params.append("markers", `color:0x${marker.color}|label:${marker.label}|${marker.location.lat},${marker.location.lng}`);
+      params.append(
+        "markers",
+        `color:0x${marker.color}|label:${marker.label}|${marker.location.lat},${marker.location.lng}`,
+      );
     }
     return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
   }
 
-  const overlay = markers.map((marker) => `pin-s-${marker.label.toLowerCase()}+${marker.color}(${marker.location.lng},${marker.location.lat})`).join(",");
-  const params = new URLSearchParams({ access_token: credentials.accessToken });
-  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${overlay}/auto/${width}x${height}?${params.toString()}`;
+  if (credentials.provider === MapProvider.MAPBOX) {
+    const overlay = markers
+      .map(
+        (marker) =>
+          `pin-s-${marker.label.toLowerCase()}+${marker.color}(${marker.location.lng},${marker.location.lat})`,
+      )
+      .join(",");
+    const params = new URLSearchParams({ access_token: credentials.accessToken });
+    return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${overlay}/auto/${width}x${height}?${params.toString()}`;
+  }
+
+  // Nominatim/OSRM has no static-map-image API of its own; this helper is
+  // currently unused by any screen (see docs/maps.md) — real static-map
+  // rendering on the free provider is out of scope for the P0 booking
+  // repair that added `MapProvider.NOMINATIM`.
+  throw new Error("buildStaticMapUrl has no image renderer for MapProvider.NOMINATIM");
 }

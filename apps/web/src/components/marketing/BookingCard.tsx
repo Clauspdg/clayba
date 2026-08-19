@@ -122,6 +122,15 @@ export function BookingCard() {
     setStops(stops.filter((_, i) => i !== index));
   }
 
+  // CLAYBA P0 BOOKING ROUTING REPAIR — this card used to render a second
+  // "Publish a ride" button here that routed straight to
+  // `/become-a-driver`, buried inside the passenger booking widget. The
+  // Home hero already has its own, correctly-labeled "Become a Driver"
+  // CTA elsewhere on the page (see `app/page.tsx`); this was a duplicate,
+  // ambiguous entry point into the driver flow from inside a passenger
+  // context, which is exactly the "passenger CTA opens Become a Driver"
+  // bug reported. Removed rather than relabeled — the real driver CTA
+  // already exists and doesn't need a second copy in here.
   function handleFindRide() {
     setTouched(true);
     if (!pickup.trim() || !destination.trim()) {
@@ -155,10 +164,6 @@ export function BookingCard() {
       toast({ variant: "default", title: t("website.landing.bookingSignUpPrompt") });
       router.push(`/register?next=${encodeURIComponent(bookHref)}`);
     }
-  }
-
-  function handlePublishRide() {
-    router.push("/become-a-driver");
   }
 
   return (
@@ -307,27 +312,15 @@ export function BookingCard() {
           </span>
         </div>
 
-        <div className="tablet:flex-row flex flex-col gap-2">
-          <RippleButton className="flex-1">
-            <Button
-              fullWidth
-              onClick={handleFindRide}
-              className="duration-normal shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_8px_20px_-8px_rgba(232,106,47,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_12px_28px_-8px_rgba(232,106,47,0.7)]"
-            >
-              {t("website.landing.findRideCta")}
-            </Button>
-          </RippleButton>
-          <RippleButton className="flex-1">
-            <Button
-              fullWidth
-              variant="outline"
-              onClick={handlePublishRide}
-              className="border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            >
-              {t("website.landing.publishRideCta")}
-            </Button>
-          </RippleButton>
-        </div>
+        <RippleButton>
+          <Button
+            fullWidth
+            onClick={handleFindRide}
+            className="duration-normal shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_8px_20px_-8px_rgba(232,106,47,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_12px_28px_-8px_rgba(232,106,47,0.7)]"
+          >
+            {t("website.landing.findRideCta")}
+          </Button>
+        </RippleButton>
       </div>
     </motion.div>
   );

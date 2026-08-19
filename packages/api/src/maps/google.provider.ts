@@ -45,7 +45,13 @@ export class GoogleMapsProvider implements MapProviderClient {
 
   constructor(config: GoogleMapsProviderConfig) {
     this.apiKey = config.apiKey;
-    this.fetchImpl = config.fetchImpl ?? fetch;
+    // CLAYBA P0 BOOKING REPAIR — a bare `fetch` reference stored on `this`
+    // and later invoked as `this.fetchImpl(...)` throws "Failed to execute
+    // 'fetch' on 'Window': Illegal invocation" in the browser (native
+    // `fetch` requires `this === window`/the global scope). This silently
+    // broke every real geocode/autocomplete/route call regardless of API
+    // key — `.bind(globalThis)` keeps the right receiver.
+    this.fetchImpl = config.fetchImpl ?? fetch.bind(globalThis);
     this.baseUrl = config.baseUrl ?? "https://maps.googleapis.com/maps/api";
   }
 

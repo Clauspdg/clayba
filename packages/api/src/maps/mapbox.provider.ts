@@ -37,7 +37,10 @@ export class MapboxProvider implements MapProviderClient {
 
   constructor(config: MapboxProviderConfig) {
     this.accessToken = config.accessToken;
-    this.fetchImpl = config.fetchImpl ?? fetch;
+    // CLAYBA P0 BOOKING REPAIR — see google.provider.ts's constructor
+    // comment: a bare `fetch` reference throws "Illegal invocation" when
+    // called as `this.fetchImpl(...)`; `.bind(globalThis)` fixes it.
+    this.fetchImpl = config.fetchImpl ?? fetch.bind(globalThis);
     this.baseUrl = config.baseUrl ?? "https://api.mapbox.com";
   }
 
