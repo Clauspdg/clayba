@@ -31,12 +31,43 @@ import { useEffect, useMemo, useState } from "react";
 
 type RideItem = ({ source: "request" } & TripRequest) | ({ source: "trip" } & Trip);
 
-function isActiveRequest(status: TripRequestStatus): boolean {
-  return ![
-    TripRequestStatus.CANCELLED,
-    TripRequestStatus.EXPIRED,
-    TripRequestStatus.DRIVER_REJECTED,
-  ].includes(status);
+// `subscribeMyTripRequests` casts Firestore data straight to `TripRequest`
+// without running it through `tripRequestSchema` (unlike `subscribeMyTrips`,
+// which does), so `expiresAt` may still be a raw Firestore `Timestamp` at
+// runtime despite its declared `Date` type — duck-type it rather than
+// trusting that.
+function toDateSafe(value: unknown): Date | undefined {
+  if (value instanceof Date) return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  return undefined;
+}
+
+// FUNCTIONAL-STABILIZATION — no scheduled process in this environment ever
+// marks an abandoned search `expired` once its real `expiresAt` passes (see
+// docs/dispatch-engine.md's disclosed gap), so a request a driver never
+// picked up stayed "active" — and therefore "the current ride" — forever.
+// Treating a past-`expiresAt` request as inactive is a display-only
+// honesty fix: it doesn't touch dispatch or write anything, it just stops
+// presenting a dead search as if someone is still looking for a driver.
+function isActiveRequest(status: TripRequestStatus, expiresAt?: unknown): boolean {
+  if (
+    [
+      TripRequestStatus.CANCELLED,
+      TripRequestStatus.EXPIRED,
+      TripRequestStatus.DRIVER_REJECTED,
+    ].includes(status)
+  ) {
+    return false;
+  }
+  const expiry = toDateSafe(expiresAt);
+  return !expiry || expiry.getTime() >= Date.now();
 }
 
 // FUNCTIONAL-STABILIZATION — mirrors `rides/page.tsx`'s own
@@ -105,7 +136,9 @@ export default function DashboardPage() {
   const currentRide = useMemo(
     () =>
       rideItems.find((item) =>
-        item.source === "request" ? isActiveRequest(item.status) : isActiveTrip(item.status),
+        item.source === "request"
+          ? isActiveRequest(item.status, item.expiresAt)
+          : isActiveTrip(item.status),
       ),
     [rideItems],
   );

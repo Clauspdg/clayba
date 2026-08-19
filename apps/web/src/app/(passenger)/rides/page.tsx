@@ -62,12 +62,43 @@ const TRIP_TONE: Record<string, "neutral" | "brand" | "success" | "warning" | "d
   cancelled: "danger",
 };
 
-function isActiveRequest(status: TripRequestStatus): boolean {
-  return ![
-    TripRequestStatus.CANCELLED,
-    TripRequestStatus.EXPIRED,
-    TripRequestStatus.DRIVER_REJECTED,
-  ].includes(status);
+// `subscribeMyTripRequests` casts Firestore data straight to `TripRequest`
+// without running it through `tripRequestSchema` (unlike `subscribeMyTrips`,
+// which does), so `expiresAt` may still be a raw Firestore `Timestamp` at
+// runtime despite its declared `Date` type — duck-type it rather than
+// trusting that.
+function toDateSafe(value: unknown): Date | undefined {
+  if (value instanceof Date) return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  return undefined;
+}
+
+// FUNCTIONAL-STABILIZATION — no scheduled process in this environment ever
+// marks an abandoned search `expired` once its real `expiresAt` passes (see
+// docs/dispatch-engine.md's disclosed gap), so a request a driver never
+// picked up stayed "Active" on this page forever. Treating a
+// past-`expiresAt` request as inactive is a display-only honesty fix: it
+// doesn't touch dispatch or write anything, it just stops presenting a
+// dead search as if it's still being worked.
+function isActiveRequest(status: TripRequestStatus, expiresAt?: unknown): boolean {
+  if (
+    [
+      TripRequestStatus.CANCELLED,
+      TripRequestStatus.EXPIRED,
+      TripRequestStatus.DRIVER_REJECTED,
+    ].includes(status)
+  ) {
+    return false;
+  }
+  const expiry = toDateSafe(expiresAt);
+  return !expiry || expiry.getTime() >= Date.now();
 }
 
 /**
@@ -133,7 +164,9 @@ export default function RideHistoryPage() {
     ];
     return {
       active: items.filter((item) =>
-        item.source === "request" ? isActiveRequest(item.status) : isActiveTrip(item.status),
+        item.source === "request"
+          ? isActiveRequest(item.status, item.expiresAt)
+          : isActiveTrip(item.status),
       ),
       completed: items.filter(
         (item) => item.source === "trip" && item.status === TripStatus.COMPLETED,
@@ -141,7 +174,7 @@ export default function RideHistoryPage() {
       cancelled: items.filter(
         (item) =>
           (item.source === "request"
-            ? !isActiveRequest(item.status)
+            ? !isActiveRequest(item.status, item.expiresAt)
             : !isActiveTrip(item.status)) &&
           !(item.source === "trip" && item.status === TripStatus.COMPLETED),
       ),
@@ -229,7 +262,7 @@ export default function RideHistoryPage() {
                 ? t(`admin.rideRequestStatus.${item.status}`)
                 : t(`admin.tripStatus.${item.status}`)}
             </Badge>
-            {item.source === "request" && isActiveRequest(item.status) && (
+            {item.source === "request" && isActiveRequest(item.status, item.expiresAt) && (
               <Button
                 size="sm"
                 variant="ghost"
