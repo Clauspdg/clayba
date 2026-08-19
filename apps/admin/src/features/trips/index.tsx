@@ -23,11 +23,13 @@ import {
   TableRow,
   useTranslation,
 } from "@the-ride/ui";
-import { TripStatus, type Trip } from "@the-ride/types";
+import { TripRequestStatus, TripStatus, type Trip, type TripRequest } from "@the-ride/types";
 import { collection, limit as fsLimit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 
-const STATUS_TONE: Record<string, "neutral" | "brand" | "success" | "warning" | "danger"> = {
+type RideItem = ({ source: "request" } & TripRequest) | ({ source: "trip" } & Trip);
+
+const TRIP_STATUS_TONE: Record<string, "neutral" | "brand" | "success" | "warning" | "danger"> = {
   requested: "neutral",
   matched: "brand",
   en_route_to_pickup: "brand",
@@ -37,62 +39,132 @@ const STATUS_TONE: Record<string, "neutral" | "brand" | "success" | "warning" | 
   cancelled: "danger",
 };
 
+const REQUEST_STATUS_TONE: Record<string, "neutral" | "brand" | "success" | "warning" | "danger"> =
+  {
+    draft: "neutral",
+    estimating: "neutral",
+    pending: "neutral",
+    confirmed: "brand",
+    searching_driver: "warning",
+    matched: "brand",
+    driver_assigned: "brand",
+    driver_accepted: "success",
+    driver_rejected: "danger",
+    cancelled: "danger",
+    expired: "danger",
+  };
+
 /**
- * Trips (Web Phase W1, Parts 5-6) — live Firestore list from the `trips`
- * collection, replacing the earlier `SAMPLE_REQUESTS` fixture. Reads
- * `trips` rather than `tripRequests`: the latter's `firestore.rules` read
- * rule only grants the requesting passenger, not admins, so a dashboard
- * query against it would be denied.
+ * A `tripRequest` this far along already has a real `trips/{id}` doc created
+ * from it (`DispatchService.handleOfferAccepted`) — showing both would list
+ * the same ride twice. Mirrors `apps/web`'s passenger Ride History page,
+ * which already solves this exact problem the same way.
+ */
+function isSupersededByTrip(status: TripRequestStatus): boolean {
+  return status === TripRequestStatus.DRIVER_ACCEPTED;
+}
+
+function isActiveRequestStatus(status: TripRequestStatus): boolean {
+  return ![
+    TripRequestStatus.CANCELLED,
+    TripRequestStatus.EXPIRED,
+    TripRequestStatus.DRIVER_REJECTED,
+  ].includes(status);
+}
+
+function isActiveTripStatus(status: TripStatus): boolean {
+  return ![TripStatus.COMPLETED, TripStatus.CANCELLED].includes(status);
+}
+
+/**
+ * Trips (Web Phase W1, Parts 5-6; widened by a CRITICAL DATA CONSISTENCY
+ * fix) — a ride only gets a `trips` document once a driver has actually
+ * accepted it (`DispatchService.handleOfferAccepted`); before that, it
+ * lives in `tripRequests` (searching, assigned, or already accepted). This
+ * page previously read `trips` alone, with a doc comment explaining that
+ * `tripRequests` was admin-unreadable — true when that comment was written,
+ * but `firestore.rules`'s `tripRequests` read rule now also grants
+ * `admin`/`super_admin`/`dispatcher` (see the `hasRole([...])` clause), and
+ * this page was never updated to use it. The result: every ride still
+ * searching for (or waiting on) a driver was completely invisible here,
+ * not deleted — a real, live ride "publiée" by a passenger would only
+ * appear once matched, making it look like requests had vanished. Merges
+ * both collections the same way `apps/web`'s passenger Ride History page
+ * already does, rather than inventing a new model.
  */
 export function TripsPage() {
   const { t } = useTranslation();
   const [trips, setTrips] = useState<Trip[] | null>(null);
+  const [requests, setRequests] = useState<TripRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = query(
-      collection(adminFirestore, "trips"),
-      orderBy("createdAt", "desc"),
-      fsLimit(500),
-    );
-    const unsubscribe = onSnapshot(
-      q,
+    const unsubTrips = onSnapshot(
+      query(collection(adminFirestore, "trips"), orderBy("createdAt", "desc"), fsLimit(500)),
       (snapshot) => setTrips(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Trip)),
       (err) => setError(err.message),
     );
-    return unsubscribe;
+    const unsubRequests = onSnapshot(
+      query(collection(adminFirestore, "tripRequests"), orderBy("createdAt", "desc"), fsLimit(500)),
+      (snapshot) =>
+        setRequests(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as TripRequest)),
+      (err) => setError(err.message),
+    );
+    return () => {
+      unsubTrips();
+      unsubRequests();
+    };
   }, []);
 
+  const rideItems = useMemo<RideItem[]>(
+    () => [
+      ...(requests ?? [])
+        .filter((r) => !isSupersededByTrip(r.status))
+        .map((r) => ({ source: "request" as const, ...r })),
+      ...(trips ?? []).map((tr) => ({ source: "trip" as const, ...tr })),
+    ],
+    [requests, trips],
+  );
+
   const table = useTableState({
-    data: trips ?? [],
-    searchFields: ["id", "passengerId", "driverId"],
+    data: rideItems,
+    searchFields: ["id", "passengerId"],
     pageSize: 10,
   });
 
   const stats = useMemo(() => {
-    const list = trips ?? [];
     return {
-      total: list.length,
-      active: list.filter(
-        (trip) => ![TripStatus.COMPLETED, TripStatus.CANCELLED].includes(trip.status),
+      total: rideItems.length,
+      active: rideItems.filter((item) =>
+        item.source === "request"
+          ? isActiveRequestStatus(item.status)
+          : isActiveTripStatus(item.status),
       ).length,
-      completed: list.filter((trip) => trip.status === TripStatus.COMPLETED).length,
-      cancelled: list.filter((trip) => trip.status === TripStatus.CANCELLED).length,
+      completed: rideItems.filter(
+        (item) => item.source === "trip" && item.status === TripStatus.COMPLETED,
+      ).length,
+      cancelled: rideItems.filter((item) =>
+        item.source === "request"
+          ? !isActiveRequestStatus(item.status)
+          : item.status === TripStatus.CANCELLED,
+      ).length,
     };
-  }, [trips]);
+  }, [rideItems]);
 
   function handleExport() {
     exportToCsv(
       "trips",
-      table.pageItems.map((trip) => ({
-        id: trip.id,
-        passengerId: trip.passengerId,
-        driverId: trip.driverId ?? "",
-        status: trip.status,
-        fareAmount: trip.fareAmount ?? "",
+      table.pageItems.map((item) => ({
+        id: item.id,
+        passengerId: item.passengerId,
+        driverId: (item.source === "request" ? item.assignedDriverId : item.driverId) ?? "",
+        status: item.status,
+        fare: (item.source === "request" ? item.fareEstimate?.total : item.fareAmount) ?? "",
       })),
     );
   }
+
+  const loading = trips === null || requests === null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,7 +180,7 @@ export function TripsPage() {
           <Card key={label}>
             <CardContent className="flex flex-col gap-1 p-4">
               <span className="text-2xl font-semibold text-neutral-900 dark:text-neutral-50">
-                {trips === null ? "—" : value}
+                {loading ? "—" : value}
               </span>
               <span className="text-xs text-neutral-500 dark:text-neutral-400">{label}</span>
             </CardContent>
@@ -118,7 +190,7 @@ export function TripsPage() {
 
       {error ? (
         <ErrorState title={t("admin.emptyStates.errorTitle")} description={error} />
-      ) : trips === null ? (
+      ) : loading ? (
         <LoadingState title={t("common.loading")} />
       ) : (
         <div className="flex flex-col gap-4">
@@ -156,23 +228,33 @@ export function TripsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {table.pageItems.map((trip) => (
-                    <TableRow key={trip.id}>
-                      <TableCell className="font-medium text-neutral-900 dark:text-neutral-50">
-                        {trip.id}
-                      </TableCell>
-                      <TableCell>{trip.passengerId}</TableCell>
-                      <TableCell>{trip.driverId ?? "—"}</TableCell>
-                      <TableCell>
-                        {trip.fareAmount !== undefined ? `$${trip.fareAmount.toFixed(2)}` : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge tone={STATUS_TONE[trip.status] ?? "neutral"}>
-                          {t(`admin.tripStatus.${trip.status}`)}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {table.pageItems.map((item) => {
+                    const driverId =
+                      item.source === "request" ? item.assignedDriverId : item.driverId;
+                    const fare =
+                      item.source === "request" ? item.fareEstimate?.total : item.fareAmount;
+                    const tone =
+                      (item.source === "request"
+                        ? REQUEST_STATUS_TONE[item.status]
+                        : TRIP_STATUS_TONE[item.status]) ?? "neutral";
+                    const statusLabel =
+                      item.source === "request"
+                        ? t(`admin.rideRequestStatus.${item.status}`)
+                        : t(`admin.tripStatus.${item.status}`);
+                    return (
+                      <TableRow key={`${item.source}-${item.id}`}>
+                        <TableCell className="font-medium text-neutral-900 dark:text-neutral-50">
+                          {item.id}
+                        </TableCell>
+                        <TableCell>{item.passengerId}</TableCell>
+                        <TableCell>{driverId ?? "—"}</TableCell>
+                        <TableCell>{fare !== undefined ? `$${fare.toFixed(2)}` : "—"}</TableCell>
+                        <TableCell>
+                          <Badge tone={tone}>{statusLabel}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               <Pagination

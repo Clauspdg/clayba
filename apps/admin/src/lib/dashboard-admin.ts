@@ -8,6 +8,7 @@ import {
   Role,
   SupportTicketPriority,
   SupportTicketStatus,
+  TripRequestStatus,
   TripStatus,
 } from "@the-ride/types";
 import { driverApplicationSchema, type DriverApplication } from "@the-ride/types";
@@ -66,6 +67,22 @@ const ACTIVE_TRIP_STATUSES = [
   TripStatus.IN_PROGRESS,
 ];
 
+// A ride only gets a `trips` doc once a driver accepts it — before that it
+// lives in `tripRequests`. `DRIVER_ACCEPTED` is excluded here: that status
+// means a `trips` doc already exists for it (counted on the `trips` side
+// instead), so including it would double-count the same ride. See
+// `TripsPage`'s own doc comment (CRITICAL DATA CONSISTENCY fix) for the
+// full story — this mirrors that same fix for the dashboard's summary tile.
+const ACTIVE_TRIP_REQUEST_STATUSES = [
+  TripRequestStatus.DRAFT,
+  TripRequestStatus.ESTIMATING,
+  TripRequestStatus.CONFIRMED,
+  TripRequestStatus.PENDING,
+  TripRequestStatus.SEARCHING_DRIVER,
+  TripRequestStatus.MATCHED,
+  TripRequestStatus.DRIVER_ASSIGNED,
+];
+
 /** Mirrors `ApplicationsTab`'s own pending-review set — a driver application still awaiting a decision. */
 const PENDING_APPLICATION_STATUSES = [
   DriverApplicationStatus.SUBMITTED,
@@ -101,41 +118,48 @@ export interface OperationalSummary {
  * as `getDashboardCounts` below it — nothing here is invented.
  */
 export async function getOperationalSummary(db: Firestore): Promise<OperationalSummary> {
-  const [activeRides, driversOnline, pendingApplications, urgentTickets, safetyReports] =
-    await Promise.all([
-      getCountFromServer(
-        query(collection(db, "trips"), where("status", "in", ACTIVE_TRIP_STATUSES)),
+  const [
+    activeTrips,
+    activeTripRequests,
+    driversOnline,
+    pendingApplications,
+    urgentTickets,
+    safetyReports,
+  ] = await Promise.all([
+    getCountFromServer(query(collection(db, "trips"), where("status", "in", ACTIVE_TRIP_STATUSES))),
+    getCountFromServer(
+      query(collection(db, "tripRequests"), where("status", "in", ACTIVE_TRIP_REQUEST_STATUSES)),
+    ),
+    getCountFromServer(
+      query(
+        collection(db, "drivers"),
+        where("availabilityStatus", "in", ONLINE_AVAILABILITY_STATUSES),
       ),
-      getCountFromServer(
-        query(
-          collection(db, "drivers"),
-          where("availabilityStatus", "in", ONLINE_AVAILABILITY_STATUSES),
-        ),
+    ),
+    getCountFromServer(
+      query(
+        collection(db, "driverApplications"),
+        where("status", "in", PENDING_APPLICATION_STATUSES),
       ),
-      getCountFromServer(
-        query(
-          collection(db, "driverApplications"),
-          where("status", "in", PENDING_APPLICATION_STATUSES),
-        ),
+    ),
+    getCountFromServer(
+      query(
+        collection(db, "supportTickets"),
+        where("status", "==", SupportTicketStatus.OPEN),
+        where("priority", "in", [SupportTicketPriority.URGENT, SupportTicketPriority.HIGH]),
       ),
-      getCountFromServer(
-        query(
-          collection(db, "supportTickets"),
-          where("status", "==", SupportTicketStatus.OPEN),
-          where("priority", "in", [SupportTicketPriority.URGENT, SupportTicketPriority.HIGH]),
-        ),
+    ),
+    getCountFromServer(
+      query(
+        collection(db, "reports"),
+        where("status", "==", ReportStatus.OPEN),
+        where("category", "==", ReportCategory.SAFETY),
       ),
-      getCountFromServer(
-        query(
-          collection(db, "reports"),
-          where("status", "==", ReportStatus.OPEN),
-          where("category", "==", ReportCategory.SAFETY),
-        ),
-      ),
-    ]);
+    ),
+  ]);
 
   return {
-    activeRides: activeRides.data().count,
+    activeRides: activeTrips.data().count + activeTripRequests.data().count,
     driversOnline: driversOnline.data().count,
     pendingApplications: pendingApplications.data().count,
     criticalAlerts: urgentTickets.data().count + safetyReports.data().count,
