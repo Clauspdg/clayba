@@ -9,11 +9,11 @@
 export const ANDROID_DRIVER_APP_RELEASE = {
   appName: "Playba Driver",
   latestVersion: "0.1.0",
-  versionCode: 9,
+  versionCode: 10,
   minimumSupportedVersion: "0.1.0",
   downloadUrl: "/downloads/android/playba-driver-v0.1.0.apk",
   releaseNotes:
-    "First Playba Driver release: real-time ride offers, live trip tracking, and the progressive fare meter.",
+    "First Playba Driver release: real-time ride offers, live trip tracking, the progressive fare meter, and offline/reconnecting handling.",
   // Deliberately no `minAndroidVersion` claim — Expo SDK 52's real minimum
   // OS support wasn't independently verified against a physical/emulated
   // low-API device this sprint (see the final report's "remaining
