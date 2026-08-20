@@ -1,9 +1,10 @@
 "use client";
 
-import { webFirestore } from "@/lib/firebase-client";
+import { webFirestore, webFunctions } from "@/lib/firebase-client";
 import { useUserExperience } from "@/hooks/useUserExperience";
 import {
   advanceTripStatus,
+  completeTrip,
   getTripRequest,
   setAvailableAfterTripCompletion,
   subscribeCurrentDriverTrip,
@@ -187,7 +188,17 @@ export default function CurrentRidePage() {
     setPendingTarget(next.to);
     setPendingCtaKey(next.ctaKey);
     try {
-      await advanceTripStatus(webFirestore, trip.id, next.to);
+      // CLAYBA P1, Part B — every stage except the last is still the
+      // direct client write `advanceTripStatus` always was; Complete Ride
+      // now goes through the `completeTrip` Cloud Function instead, which
+      // freezes `finalFareBreakdown`/`fareAmount` server-side from the
+      // trip's own accumulated `actualDistanceMeters` — `firestore.rules`
+      // no longer lets a driver's client set those fields directly.
+      if (next.to === TripStatus.COMPLETED) {
+        await completeTrip(webFunctions, trip.id);
+      } else {
+        await advanceTripStatus(webFirestore, trip.id, next.to);
+      }
       // DRIVER-E2E-10 — completing a trip is the one transition that also
       // needs to free the driver: `DRIVER_AVAILABILITY_TRANSITIONS` makes
       // `ON_TRIP -> AVAILABLE` legal, but until now nothing ever performed

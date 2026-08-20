@@ -8,6 +8,10 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   EmptyState,
   ErrorState,
   Heading,
@@ -97,6 +101,13 @@ export function TripsPage() {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [requests, setRequests] = useState<TripRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // CLAYBA P1, Part B — a key, not a copy, same reasoning as apps/web's
+  // passenger Ride History dialog: derives from the live arrays below so
+  // the detail view keeps updating (e.g. `finalFareBreakdown` landing at
+  // Complete Ride) instead of freezing at whatever it looked like on open.
+  const [viewingKey, setViewingKey] = useState<{ source: RideItem["source"]; id: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     const unsubTrips = onSnapshot(
@@ -165,6 +176,16 @@ export function TripsPage() {
   }
 
   const loading = trips === null || requests === null;
+
+  const viewing: RideItem | null = useMemo(() => {
+    if (!viewingKey) return null;
+    if (viewingKey.source === "request") {
+      const match = (requests ?? []).find((r) => r.id === viewingKey.id);
+      return match ? { source: "request" as const, ...match } : null;
+    }
+    const match = (trips ?? []).find((tr) => tr.id === viewingKey.id);
+    return match ? { source: "trip" as const, ...match } : null;
+  }, [viewingKey, requests, trips]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -242,7 +263,11 @@ export function TripsPage() {
                         ? t(`admin.rideRequestStatus.${item.status}`)
                         : t(`admin.tripStatus.${item.status}`);
                     return (
-                      <TableRow key={`${item.source}-${item.id}`}>
+                      <TableRow
+                        key={`${item.source}-${item.id}`}
+                        className="cursor-pointer"
+                        onClick={() => setViewingKey({ source: item.source, id: item.id })}
+                      >
                         <TableCell className="font-medium text-neutral-900 dark:text-neutral-50">
                           {item.id}
                         </TableCell>
@@ -272,6 +297,131 @@ export function TripsPage() {
           )}
         </div>
       )}
+
+      <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewingKey(null)}>
+        <DialogContent closeLabel={t("common.close")}>
+          <DialogHeader>
+            <DialogTitle>{t("admin.tripsPage.rideDetails")}</DialogTitle>
+          </DialogHeader>
+          {viewing && (
+            <dl className="grid gap-3">
+              <div className="flex justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
+                <dt className="text-sm text-neutral-500 dark:text-neutral-400">
+                  {t("admin.tripsPage.id")}
+                </dt>
+                <dd className="text-sm font-medium">{viewing.id}</dd>
+              </div>
+              <div className="flex justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
+                <dt className="text-sm text-neutral-500 dark:text-neutral-400">
+                  {t("admin.tripsPage.status")}
+                </dt>
+                <dd className="text-sm font-medium">
+                  {viewing.source === "request"
+                    ? t(`admin.rideRequestStatus.${viewing.status}`)
+                    : t(`admin.tripStatus.${viewing.status}`)}
+                </dd>
+              </div>
+
+              {viewing.source === "request" && viewing.fareEstimate && (
+                <FareBreakdownRows
+                  label={t("admin.tripsPage.estimatedFare")}
+                  breakdown={viewing.fareEstimate}
+                  t={t}
+                />
+              )}
+
+              {viewing.source === "trip" && (
+                <>
+                  <div className="flex justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
+                    <dt className="text-sm text-neutral-500 dark:text-neutral-400">
+                      {t("admin.tripsPage.currentFare")}
+                    </dt>
+                    <dd className="text-sm font-medium">
+                      {viewing.fareAmount !== undefined ? `$${viewing.fareAmount.toFixed(2)}` : "—"}
+                    </dd>
+                  </div>
+                  {viewing.actualDistanceMeters !== undefined && (
+                    <div className="flex justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
+                      <dt className="text-sm text-neutral-500 dark:text-neutral-400">
+                        {t("admin.tripsPage.actualDistance")}
+                      </dt>
+                      <dd className="text-sm font-medium">
+                        {(viewing.actualDistanceMeters / 1000).toFixed(2)} km
+                      </dd>
+                    </div>
+                  )}
+                  {viewing.actualDurationSeconds !== undefined && (
+                    <div className="flex justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
+                      <dt className="text-sm text-neutral-500 dark:text-neutral-400">
+                        {t("admin.tripsPage.actualDuration")}
+                      </dt>
+                      <dd className="text-sm font-medium">
+                        {Math.round(viewing.actualDurationSeconds / 60)} min
+                      </dd>
+                    </div>
+                  )}
+                  {viewing.finalFareBreakdown && (
+                    <FareBreakdownRows
+                      label={t("admin.tripsPage.finalFareBreakdown")}
+                      breakdown={viewing.finalFareBreakdown}
+                      t={t}
+                    />
+                  )}
+                </>
+              )}
+            </dl>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/** CLAYBA P1, Part B — same itemized breakdown shape (`FareBreakdown`) whether it's the pre-booking estimate or the server-frozen final fare; only the label above it differs. */
+function FareBreakdownRows({
+  label,
+  breakdown,
+  t,
+}: {
+  label: string;
+  breakdown: {
+    baseFare: number;
+    distanceFare: number;
+    timeFare: number;
+    bookingFee: number;
+    serviceFee: number;
+    tax: number;
+    total: number;
+    currency: string;
+  };
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+      <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+        {label}
+      </span>
+      {(
+        [
+          ["admin.tripsPage.fareBase", breakdown.baseFare],
+          ["admin.tripsPage.fareDistance", breakdown.distanceFare],
+          ["admin.tripsPage.fareTime", breakdown.timeFare],
+          ["admin.tripsPage.fareBookingFee", breakdown.bookingFee],
+          ["admin.tripsPage.fareServiceFee", breakdown.serviceFee],
+          ["admin.tripsPage.fareTax", breakdown.tax],
+        ] as const
+      ).map(([key, value]) => (
+        <div key={key} className="flex justify-between text-sm">
+          <span className="text-neutral-500 dark:text-neutral-400">{t(key)}</span>
+          <span className="text-neutral-700 dark:text-neutral-300">{value.toFixed(2)}</span>
+        </div>
+      ))}
+      <div className="mt-1 flex justify-between border-t border-neutral-200 pt-1 text-sm font-semibold dark:border-neutral-700">
+        <span>{t("admin.tripsPage.fareTotal")}</span>
+        <span>
+          {breakdown.total.toFixed(2)} {breakdown.currency}
+        </span>
+      </div>
     </div>
   );
 }
