@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAF9F7"
+      "backgroundColor": "#0B1A2D"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -21,10 +21,10 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#CB562C"
+        "backgroundColor": "#0B1A2D"
       },
       "package": "com.theride.driver",
-      "versionCode": 12
+      "versionCode": 14
     },
     "owner": "clauspp",
     "plugins": [

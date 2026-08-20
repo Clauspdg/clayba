@@ -1,5 +1,3 @@
-import { brand } from "../../tokens/colors";
-
 export interface LogoProps {
   size?: number;
   /** Renders the wordmark next to the mark. */
@@ -8,10 +6,16 @@ export interface LogoProps {
 }
 
 /**
- * Placeholder brand mark (Part 10, "Branding") — a simple geometric
- * chevron-in-a-rounded-square suggesting forward motion, in the brand
- * color. Swap for a designed mark when one exists; every consumer already
- * goes through this one component, so that's a one-file change.
+ * CLAYBA brand assets integration — the approved symbol (an orange/
+ * terracotta "C" with dual route/path + origin/destination endpoints),
+ * replacing the Part 10 placeholder chevron-in-a-square. Rendered as a
+ * raster `<img>`, not inline SVG: the source reference assets are raster
+ * (see assets/brand/reference/README.txt), and per that README's explicit
+ * instruction, the symbol is not to be auto-vectorized/redrawn into a new
+ * SVG as part of this migration — a real geometric master SVG is called
+ * out there as a separate, future step. `/brand/clayba-symbol.png` must
+ * exist in the consuming app's own `public/` directory (already copied
+ * into both `apps/web` and `apps/admin`, the only two consumers).
  */
 export function Logo({ size = 32, withWordmark = false, className }: LogoProps) {
   return (
@@ -19,38 +23,22 @@ export function Logo({ size = 32, withWordmark = false, className }: LogoProps) 
       className={className}
       style={{ display: "inline-flex", alignItems: "center", gap: size * 0.3 }}
     >
-      <svg
+      <img
+        src="/brand/clayba-symbol.png"
+        alt=""
         width={size}
         height={size}
-        viewBox="0 0 32 32"
-        fill="none"
         role="img"
         aria-label="Clayba"
-      >
-        <rect width="32" height="32" rx="9" fill={brand.DEFAULT} />
-        <path
-          d="M11 21L17 16L11 11"
-          stroke={brand.foreground}
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M18 21L24 16L18 11"
-          stroke={brand.foreground}
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity="0.6"
-        />
-      </svg>
+      />
       {withWordmark && (
         <span
           style={{
             fontWeight: 700,
             fontSize: size * 0.55,
             color: "currentColor",
-            letterSpacing: "-0.02em",
+            letterSpacing: "0.02em",
+            textTransform: "uppercase",
           }}
         >
           Clayba

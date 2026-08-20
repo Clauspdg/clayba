@@ -65,12 +65,23 @@ export const neutral = {
   950: "#171512",
 } as const;
 
+/**
+ * CLAYBA brand assets integration — the "deep navy" background the
+ * approved CLAYBA reference assets (logo lockups, app icons, splash
+ * screens) are presented on. Sampled directly from the approved
+ * `assets/brand/reference/clayba-symbol-original-concept-reference.png`
+ * asset, not invented. Used for icon/splash backgrounds specifically —
+ * NOT a replacement for the existing warm-charcoal `neutral.950` dark UI
+ * theme, which this migration doesn't touch.
+ */
+export const navy = { DEFAULT: "#0B1A2D", foreground: "#FFFFFF" } as const;
+
 export const success = { DEFAULT: "#16A34A", foreground: "#FFFFFF" } as const;
 export const warning = { DEFAULT: "#D97706", foreground: "#FFFFFF" } as const;
 export const danger = { DEFAULT: "#DC2626", foreground: "#FFFFFF" } as const;
 export const info = { DEFAULT: "#0891B2", foreground: "#FFFFFF" } as const;
 
-export const colors = { brand, accent, neutral, success, warning, danger, info } as const;
+export const colors = { brand, accent, neutral, navy, success, warning, danger, info } as const;
 
 export interface SemanticColorSet {
   background: string;

@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F62FE"
+      "backgroundColor": "#0B1A2D"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -21,10 +21,10 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F62FE"
+        "backgroundColor": "#0B1A2D"
       },
       "package": "com.theride.passenger",
-      "versionCode": 4
+      "versionCode": 6
     },
     "owner": "clauspp",
     "plugins": ["expo-router"],

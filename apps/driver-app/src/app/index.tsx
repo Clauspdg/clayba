@@ -2,11 +2,10 @@ import { Role } from "@the-ride/types";
 import { useAuth, useTranslation } from "@the-ride/hooks";
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Image, StyleSheet } from "react-native";
 
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/theme/tokens";
 
 /** How long auth-session restore may block the first screen before this splash gives up and falls through to Login anyway (brief Phase 5 — "aucun service secondaire ne doit bloquer indéfiniment le premier rendu"). */
 const AUTH_RESTORE_TIMEOUT_MS = 6000;
@@ -44,11 +43,8 @@ export default function SplashScreen() {
 
   return (
     <Screen style={styles.center}>
-      <View style={styles.logo}>
-        <AppText variant="heading" style={styles.logoText}>
-          »
-        </AppText>
-      </View>
+      {/* eslint-disable-next-line @typescript-eslint/no-require-imports -- RN requires static require() for bundled images */}
+      <Image source={require("../../assets/splash.png")} style={styles.logo} resizeMode="contain" />
       <AppText variant="subheading" style={styles.appName}>
         {t("common.driverAppName")}
       </AppText>
@@ -58,14 +54,6 @@ export default function SplashScreen() {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center", gap: 16 },
-  logo: {
-    height: 72,
-    width: 72,
-    borderRadius: 20,
-    backgroundColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: { color: colors.brandForeground },
+  logo: { height: 72, width: 72 },
   appName: { marginTop: 4 },
 });

@@ -2,11 +2,10 @@ import { Role } from "@the-ride/types";
 import { useAuth, useTranslation } from "@the-ride/hooks";
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Image, StyleSheet } from "react-native";
 
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/theme/tokens";
 
 /** Splash — briefly shows the brand mark, then routes based on the real session (Sprint 5, Part 2): straight to /booking if already a signed-in passenger, otherwise /welcome. */
 export default function SplashScreen() {
@@ -25,11 +24,8 @@ export default function SplashScreen() {
 
   return (
     <Screen style={styles.center}>
-      <View style={styles.logo}>
-        <AppText variant="heading" style={styles.logoText}>
-          TR
-        </AppText>
-      </View>
+      {/* eslint-disable-next-line @typescript-eslint/no-require-imports -- RN requires static require() for bundled images */}
+      <Image source={require("../../assets/splash.png")} style={styles.logo} resizeMode="contain" />
       <AppText variant="subheading" style={styles.appName}>
         {t("common.appName")}
       </AppText>
@@ -39,7 +35,6 @@ export default function SplashScreen() {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center", gap: 16 },
-  logo: { height: 72, width: 72, borderRadius: 20, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" },
-  logoText: { color: colors.brandForeground },
+  logo: { height: 72, width: 72 },
   appName: { marginTop: 4 },
 });
