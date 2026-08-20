@@ -656,7 +656,7 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
 }
 
 /**
- * CLAYBA P2 — "Get the Playba Driver App" (brief sections 35-41). The
+ * CLAYBA P2 — "Get the CLAYBA Driver App" (brief sections 35-41). The
  * href points straight at the real, signed release APK on this same
  * hosting deployment (`apps/web/public/downloads/android/`, served with
  * `application/vnd.android.package-archive` — see firebase.json) —

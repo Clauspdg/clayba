@@ -1,8 +1,8 @@
 {
-  "appName": "Playba Driver",
-  "latestVersion": "0.1.0",
-  "versionCode": 10,
-  "downloadUrl": "/downloads/android/playba-driver-v0.1.0.apk",
-  "minimumSupportedVersion": "0.1.0",
-  "releaseNotes": "First Playba Driver release: real-time ride offers, live trip tracking, the progressive fare meter, and offline/reconnecting handling."
+  "appName": "CLAYBA Driver",
+  "latestVersion": "0.1.1",
+  "versionCode": 12,
+  "downloadUrl": "/downloads/android/clayba-driver-v0.1.1.apk",
+  "minimumSupportedVersion": "0.1.1",
+  "releaseNotes": "Fixes a launch failure where the app showed a blank white screen instead of Login/Driver Home (missing Firebase configuration in the release build). Also corrects the app name to CLAYBA Driver."
 }

@@ -2,10 +2,12 @@ export const en = {
   common: {
     appName: "Clayba",
     /** CLAYBA P2 — the Android driver app's own product name, distinct from the web/shared `appName` ("Clayba"). See app.json's `name` and docs/mobile-branding.md. */
-    driverAppName: "Playba Driver",
+    driverAppName: "CLAYBA Driver",
     /** CLAYBA P2 — app-wide connectivity banner (driver-app), shown whenever `expo-network`'s NetInfo reports no connection; never a fake local success on reconnect. */
     noInternetConnection: "No internet connection",
     reconnecting: "Reconnecting…",
+    unableToConnect: "Unable to connect. Try again.",
+    unexpectedError: "Something went wrong. The app needs to restart.",
     loading: "Loading…",
     error: "Something went wrong",
     retry: "Retry",
@@ -1588,9 +1590,9 @@ export const en = {
       viewVehicleCta: "View Vehicle",
       viewDocumentsCta: "View Documents",
       viewCurrentRideDetails: "View details",
-      appDownloadTitle: "Get the Playba Driver App",
+      appDownloadTitle: "Get the CLAYBA Driver App",
       appDownloadSubtitle:
-        "Drive with Playba from your Android phone. Receive ride requests, navigate to passengers and manage your trips on the go.",
+        "Drive with CLAYBA Driver from your Android phone. Receive ride requests, navigate to passengers and manage your trips on the go.",
       androidLabel: "Android",
       versionLabel: "Version",
       downloadAndroidCta: "Download for Android",
@@ -1598,7 +1600,7 @@ export const en = {
       installStep1: "Download the APK.",
       installStep2: "Android may ask permission to install apps from this source.",
       installStep3: "Allow the permission for your browser.",
-      installStep4: "Install Playba Driver.",
+      installStep4: "Install CLAYBA Driver.",
     },
     requests: {
       emptyOnlineTitle: "You're online. Waiting for ride requests.",

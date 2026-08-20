@@ -3,12 +3,31 @@
 `apps/driver-app` and `apps/passenger-app` each have an `eas.json` with
 four build profiles:
 
-| Profile | Distribution | Android output | `APP_ENV` |
-| --- | --- | --- | --- |
-| `development` | internal, dev client | APK | `development` |
-| `preview` | internal | APK | `staging` |
-| `production` | store | AAB (Play Store submission format) | `production` |
-| `production-apk` | store | APK (extends `production` — same version/env, different package format for direct-install distribution) | `production` |
+| Profile          | Distribution         | Android output                                                                                          | `APP_ENV`     |
+| ---------------- | -------------------- | ------------------------------------------------------------------------------------------------------- | ------------- |
+| `development`    | internal, dev client | APK                                                                                                     | `development` |
+| `preview`        | internal             | APK                                                                                                     | `staging`     |
+| `production`     | store                | AAB (Play Store submission format)                                                                      | `production`  |
+| `production-apk` | store                | APK (extends `production` — same version/env, different package format for direct-install distribution) | `production`  |
+
+**Firebase config for real builds**: `eas.json`'s `env` blocks only set
+`APP_ENV` — they never contained `EXPO_PUBLIC_FIREBASE_*`. Local dev gets
+those from each app's gitignored `.env.local` (Metro reads it directly),
+but a real EAS cloud build has no access to that file, so it needs the
+same values configured as **EAS project environment variables** instead
+(`eas env:create --environment production --name EXPO_PUBLIC_FIREBASE_API_KEY --value ... --visibility plaintext`,
+repeated for `AUTH_DOMAIN`/`PROJECT_ID`/`STORAGE_BUCKET`/`MESSAGING_SENDER_ID`/`APP_ID`,
+for both the `production` and `preview` environments). Missing this is
+exactly what shipped `playba-driver-v0.1.0.apk` (CLAYBA Driver P0):
+`initializeApp()` ran with an `undefined` config and threw during module
+evaluation, before React ever rendered a frame — a blank white screen on
+every launch, confirmed by extracting the shipped APK's JS bundle and
+finding zero occurrences of the real Firebase project id anywhere in it.
+Run `eas env:list --environment production` before any release build to
+confirm these are actually set — these are Firebase's public client
+values (safe by Firebase's own security model, same as any other
+`EXPO_PUBLIC_*`/`NEXT_PUBLIC_*` value already elsewhere in this repo), not
+secrets, so `--visibility plaintext` is correct, not `sensitive`/`secret`.
 
 `"appVersionSource": "local"` means EAS reads `version`/`android.versionCode`
 straight from each app's `app.json` — it does not maintain its own remote

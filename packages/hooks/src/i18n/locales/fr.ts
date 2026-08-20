@@ -3,9 +3,11 @@ import type { en } from "./en";
 export const fr = {
   common: {
     appName: "Clayba",
-    driverAppName: "Playba Driver",
+    driverAppName: "CLAYBA Driver",
     noInternetConnection: "Pas de connexion internet",
     reconnecting: "Reconnexion…",
+    unableToConnect: "Connexion impossible. Réessayez.",
+    unexpectedError: "Une erreur est survenue. L'application doit redémarrer.",
     loading: "Chargement…",
     error: "Une erreur est survenue",
     retry: "Réessayer",
@@ -1641,9 +1643,9 @@ export const fr = {
       viewVehicleCta: "Voir le véhicule",
       viewDocumentsCta: "Voir les documents",
       viewCurrentRideDetails: "Voir les détails",
-      appDownloadTitle: "Obtenez l'application Playba Driver",
+      appDownloadTitle: "Obtenez l'application CLAYBA Driver",
       appDownloadSubtitle:
-        "Conduisez avec Playba depuis votre téléphone Android. Recevez des demandes de trajet, naviguez vers les passagers et gérez vos courses en déplacement.",
+        "Conduisez avec CLAYBA Driver depuis votre téléphone Android. Recevez des demandes de trajet, naviguez vers les passagers et gérez vos courses en déplacement.",
       androidLabel: "Android",
       versionLabel: "Version",
       downloadAndroidCta: "Télécharger pour Android",
@@ -1652,7 +1654,7 @@ export const fr = {
       installStep2:
         "Android peut demander l'autorisation d'installer des applications depuis cette source.",
       installStep3: "Accordez l'autorisation à votre navigateur.",
-      installStep4: "Installez Playba Driver.",
+      installStep4: "Installez CLAYBA Driver.",
     },
     requests: {
       emptyOnlineTitle: "Vous êtes en ligne. En attente de demandes de course.",

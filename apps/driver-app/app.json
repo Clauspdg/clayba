@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Playba Driver",
+    "name": "CLAYBA Driver",
     "slug": "the-ride-driver",
     "scheme": "theridedriver",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -24,7 +24,7 @@
         "backgroundColor": "#CB562C"
       },
       "package": "com.theride.driver",
-      "versionCode": 10
+      "versionCode": 12
     },
     "owner": "clauspp",
     "plugins": [
@@ -32,7 +32,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Playba Driver uses your location to receive nearby ride requests and provide live trip tracking."
+          "locationWhenInUsePermission": "CLAYBA Driver uses your location to receive nearby ride requests and provide live trip tracking."
         }
       ]
     ],

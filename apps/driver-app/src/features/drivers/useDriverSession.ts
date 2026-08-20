@@ -34,8 +34,17 @@ export function useDriverSession() {
     const uid = session.uid;
     function refresh() {
       getOwnDriverRecord(driverFirestore, uid)
-        .then((record) => !cancelled && setDriver(record))
-        .catch(() => !cancelled && setDriver(null));
+        .then((record) => {
+          console.warn("[boot] driver profile fetch:", record ? "found" : "not found");
+          if (!cancelled) setDriver(record);
+        })
+        .catch((err) => {
+          console.error(
+            "[boot] driver profile fetch failed:",
+            err instanceof Error ? err.message : err,
+          );
+          if (!cancelled) setDriver(null);
+        });
     }
     refresh();
     const unsubscribe = subscribeOwnDriverRecord(driverFirestore, uid, refresh);

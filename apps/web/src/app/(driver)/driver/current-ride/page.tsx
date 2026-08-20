@@ -201,7 +201,7 @@ export default function CurrentRidePage() {
   }, [trip, pendingTarget]);
 
   // CLAYBA P1.1, section 5 — opens the driver's own maps app/site via a
-  // universal deep link, same approach the Playba Driver Android app
+  // universal deep link, same approach the CLAYBA Driver Android app
   // already uses (`active-ride.tsx`'s `handleNavigate`) — no in-app
   // turn-by-turn engine, just a real link to the target the driver is
   // currently heading toward.

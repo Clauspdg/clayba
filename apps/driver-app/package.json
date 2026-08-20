@@ -2,7 +2,7 @@
   "name": "@the-ride/driver-app",
   "version": "0.1.0",
   "private": true,
-  "description": "Playba Driver — driver mobile application (React Native / Expo).",
+  "description": "CLAYBA Driver — driver mobile application (React Native / Expo).",
   "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start --port 8082",
