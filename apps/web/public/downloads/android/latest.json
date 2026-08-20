@@ -1,0 +1,8 @@
+{
+  "appName": "Playba Driver",
+  "latestVersion": "0.1.0",
+  "versionCode": 9,
+  "downloadUrl": "/downloads/android/playba-driver-v0.1.0.apk",
+  "minimumSupportedVersion": "0.1.0",
+  "releaseNotes": "First Playba Driver release: real-time ride offers, live trip tracking, and the progressive fare meter."
+}
