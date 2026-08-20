@@ -8,6 +8,7 @@ import { NotificationsRepository } from "./notifications.repository";
 import { PassengersRepository } from "./passengers.repository";
 import { PaymentsRepository } from "./payments.repository";
 import { ReportsRepository } from "./reports.repository";
+import { RideSharesRepository } from "./ride-shares.repository";
 import { SettingsRepository, VehicleCategoriesRepository } from "./settings.repository";
 import { SupportTicketsRepository } from "./support.repository";
 import {
@@ -37,6 +38,7 @@ export * from "./trips.repository";
 export * from "./payments.repository";
 export * from "./wallet.repository";
 export * from "./reports.repository";
+export * from "./ride-shares.repository";
 export * from "./support.repository";
 export * from "./settings.repository";
 export * from "./emergency.repository";
@@ -58,8 +60,10 @@ export function createRepositories(db: Firestore) {
   );
   const vehicles = new VehiclesRepository(db);
   const passengers = new PassengersRepository(db);
-  const trips = new TripsRepository(db);
+  const settings = new SettingsRepository(db, auditLogs);
+  const vehicleCategories = new VehicleCategoriesRepository(db, auditLogs);
   const tripRequests = new TripRequestsRepository(db);
+  const trips = new TripsRepository(db, tripRequests, settings, vehicleCategories);
   const ratings = new RatingsRepository(db);
   const reviews = new ReviewsRepository(db);
   const payments = new PaymentsRepository(db, auditLogs);
@@ -68,14 +72,13 @@ export function createRepositories(db: Firestore) {
   const wallets = new WalletsRepository(db, transactions, auditLogs);
   const reports = new ReportsRepository(db, auditLogs);
   const supportTickets = new SupportTicketsRepository(db, auditLogs);
-  const settings = new SettingsRepository(db, auditLogs);
-  const vehicleCategories = new VehicleCategoriesRepository(db, auditLogs);
   const emergencyContacts = new EmergencyContactsRepository(db);
   const notifications = new NotificationsRepository(db);
   const offers = new RideOffersRepository(db);
   const dispatchQueue = new DispatchQueueRepository(db);
   const dispatchEvents = new DispatchEventsRepository(db);
   const matchingLogs = new MatchingLogsRepository(db);
+  const rideShares = new RideSharesRepository(db);
   const dispatch = new DispatchService({
     drivers,
     vehicles,
@@ -117,6 +120,7 @@ export function createRepositories(db: Firestore) {
     dispatchQueue,
     dispatchEvents,
     matchingLogs,
+    rideShares,
     dispatch,
   };
 }

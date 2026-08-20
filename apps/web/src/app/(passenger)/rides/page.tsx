@@ -1,6 +1,9 @@
 "use client";
 
 import { webFirestore } from "@/lib/firebase-client";
+import { FareMeter } from "@/components/passenger/FareMeter";
+import { LiveRideTracking } from "@/components/passenger/LiveRideTracking";
+import { ShareRideControl } from "@/components/passenger/ShareRideControl";
 import {
   cancelTripRequest,
   getVehicle,
@@ -318,6 +321,8 @@ export default function RideHistoryPage() {
                   {t("rideHistory.driverArrivedBody")}
                 </Alert>
               )}
+              {viewing.source === "trip" && <LiveRideTracking trip={viewing} />}
+              {viewing.source === "trip" && <FareMeter trip={viewing} />}
               <div className="flex justify-between border-b border-neutral-100 py-2 dark:border-neutral-800">
                 <dt className="text-sm text-neutral-500 dark:text-neutral-400">
                   {t("rideHistory.pickup")}
@@ -369,6 +374,11 @@ export default function RideHistoryPage() {
                 </div>
               )}
             </dl>
+          )}
+          {viewing && viewing.source === "trip" && (
+            <div className="mt-1">
+              <ShareRideControl trip={viewing} />
+            </div>
           )}
         </DialogContent>
       </Dialog>

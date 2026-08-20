@@ -14,6 +14,7 @@ export * from "./favorite-places";
 export * from "./emergency-contacts";
 export * from "./trips";
 export * from "./driver-trips";
+export * from "./ride-shares";
 export * from "./wallet";
 export * from "./notifications";
 export * from "./support-tickets";

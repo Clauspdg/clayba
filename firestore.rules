@@ -228,7 +228,58 @@ service cloud.firestore {
     match /trips/{tripId} {
       allow read: if isSignedIn() && (resource.data.passengerId == request.auth.uid || resource.data.driverId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher', 'support']));
       allow create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.passengerId == request.auth.uid || resource.data.driverId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
+
+      // CLAYBA P1, Part D — price/distance/duration tampering guard. A
+      // passenger or driver may still update their own trip directly
+      // (status advances via advanceTripStatus, driverLocation pushes via
+      // updateTripDriverLocation, cancellation) exactly as before, but may
+      // never themselves change actualDistanceMeters/actualDurationSeconds/
+      // finalFareBreakdown/fareAmount — those are frozen only by the
+      // `completeTrip` Cloud Function (Admin SDK, bypasses these rules)
+      // from the server-accumulated distance `onTripDriverLocationWritten`
+      // built up. Staff keep unrestricted write access, same as before.
+      allow update: if hasRole(['admin', 'super_admin', 'dispatcher'])
+        || (
+          isSignedIn()
+          && (resource.data.passengerId == request.auth.uid || resource.data.driverId == request.auth.uid)
+          && request.resource.data.get('actualDistanceMeters', null) == resource.data.get('actualDistanceMeters', null)
+          && request.resource.data.get('actualDurationSeconds', null) == resource.data.get('actualDurationSeconds', null)
+          && request.resource.data.get('finalFareBreakdown', null) == resource.data.get('finalFareBreakdown', null)
+          && request.resource.data.get('fareAmount', null) == resource.data.get('fareAmount', null)
+        );
+      allow delete: if false;
+    }
+
+    match /rideShares/{tokenHash} {
+      // CLAYBA P1, Part C — "Share My Ride." Document id is the SHA-256
+      // hash of the (unguessable, never-stored) raw token — anyone who
+      // knows it may read the redacted `publicView`, no sign-in required;
+      // this is the one deliberately public, unauthenticated read in this
+      // whole rules file. Gated on status/expiry directly in the rule
+      // (not left to client-side honesty) so a revoked or expired link is
+      // provably unreadable, not just hidden by the UI. No `allow list` —
+      // enumeration stays impossible; a reader must already have the id.
+      allow get: if resource == null || (resource.data.status == 'active' && resource.data.expiresAt > request.time);
+      allow list: if false;
+
+      // Created only by the `createRideShare` Cloud Function (Admin SDK):
+      // building `publicView` needs the driver's first name, which the
+      // passenger's own client can't legitimately read (no rule above
+      // grants a passenger access to `drivers/{driverId}`) — so this can
+      // never be a direct client write.
+      allow create: if false;
+
+      // The passenger who created a share may revoke it (status ->
+      // 'revoked') and change nothing else; `onTripUpdatedForShares`
+      // (Admin SDK) is the only other writer, keeping `publicView`/
+      // `expiresAt` current as the ride progresses.
+      allow update: if isSignedIn()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'revoked'
+        && request.resource.data.rideId == resource.data.rideId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.publicView == resource.data.publicView;
       allow delete: if false;
     }
 

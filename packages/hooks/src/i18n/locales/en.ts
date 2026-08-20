@@ -261,6 +261,33 @@ export const en = {
     driverLocationUnavailable: "Location sharing hasn't started yet.",
     driverArrivedTitle: "Your driver has arrived",
     driverArrivedBody: "Head to your pickup location — your driver is waiting.",
+    liveTracking: {
+      title: "Live tracking",
+      live: "Live",
+      distanceRemaining: "Distance remaining",
+      eta: "ETA",
+      etaMinutes: "{minutes} min",
+      updatingLocation: "Updating driver location...",
+      locationUnavailable: "Driver location temporarily unavailable",
+      schematicLabel: "Schematic route, not to scale",
+    },
+    fareMeter: {
+      title: "Fare meter",
+      distanceTraveled: "Distance traveled",
+      time: "Time",
+      currentFare: "Current fare",
+      finalFare: "Final fare",
+      estimatedFinal: "Estimated final fare: ${amount}",
+    },
+    shareRide: {
+      cta: "Share My Ride",
+      confirmBody:
+        "This creates a link anyone can open to see your live location and ride status until it ends — no account needed. Continue?",
+      stopCta: "Stop Sharing",
+      activeNotice: "Your ride is being shared. Anyone with the link can view its live status.",
+      linkCopied: "Link copied",
+      stopped: "Sharing stopped",
+    },
   },
   wallet: {
     balance: "Balance",

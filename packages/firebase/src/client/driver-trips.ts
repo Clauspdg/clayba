@@ -1,6 +1,7 @@
 import {
   OfferStatus,
   TripStatus,
+  type LiveDriverLocation,
   type RideOffer,
   type Trip,
   type TripRequest,
@@ -219,14 +220,41 @@ export async function advanceTripStatus(
  * `driverLocation` doc comment) rather than the `Driver` doc, so the
  * assigned passenger can read it via the same `trips/{tripId}` read rule
  * that already scopes them to their own ride — no rules change needed.
+ *
+ * CLAYBA P1, Part A — `location` now accepts the fuller
+ * `LiveDriverLocation` shape (heading/speed/accuracy, all optional) and
+ * the caller now also calls this during `in_progress`, not only
+ * `en_route_to_pickup`. This write itself stays a direct, un-gated
+ * client write (same trust level as before — `firestore.rules` only
+ * lets the assigned driver touch `driverLocation`/`driverLocationUpdatedAt`
+ * on their own trip); the *trusted* distance accumulation this now feeds
+ * happens server-side in `onTripDriverLocationWritten`
+ * (functions/src/trips/index.ts), which validates each delta before it
+ * ever counts toward `actualDistanceMeters` — see
+ * `evaluateLocationUpdate` in `@the-ride/utils`.
  */
 export async function updateTripDriverLocation(
   db: Firestore,
   tripId: string,
-  location: { lat: number; lng: number },
+  location: LiveDriverLocation,
 ): Promise<void> {
   await updateDoc(doc(db, TRIPS, tripId), {
     driverLocation: location,
     driverLocationUpdatedAt: new Date(),
   });
+}
+
+/**
+ * CLAYBA P1, Part B — routes the final "Complete Ride" transition through
+ * the `completeTrip` callable instead of `advanceTripStatus`'s direct
+ * client write: `firestore.rules`'s `trips` update rule no longer lets a
+ * driver's client set `actualDistanceMeters`/`actualDurationSeconds`/
+ * `finalFareBreakdown`/`fareAmount` directly (see the rule's own comment),
+ * so freezing the real final price has to happen server-side. Every other
+ * stage (`Navigate to pickup`/`I've arrived`/`Start ride`) is untouched —
+ * still `advanceTripStatus`, exactly as before.
+ */
+export async function completeTrip(functions: Functions, tripId: string): Promise<void> {
+  const call = httpsCallable(functions, "completeTrip");
+  await call({ tripId });
 }

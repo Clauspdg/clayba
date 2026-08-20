@@ -60,6 +60,9 @@ const NEXT_STAGE: Partial<Record<TripStatus, { to: TripStatus; ctaKey: string }>
   },
 };
 
+/** Live position tracked whenever the driver is actually moving with the passenger somewhere — approaching pickup, or en route to the destination. Not `MATCHED`/`ARRIVED` (parked, nothing to track). */
+const TRACKED_STATUSES: TripStatus[] = [TripStatus.EN_ROUTE_TO_PICKUP, TripStatus.IN_PROGRESS];
+
 /**
  * UX-3 sprint (Dedicated Driver Space), Part 7 — real stage progression:
  * `trips/{tripId}` is driver-writable for the assigned driver
@@ -92,16 +95,22 @@ export default function CurrentRidePage() {
   }, [driver]);
 
   /**
-   * DRIVER-E2E-08 — live position only while actually approaching pickup.
-   * Stops itself (via the cleanup function) the moment `trip` changes away
-   * from `EN_ROUTE_TO_PICKUP` — status advance, trip completion/
-   * cancellation, or unmount all naturally end tracking; nothing else has
-   * to remember to turn it off.
+   * DRIVER-E2E-08, extended CLAYBA P1 (Part A) — live position while the
+   * driver is actually en route (to pickup, or to the destination once the
+   * ride has started; still not while `MATCHED`/`ARRIVED`, both stationary).
+   * Stops itself (via the cleanup function) the moment `trip` leaves a
+   * tracked status — status advance, trip completion/cancellation, or
+   * unmount all naturally end tracking; nothing else has to remember to
+   * turn it off. `heading`/`speed`/`accuracy` ride along when the device
+   * reports them — `onTripDriverLocationWritten`
+   * (functions/src/trips/index.ts) is what actually decides whether a
+   * reading is trustworthy enough to count toward the fare meter's
+   * `actualDistanceMeters`, this effect just reports what the device saw.
    */
   useEffect(() => {
     setLocationError(null);
     setLocationSharing(false);
-    if (!trip || trip.status !== TripStatus.EN_ROUTE_TO_PICKUP) return;
+    if (!trip || !TRACKED_STATUSES.includes(trip.status)) return;
     if (!("geolocation" in navigator)) {
       setLocationError(t("driverSpace.currentRide.locationUnsupported"));
       return;
@@ -117,6 +126,9 @@ export default function CurrentRidePage() {
         void updateTripDriverLocation(webFirestore, tripId, {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
+          heading: position.coords.heading ?? undefined,
+          speed: position.coords.speed ?? undefined,
+          accuracy: position.coords.accuracy,
         });
       },
       () => {

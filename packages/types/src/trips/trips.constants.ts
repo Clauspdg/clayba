@@ -8,6 +8,16 @@ export const RIDE_OFFERS_COLLECTION = "rideOffers";
 export const DISPATCH_QUEUE_COLLECTION = "dispatchQueue";
 export const DISPATCH_EVENTS_COLLECTION = "dispatchEvents";
 export const MATCHING_LOGS_COLLECTION = "matchingLogs";
+export const RIDE_SHARES_COLLECTION = "rideShares";
+
+/** CLAYBA P1, Part C — how long a share link stays valid after the ride it points to completes/cancels. Centralized so the client (initial `expiresAt` guess) and the server trigger that trims it agree. */
+export const RIDE_SHARE_EXPIRY_AFTER_COMPLETION_SECONDS = 30 * 60;
+/** Generous upper bound while a ride is still active/searching — a share created early in a long ride shouldn't expire mid-trip. */
+export const RIDE_SHARE_MAX_ACTIVE_LIFETIME_SECONDS = 6 * 60 * 60;
+
+/** CLAYBA P1, Part A — centralized live-location freshness thresholds. See `packages/utils/src/trips/location-freshness.ts`. */
+export const LOCATION_FRESH_THRESHOLD_MS = 30_000;
+export const LOCATION_STALE_THRESHOLD_MS = 120_000;
 
 /**
  * Valid forward transitions for a ride request. Consumed by

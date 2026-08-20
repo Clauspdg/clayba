@@ -26,6 +26,8 @@ import {
   type DispatchEvent,
   type DispatchQueue,
   type FareBreakdown,
+  type GeoLocation,
+  type LiveDriverLocation,
   type MatchingLog,
   type Rating,
   type Review,
@@ -33,14 +35,26 @@ import {
   type Trip,
   type TripRequest,
 } from "@the-ride/types";
-import { assertOfferTransition, assertTripRequestTransition } from "@the-ride/utils";
+import {
+  assertOfferTransition,
+  assertTripRequestTransition,
+  assertTripTransition,
+  calculateFare,
+  evaluateLocationUpdate,
+} from "@the-ride/utils";
 import { FieldValue, type Firestore, type UpdateData } from "firebase-admin/firestore";
 
 import { FirestoreRepository } from "./base.repository";
 import { createFirestoreConverter } from "./converter";
+import type { SettingsRepository, VehicleCategoriesRepository } from "./settings.repository";
 
 export class TripsRepository extends FirestoreRepository<Trip> {
-  constructor(db: Firestore) {
+  constructor(
+    db: Firestore,
+    private readonly tripRequests: TripRequestsRepository,
+    private readonly settings: SettingsRepository,
+    private readonly vehicleCategories: VehicleCategoriesRepository,
+  ) {
     super(db, TRIPS_COLLECTION, createFirestoreConverter(tripSchema));
   }
 
@@ -50,6 +64,111 @@ export class TripsRepository extends FirestoreRepository<Trip> {
 
   async listForDriver(driverId: string): Promise<Trip[]> {
     return this.findWhere("driverId", "==", driverId);
+  }
+
+  private async requireTrip(id: string): Promise<Trip> {
+    const trip = await this.findById(id);
+    if (!trip) throw new Error(`Trip "${id}" not found.`);
+    return trip;
+  }
+
+  /**
+   * CLAYBA P1, Part B — freezes the final, itemized fare from the
+   * server-accumulated `actualDistanceMeters`/`actualDurationSeconds`
+   * through the exact same `calculateFare` engine the pre-booking
+   * estimate already uses (see `packages/utils/src/trips/pricing.ts`) —
+   * no second formula. Called only from the `completeTrip` callable
+   * (functions/src/trips/index.ts), never from a client write, so a
+   * driver's client can't set `finalFareBreakdown`/`fareAmount` directly
+   * — see `firestore.rules`'s tightened `trips` update rule.
+   *
+   * Falls back to leaving the pre-trip estimate in place (an honest "we
+   * couldn't recompute this" outcome, not a fabricated number) if the
+   * category/settings this trip was booked against can no longer be
+   * resolved — a real but rare disclosed gap, not swallowed silently:
+   * the caller logs it.
+   */
+  async completeWithFare(
+    tripId: string,
+    actualDistanceMeters: number,
+    actualDurationSeconds: number,
+  ): Promise<{ trip: Trip; recomputed: boolean }> {
+    const trip = await this.requireTrip(tripId);
+    assertTripTransition(trip.status, TripStatus.COMPLETED);
+
+    let finalFareBreakdown: FareBreakdown | undefined;
+    if (trip.tripRequestId) {
+      const request = await this.tripRequests.findById(trip.tripRequestId);
+      const category = request?.vehicleCategoryId
+        ? await this.vehicleCategories.findById(request.vehicleCategoryId)
+        : null;
+      const settings = await this.settings.getGlobal();
+      if (category && settings) {
+        finalFareBreakdown = calculateFare({
+          distanceMeters: actualDistanceMeters,
+          durationSeconds: actualDurationSeconds,
+          category: {
+            baseFare: category.baseFare,
+            perKmRate: category.perKmRate,
+            perMinuteRate: category.perMinuteRate,
+            minimumFare: category.minimumFare,
+          },
+          settings: {
+            bookingFee: settings.bookingFee,
+            serviceFeeRate: settings.serviceFeeRate,
+            commissionRate: settings.commissionRate,
+            taxRate: settings.taxRate,
+            surgeMultiplier: settings.surgeMultiplierDefault,
+            currency: settings.currency,
+          },
+        });
+      }
+    }
+
+    const now = new Date();
+    const updates: UpdateData<Trip> = {
+      status: TripStatus.COMPLETED,
+      completedAt: now,
+      actualDistanceMeters,
+      actualDurationSeconds,
+      updatedAt: now,
+      ...(finalFareBreakdown ? { finalFareBreakdown, fareAmount: finalFareBreakdown.total } : {}),
+    };
+    await this.update(tripId, updates);
+    return { trip: { ...trip, ...updates } as Trip, recomputed: Boolean(finalFareBreakdown) };
+  }
+
+  /**
+   * CLAYBA P1, Part A/D — the trusted follow-up to a client's raw
+   * `driverLocation` write (`updateTripDriverLocation`,
+   * packages/firebase/src/client/driver-trips.ts). Called from the
+   * `onTripDriverLocationWritten` Firestore trigger with the before/after
+   * snapshot, never from client code — `evaluateLocationUpdate` decides
+   * whether the delta is plausible (accuracy/speed/noise guards), and only
+   * a plausible, in-progress delta ever increments the server-trusted
+   * `actualDistanceMeters` accumulator the final fare is computed from.
+   */
+  async accumulateDistanceFromLocationDelta(
+    tripId: string,
+    status: TripStatus,
+    previous: { location: GeoLocation; updatedAt: Date } | null,
+    next: { location: LiveDriverLocation; updatedAt: Date },
+  ): Promise<void> {
+    const evaluation = evaluateLocationUpdate(previous, {
+      location: next.location,
+      updatedAt: next.updatedAt,
+      accuracy: next.location.accuracy,
+    });
+    if (
+      !evaluation.accepted ||
+      evaluation.distanceMeters <= 0 ||
+      status !== TripStatus.IN_PROGRESS
+    ) {
+      return;
+    }
+    await this.update(tripId, {
+      actualDistanceMeters: FieldValue.increment(evaluation.distanceMeters),
+    } as UpdateData<Trip>);
   }
 
   /**

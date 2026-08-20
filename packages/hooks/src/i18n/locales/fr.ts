@@ -268,6 +268,34 @@ export const fr = {
     driverArrivedTitle: "Votre chauffeur est arrivé",
     driverArrivedBody:
       "Rendez-vous à votre point de prise en charge — votre chauffeur vous attend.",
+    liveTracking: {
+      title: "Position en temps réel",
+      live: "En direct",
+      distanceRemaining: "Distance restante",
+      eta: "Arrivée estimée",
+      etaMinutes: "{minutes} min",
+      updatingLocation: "Mise à jour de la position du chauffeur...",
+      locationUnavailable: "Position du chauffeur temporairement indisponible",
+      schematicLabel: "Trajet schématique, sans échelle",
+    },
+    fareMeter: {
+      title: "Compteur de tarif",
+      distanceTraveled: "Distance parcourue",
+      time: "Durée",
+      currentFare: "Tarif actuel",
+      finalFare: "Tarif final",
+      estimatedFinal: "Tarif final estimé : {amount} $",
+    },
+    shareRide: {
+      cta: "Partager mon trajet",
+      confirmBody:
+        "Cela crée un lien que n'importe qui peut ouvrir pour voir votre position en direct et le statut du trajet jusqu'à sa fin — aucun compte requis. Continuer ?",
+      stopCta: "Arrêter le partage",
+      activeNotice:
+        "Votre trajet est partagé. Toute personne disposant du lien peut voir son statut en direct.",
+      linkCopied: "Lien copié",
+      stopped: "Partage arrêté",
+    },
   },
   wallet: {
     balance: "Solde",
