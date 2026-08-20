@@ -1659,4 +1659,14 @@ export const en = {
       stillAvailableBody: "You can still view your account, documents, and contact Support below.",
     },
   },
+  publicShare: {
+    title: "Live ride tracking",
+    notFoundTitle: "This link isn't available",
+    notFoundBody:
+      "It may have been mistyped, or the person who shared it may have stopped sharing.",
+    expiredBody: "This ride's share link has expired or been stopped.",
+    rideCompleted: "This ride has been completed.",
+    rideCancelled: "This ride was cancelled.",
+    footerNotice: "Shared by a Clayba passenger — no account required to view.",
+  },
 } satisfies Record<string, unknown>;

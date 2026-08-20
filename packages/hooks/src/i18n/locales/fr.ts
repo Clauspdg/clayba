@@ -1715,4 +1715,14 @@ export const fr = {
         "Vous pouvez toujours consulter votre compte, vos documents, et contacter l'assistance ci-dessous.",
     },
   },
+  publicShare: {
+    title: "Suivi du trajet en direct",
+    notFoundTitle: "Ce lien n'est pas disponible",
+    notFoundBody:
+      "Il a peut-être été mal saisi, ou la personne qui l'a partagé a peut-être arrêté le partage.",
+    expiredBody: "Le lien de partage de ce trajet a expiré ou a été arrêté.",
+    rideCompleted: "Ce trajet est terminé.",
+    rideCancelled: "Ce trajet a été annulé.",
+    footerNotice: "Partagé par un passager Clayba — aucun compte requis pour consulter.",
+  },
 } satisfies typeof en;
