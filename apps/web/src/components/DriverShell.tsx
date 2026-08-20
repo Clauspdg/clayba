@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { DevBuildBadge } from "./DevBuildBadge";
 import { DriverHeader } from "./DriverHeader";
 import { DriverSidebar } from "./DriverSidebar";
 import { RequireDriverAccess } from "./RequireDriverAccess";
@@ -25,6 +26,7 @@ export function DriverShell({ children }: { children: ReactNode }) {
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">{children}</main>
         </div>
       </div>
+      <DevBuildBadge />
     </RequireDriverAccess>
   );
 }

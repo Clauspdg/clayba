@@ -291,9 +291,22 @@ export const en = {
       confirmBody:
         "This creates a link anyone can open to see your live location and ride status until it ends — no account needed. Continue?",
       stopCta: "Stop Sharing",
-      activeNotice: "Your ride is being shared. Anyone with the link can view its live status.",
+      copyLinkCta: "Copy Link",
+      shareCta: "Share",
+      activeNotice: "Sharing active",
       linkCopied: "Link copied",
       stopped: "Sharing stopped",
+    },
+    safety: {
+      cta: "SOS",
+      title: "Safety",
+      callEmergencyCta: "Call Emergency Services",
+      callEmergencyNumber: "Calls {number}",
+      shareTitle: "Share My Ride",
+      trustedContactTitle: "Trusted Contact",
+      noTrustedContact: "You haven't saved a trusted contact yet.",
+      addTrustedContactCta: "Add one in your profile",
+      contactSupportCta: "Contact Support",
     },
   },
   wallet: {

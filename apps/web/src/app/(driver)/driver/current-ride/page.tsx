@@ -1,6 +1,7 @@
 "use client";
 
 import { webFirestore, webFunctions } from "@/lib/firebase-client";
+import { FareMeter } from "@/components/passenger/FareMeter";
 import { useUserExperience } from "@/hooks/useUserExperience";
 import {
   advanceTripStatus,
@@ -30,7 +31,12 @@ import {
   type Trip,
   type TripRequest,
 } from "@the-ride/types";
-import { canTransitionTrip } from "@the-ride/utils";
+import {
+  canTransitionTrip,
+  estimateEtaSeconds,
+  getLocationFreshness,
+  haversineDistanceMeters,
+} from "@the-ride/utils";
 import { useEffect, useRef, useState } from "react";
 
 /** Skip a `watchPosition` reading if the last write was more recent than this — avoids writing on every GPS tick. CLAYBA P2 — now a shared constant so the Android driver app reuses the exact same value. */
@@ -94,11 +100,20 @@ export default function CurrentRidePage() {
   const [locationSharing, setLocationSharing] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const lastLocationWriteAt = useRef(0);
+  // CLAYBA P1.1, section 5 — re-render periodically so ETA/freshness stay
+  // accurate between location writes, mirroring `LiveRideTracking`'s own
+  // tick on the passenger side.
+  const [, tick] = useState(0);
 
   useEffect(() => {
     if (!driver) return;
     return subscribeCurrentDriverTrip(webFirestore, driver.id, setTrip, () => setTrip(null));
   }, [driver]);
+
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 15_000);
+    return () => clearInterval(id);
+  }, []);
 
   /**
    * DRIVER-E2E-08, extended CLAYBA P1 (Part A) — live position while the
@@ -184,6 +199,21 @@ export default function CurrentRidePage() {
     }, TRANSITION_SETTLE_MS);
     return () => clearTimeout(timer);
   }, [trip, pendingTarget]);
+
+  // CLAYBA P1.1, section 5 — opens the driver's own maps app/site via a
+  // universal deep link, same approach the Playba Driver Android app
+  // already uses (`active-ride.tsx`'s `handleNavigate`) — no in-app
+  // turn-by-turn engine, just a real link to the target the driver is
+  // currently heading toward.
+  function handleNavigate() {
+    if (!trip) return;
+    const target = trip.status === TripStatus.IN_PROGRESS ? trip.dropoff : trip.pickup;
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
 
   async function handleAdvance() {
     if (!trip || !driver || busy || pendingTarget !== null) return;
@@ -274,6 +304,20 @@ export default function CurrentRidePage() {
     );
   }
 
+  // CLAYBA P1.1, section 5 — ETA/distance remaining to whatever the driver
+  // is currently heading toward, from the same `driverLocation` this page
+  // itself writes (the passenger's `LiveRideTracking` computes the
+  // identical thing from the same field — one source of truth, not a
+  // second formula).
+  const navigationTarget = trip.status === TripStatus.IN_PROGRESS ? trip.dropoff : trip.pickup;
+  const locationFreshness = getLocationFreshness(trip.driverLocationUpdatedAt);
+  const driverLocation = locationFreshness !== "expired" ? trip.driverLocation : undefined;
+  const distanceRemainingMeters = driverLocation
+    ? haversineDistanceMeters(driverLocation, navigationTarget)
+    : null;
+  const etaSeconds =
+    distanceRemainingMeters !== null ? estimateEtaSeconds(distanceRemainingMeters) : null;
+
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -343,6 +387,36 @@ export default function CurrentRidePage() {
                   : t("driverSpace.currentRide.locationAcquiring")}
             </Text>
           )}
+
+          {TRACKED_STATUSES.includes(trip.status) &&
+            distanceRemainingMeters !== null &&
+            etaSeconds !== null && (
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+                <div>
+                  <Text size="xs" tone="muted">
+                    {t("rideHistory.liveTracking.distanceRemaining")}
+                  </Text>
+                  <Text weight="semibold">{(distanceRemainingMeters / 1000).toFixed(1)} km</Text>
+                </div>
+                <div>
+                  <Text size="xs" tone="muted">
+                    {t("rideHistory.liveTracking.eta")}
+                  </Text>
+                  <Text weight="semibold">
+                    {t("rideHistory.liveTracking.etaMinutes", {
+                      minutes: String(Math.max(1, Math.round(etaSeconds / 60))),
+                    })}
+                  </Text>
+                </div>
+              </div>
+            )}
+
+          <FareMeter trip={trip} />
+
+          <Button variant="outline" onClick={handleNavigate}>
+            <Icon name="navigation" size={16} className="mr-1.5" />
+            {t("driverSpace.currentRide.navigateCta")}
+          </Button>
 
           {/*
             DRIVER-E2E-08.1 — while a transition is pending/settling, the

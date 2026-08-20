@@ -296,10 +296,22 @@ export const fr = {
       confirmBody:
         "Cela crée un lien que n'importe qui peut ouvrir pour voir votre position en direct et le statut du trajet jusqu'à sa fin — aucun compte requis. Continuer ?",
       stopCta: "Arrêter le partage",
-      activeNotice:
-        "Votre trajet est partagé. Toute personne disposant du lien peut voir son statut en direct.",
+      copyLinkCta: "Copier le lien",
+      shareCta: "Partager",
+      activeNotice: "Partage actif",
       linkCopied: "Lien copié",
       stopped: "Partage arrêté",
+    },
+    safety: {
+      cta: "SOS",
+      title: "Sécurité",
+      callEmergencyCta: "Appeler les services d'urgence",
+      callEmergencyNumber: "Appelle le {number}",
+      shareTitle: "Partager mon trajet",
+      trustedContactTitle: "Contact de confiance",
+      noTrustedContact: "Vous n'avez pas encore enregistré de contact de confiance.",
+      addTrustedContactCta: "En ajouter un dans votre profil",
+      contactSupportCta: "Contacter le support",
     },
   },
   wallet: {

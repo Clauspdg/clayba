@@ -2,7 +2,7 @@
 
 import { webFirestore, webFunctions } from "@/lib/firebase-client";
 import { createRideShare, hashShareToken, stopSharingRide } from "@the-ride/firebase/client";
-import { Button, Text, useToast, useTranslation } from "@the-ride/ui";
+import { Badge, Button, Text, useToast, useTranslation } from "@the-ride/ui";
 import { TripStatus, type Trip } from "@the-ride/types";
 import { useState } from "react";
 
@@ -28,6 +28,7 @@ export function ShareRideControl({ trip }: { trip: Trip }) {
   const [confirming, setConfirming] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [activeTokenHash, setActiveTokenHash] = useState<string | null>(null);
+  const [activeUrl, setActiveUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!SHAREABLE_STATUSES.includes(trip.status)) return null;
@@ -37,19 +38,11 @@ export function ShareRideControl({ trip }: { trip: Trip }) {
     try {
       const { token } = await createRideShare(webFunctions, trip.id);
       const tokenHash = await hashShareToken(token);
+      const url = `${window.location.origin}/share/ride?token=${token}`;
       setActiveTokenHash(tokenHash);
+      setActiveUrl(url);
       setSharing(true);
       setConfirming(false);
-
-      const url = `${window.location.origin}/share/ride?token=${token}`;
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: t("rideHistory.shareRide.cta"), url });
-        } catch {
-          // User cancelled the native share sheet — the link is still
-          // active and copied below, so this isn't an error state.
-        }
-      }
       await navigator.clipboard.writeText(url);
       toast({ variant: "success", title: t("rideHistory.shareRide.linkCopied") });
     } catch (err) {
@@ -59,6 +52,26 @@ export function ShareRideControl({ trip }: { trip: Trip }) {
     }
   }
 
+  async function handleCopyLink() {
+    if (!activeUrl) return;
+    await navigator.clipboard.writeText(activeUrl);
+    toast({ variant: "success", title: t("rideHistory.shareRide.linkCopied") });
+  }
+
+  async function handleShare() {
+    if (!activeUrl) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: t("rideHistory.shareRide.cta"), url: activeUrl });
+        return;
+      } catch {
+        // User cancelled the native share sheet — fall through to copy so
+        // the action still does something useful.
+      }
+    }
+    await handleCopyLink();
+  }
+
   async function handleStop() {
     if (!activeTokenHash) return;
     setBusy(true);
@@ -66,6 +79,7 @@ export function ShareRideControl({ trip }: { trip: Trip }) {
       await stopSharingRide(webFirestore, activeTokenHash);
       setSharing(false);
       setActiveTokenHash(null);
+      setActiveUrl(null);
       toast({ variant: "success", title: t("rideHistory.shareRide.stopped") });
     } catch (err) {
       toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
@@ -77,12 +91,20 @@ export function ShareRideControl({ trip }: { trip: Trip }) {
   if (sharing) {
     return (
       <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-        <Text size="xs" tone="muted">
+        <Badge tone="success" className="w-fit">
           {t("rideHistory.shareRide.activeNotice")}
-        </Text>
-        <Button variant="outline" size="sm" isLoading={busy} onClick={() => void handleStop()}>
-          {t("rideHistory.shareRide.stopCta")}
-        </Button>
+        </Badge>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => void handleCopyLink()}>
+            {t("rideHistory.shareRide.copyLinkCta")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void handleShare()}>
+            {t("rideHistory.shareRide.shareCta")}
+          </Button>
+          <Button variant="ghost" size="sm" isLoading={busy} onClick={() => void handleStop()}>
+            {t("rideHistory.shareRide.stopCta")}
+          </Button>
+        </div>
       </div>
     );
   }

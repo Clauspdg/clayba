@@ -5,6 +5,7 @@ import { getOrCreatePassengerProfile } from "@the-ride/firebase/client";
 import { useAuth } from "@the-ride/hooks";
 import { useEffect, type ReactNode } from "react";
 
+import { DevBuildBadge } from "./DevBuildBadge";
 import { PassengerHeader } from "./PassengerHeader";
 import { PassengerSidebar } from "./PassengerSidebar";
 import { RequireAuth } from "./RequireAuth";
@@ -40,6 +41,7 @@ export function PassengerShell({ children }: { children: ReactNode }) {
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">{children}</main>
         </div>
       </div>
+      <DevBuildBadge />
     </RequireAuth>
   );
 }

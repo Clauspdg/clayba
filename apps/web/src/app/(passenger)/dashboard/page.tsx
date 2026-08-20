@@ -2,6 +2,10 @@
 
 import { loadBookingDraft } from "@/lib/booking-draft";
 import { webFirestore } from "@/lib/firebase-client";
+import { FareMeter } from "@/components/passenger/FareMeter";
+import { LiveRideTracking } from "@/components/passenger/LiveRideTracking";
+import { SafetyPanel } from "@/components/passenger/SafetyPanel";
+import { ShareRideControl } from "@/components/passenger/ShareRideControl";
 import {
   cancelTripRequest,
   getOrCreatePassengerProfile,
@@ -97,6 +101,14 @@ function isSupersededByTrip(status: TripRequestStatus): boolean {
 function isActiveTrip(status: TripStatus): boolean {
   return ![TripStatus.COMPLETED, TripStatus.CANCELLED].includes(status);
 }
+
+/** Matches `LiveRideTracking`/`ShareRideControl`'s own internal status gates — a driver is genuinely assigned and trackable in exactly these statuses. */
+const TRACKABLE_TRIP_STATUSES: TripStatus[] = [
+  TripStatus.MATCHED,
+  TripStatus.EN_ROUTE_TO_PICKUP,
+  TripStatus.ARRIVED,
+  TripStatus.IN_PROGRESS,
+];
 
 function getGreetingKey(): string {
   const hour = new Date().getHours();
@@ -494,15 +506,29 @@ function CurrentRideCard({
             </Text>
           ))}
 
+        {/*
+          CLAYBA P1.1 — the real CLAYBA P1 components (live tracking, the
+          progressive fare meter, Share My Ride) existed but were only
+          reachable by clicking into a ride row on /rides and opening a
+          dialog — this is the fix: the exact same components, now rendered
+          directly on the screen the passenger actually lands on, with
+          nothing left to discover. `LiveRideTracking`/`FareMeter` already
+          gate themselves internally to the right trip statuses.
+        */}
+        {!isRequest && <LiveRideTracking trip={item} />}
+        {!isRequest && <FareMeter trip={item} />}
+
         {isRequest && item.fareEstimate && (
           <Text size="sm" tone="muted">
             {t("rideHistory.fare")}: ${item.fareEstimate.total.toFixed(2)}
           </Text>
         )}
-        {!isRequest && item.fareAmount !== undefined && (
-          <Text size="sm" tone="muted">
-            {t("rideHistory.fare")}: ${item.fareAmount.toFixed(2)}
-          </Text>
+
+        {!isRequest && TRACKABLE_TRIP_STATUSES.includes(item.status) && (
+          <div className="flex flex-wrap items-center gap-2">
+            <ShareRideControl trip={item} />
+            <SafetyPanel trip={item} />
+          </div>
         )}
 
         <div className="flex gap-3">
