@@ -3,7 +3,7 @@
     "name": "CLAYBA Driver",
     "slug": "the-ride-driver",
     "scheme": "theridedriver",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -24,7 +24,7 @@
         "backgroundColor": "#0B1A2D"
       },
       "package": "com.theride.driver",
-      "versionCode": 14
+      "versionCode": 15
     },
     "owner": "clauspp",
     "plugins": [
@@ -33,6 +33,14 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "CLAYBA Driver uses your location to receive nearby ride requests and provide live trip tracking."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0B1A2D"
         }
       ]
     ],

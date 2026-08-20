@@ -1,6 +1,7 @@
 {
   "extends": "../../packages/config/typescript/react-native.json",
   "compilerOptions": {
+    "module": "esnext",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],

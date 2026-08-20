@@ -1,141 +1,288 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  AuthProvider,
-  I18nProvider,
-  ThemeProvider,
-  useTranslation,
-  type ResolvedTheme,
-} from "@the-ride/hooks";
-import { Stack } from "expo-router";
-import { Component, useState, type ReactNode } from "react";
-import { Appearance, StyleSheet, View } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-import {
-  driverAuthAdapter,
-  driverFirebaseInitError,
-  retryDriverFirebaseInit,
-} from "@/lib/firebase-client";
-import { OfflineBanner } from "@/components/OfflineBanner";
-import { AppButton } from "@/components/AppButton";
-import { AppText } from "@/components/AppText";
-import { Screen } from "@/components/Screen";
+// Type-only imports: erased at compile time, never trigger a real
+// `require()` at runtime, so these do NOT reintroduce the static-import
+// risk this file's restructuring exists to avoid — only the actual
+// value imports inside the dynamic `import()` calls below do that.
+import type AsyncStorageType from "@react-native-async-storage/async-storage";
+import type { ClientAuthAdapter } from "@the-ride/firebase/client";
+import type { AuthProvider, I18nProvider, ThemeProvider } from "@the-ride/hooks";
+import type { Stack } from "expo-router";
+import type { Appearance as AppearanceType } from "react-native";
 
-const storage = {
-  getItem: (key: string) => AsyncStorage.getItem(key),
-  setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
-};
-
-function getSystemTheme(): ResolvedTheme {
-  return Appearance.getColorScheme() === "dark" ? "dark" : "light";
-}
+import type { OfflineBanner } from "@/components/OfflineBanner";
 
 /**
- * CLAYBA Driver P0 — boot-failure screen. Rendered instead of the real app
- * tree whenever Firebase failed to initialize (originally: missing
- * `EXPO_PUBLIC_FIREBASE_*` in the release build; now also the real fallback
- * for any future genuine connectivity/config failure at launch — brief
- * Phase 5, "Jamais écran blanc infini"). "Try again" re-runs the same
- * init the module attempted at import time; if it succeeds, `onRetry`
- * flips the parent's key so the whole provider tree remounts fresh.
+ * CLAYBA Driver P0.2 — real-device evidence showed the app still went
+ * blank after the P0 (Firebase env var) fix, so the boot architecture
+ * itself was wrong, not just the config. Root cause: this file used to
+ * statically `import { driverAuthAdapter, ... } from "@/lib/firebase-client"`
+ * at the top of the module — and that module statically imports
+ * `@the-ride/firebase/client/native-persistence`, which itself statically
+ * imports `getReactNativePersistence` from `@firebase/auth` behind that
+ * package's "react-native" package.json export condition. That file's own
+ * comment says this was verified by requesting Metro's *dev* bundle —
+ * never confirmed against a real `eas build`/`expo export` release bundle,
+ * which can resolve package exports differently. If ANY module in that
+ * static chain throws during evaluation (wrong export condition pulling in
+ * a browser-only Firebase Auth entry point that touches a DOM global
+ * Hermes doesn't have, an AsyncStorage native-module timing issue under
+ * the New Architecture, etc.), the failure happens before React ever
+ * renders a single frame — no error boundary can catch a crash in a
+ * static `import`, only in code that actually runs.
+ *
+ * Fix: nothing risky is imported statically anymore. This file's own
+ * first render uses only React Native core primitives (no `@the-ride/*`
+ * package, no AsyncStorage, no Firebase) so it is guaranteed to mount.
+ * Every subsequent step (hooks providers, Firebase, auth) is loaded via
+ * dynamic `import()` inside a `try/catch`'d effect, so a failure anywhere
+ * in that chain surfaces as a real, visible, branded error screen instead
+ * of silence. See docs/mobile-boot-architecture.md.
  */
-function BootFailureScreen({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation();
-  const [retrying, setRetrying] = useState(false);
 
-  function handleRetry() {
-    setRetrying(true);
-    const ok = retryDriverFirebaseInit();
-    setRetrying(false);
-    if (ok) onRetry();
-  }
+// CLAYBA Driver P0.2, Phase 4 — first-party Expo module (not a risky
+// third-party dependency), called at module scope exactly as the
+// package's own docs prescribe. This is the ONLY thing standing between
+// the native splash and this file's first React commit, so it must run
+// before anything else in this module — keeps the native splash (already
+// branded via app.json) on screen instead of letting the OS fall through
+// to a blank Activity background the instant it decides the view
+// hierarchy is "mounted", whether or not that first frame actually paints
+// real content. `hideAsync()` is called once `BootingView` has genuinely
+// committed (see the layout effect below), the earliest point at which
+// something is guaranteed to be behind it.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Already hidden (e.g. Fast Refresh) — not a real failure.
+});
 
+type BootPhase = "booting" | "ready" | "error";
+
+interface BootModules {
+  ThemeProvider: typeof ThemeProvider;
+  I18nProvider: typeof I18nProvider;
+  AuthProvider: typeof AuthProvider;
+  driverAuthAdapter: ClientAuthAdapter;
+  driverFirebaseInitError: string | null;
+  Stack: typeof Stack;
+  OfflineBanner: typeof OfflineBanner;
+  AsyncStorage: typeof AsyncStorageType;
+  Appearance: typeof AppearanceType;
+}
+
+const BOOT_STAGES = ["mounted", "configuration", "firebase", "auth"] as const;
+type BootStage = (typeof BOOT_STAGES)[number];
+
+function BootStageList({ completed }: { completed: BootStage[] }) {
+  const labels: Record<BootStage, string> = {
+    mounted: "React mounted",
+    configuration: "Configuration loaded",
+    firebase: "Firebase",
+    auth: "Authentication",
+  };
   return (
-    <Screen style={styles.center}>
-      <AppText variant="subheading" style={styles.centerText}>
-        {t("common.unableToConnect")}
-      </AppText>
-      <AppButton label={t("common.retry")} isLoading={retrying} onPress={handleRetry} />
-    </Screen>
+    <View style={styles.stageList}>
+      {BOOT_STAGES.map((stage) => (
+        <Text key={stage} style={styles.stageText}>
+          {completed.includes(stage) ? "✓" : "○"} {labels[stage]}
+        </Text>
+      ))}
+    </View>
   );
 }
 
-/**
- * CLAYBA Driver P0, Phase 3 — global error boundary. Catches any render/
- * lifecycle error anywhere below it (auth adapter throwing inside an
- * effect, a navigation error, an unexpected null dereference) and shows a
- * real "something went wrong" screen instead of letting the app go blank.
- * Deliberately a class component — React only supports error boundaries
- * via `componentDidCatch`/`getDerivedStateFromError`, no hook equivalent.
- */
-class GlobalErrorBoundary extends Component<
-  { children: ReactNode; fallbackMessage: string },
-  { error: Error | null }
-> {
-  state: { error: Error | null } = { error: null };
-
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-
-  componentDidCatch(error: Error, info: { componentStack?: string | null }) {
-    console.error("[boot] Uncaught error in app tree:", error.message, info.componentStack);
-  }
-
-  render() {
-    if (this.state.error) {
-      return (
-        <View style={styles.fallback}>
-          <AppText variant="subheading" style={styles.centerText}>
-            {this.props.fallbackMessage}
-          </AppText>
-        </View>
-      );
-    }
-    return this.props.children;
-  }
+function BootingView({ completed }: { completed: BootStage[] }) {
+  return (
+    <View style={styles.center}>
+      <Text style={styles.title}>CLAYBA Driver</Text>
+      <ActivityIndicator size="small" color="#CB562C" style={styles.spinner} />
+      <Text style={styles.subtitle}>Starting application...</Text>
+      <BootStageList completed={completed} />
+    </View>
+  );
 }
 
-function RootLayoutContent({ bootAttempt, onRetry }: { bootAttempt: number; onRetry: () => void }) {
-  const { t } = useTranslation();
-
-  console.warn(
-    "[boot] RootLayout render, attempt",
-    bootAttempt,
-    "firebaseInitError:",
-    driverFirebaseInitError,
-  );
-
+function BootErrorView({
+  stage,
+  message,
+  onRetry,
+}: {
+  stage: string;
+  message: string;
+  onRetry: () => void;
+}) {
   return (
-    <GlobalErrorBoundary key={bootAttempt} fallbackMessage={t("common.unexpectedError")}>
-      {driverFirebaseInitError ? (
-        <BootFailureScreen onRetry={onRetry} />
-      ) : (
-        <AuthProvider adapter={driverAuthAdapter}>
-          <OfflineBanner />
-          <Stack screenOptions={{ headerShown: false }} />
-        </AuthProvider>
-      )}
-    </GlobalErrorBoundary>
+    <View style={styles.center}>
+      <Text style={styles.title}>CLAYBA Driver</Text>
+      <Text style={styles.errorTitle}>couldn&apos;t start</Text>
+      <Text style={styles.stageText}>Stage: {stage}</Text>
+      <Text style={styles.errorCode}>{message}</Text>
+      <Pressable style={styles.retryButton} onPress={onRetry}>
+        <Text style={styles.retryLabel}>Retry</Text>
+      </Pressable>
+    </View>
   );
+}
+
+/** Never shown Firebase keys/tokens/stack traces — only a short, safe, human label. */
+function safeErrorCode(err: unknown, stage: string): string {
+  if (err instanceof Error) {
+    // Strip anything that looks like it could carry config/URLs; keep just the class + short message.
+    const short = err.message.split("\n")[0]!.slice(0, 120);
+    return `${err.name}: ${short}`;
+  }
+  return `Unknown error during ${stage}`;
 }
 
 export default function RootLayout() {
-  // Bumping this remounts `RootLayoutContent` (via its own `key` below) —
-  // including re-reading the (now hopefully null) `driverFirebaseInitError`
-  // from firebase-client.ts — after a successful retry.
-  const [bootAttempt, setBootAttempt] = useState(0);
+  const [phase, setPhase] = useState<BootPhase>("booting");
+  const [completedStages, setCompletedStages] = useState<BootStage[]>(["mounted"]);
+  const [errorInfo, setErrorInfo] = useState<{ stage: string; message: string } | null>(null);
+  const [modules, setModules] = useState<BootModules | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  // Runs after this component's first real commit — the earliest safe
+  // point to release the native splash, since something (BootingView) is
+  // now guaranteed to be rendered behind it. try/finally: even if hiding
+  // itself throws (e.g. called twice), boot must still proceed.
+  useEffect(() => {
+    SplashScreen.hideAsync()
+      .catch((err) => console.warn("[boot] SplashScreen.hideAsync failed (non-fatal):", err))
+      .finally(() => console.warn("[boot] Native splash released, BootingView visible"));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    console.warn("[boot] React mounted, loading configuration...");
+
+    async function boot() {
+      let stage = "configuration";
+      try {
+        const [hooksMod, rnMod, storageMod, routerMod, bannerMod, firebaseClientMod] =
+          await Promise.all([
+            import("@the-ride/hooks"),
+            import("react-native"),
+            import("@react-native-async-storage/async-storage"),
+            import("expo-router"),
+            import("@/components/OfflineBanner"),
+            import("@/lib/firebase-client"),
+          ]);
+        if (cancelled) return;
+        console.warn("[boot] Configuration loaded");
+        setCompletedStages((s) => [...s, "configuration"]);
+
+        stage = "firebase";
+        // firebase-client.ts runs its own guarded init at import time; by
+        // the time the dynamic import above resolves, it has already
+        // succeeded or recorded a real error — nothing further to call here.
+        console.warn("[boot] Firebase init error:", firebaseClientMod.driverFirebaseInitError);
+        setCompletedStages((s) => [...s, "firebase"]);
+
+        stage = "auth";
+        if (firebaseClientMod.driverFirebaseInitError) {
+          throw new Error(firebaseClientMod.driverFirebaseInitError);
+        }
+        setCompletedStages((s) => [...s, "auth"]);
+
+        if (cancelled) return;
+        setModules({
+          ThemeProvider: hooksMod.ThemeProvider,
+          I18nProvider: hooksMod.I18nProvider,
+          AuthProvider: hooksMod.AuthProvider,
+          driverAuthAdapter: firebaseClientMod.driverAuthAdapter,
+          driverFirebaseInitError: firebaseClientMod.driverFirebaseInitError,
+          Stack: routerMod.Stack,
+          OfflineBanner: bannerMod.OfflineBanner,
+          AsyncStorage: storageMod.default,
+          Appearance: rnMod.Appearance,
+        });
+        setPhase("ready");
+      } catch (err) {
+        console.error(`[boot] Failed at stage "${stage}":`, err);
+        if (!cancelled) {
+          setErrorInfo({ stage, message: safeErrorCode(err, stage) });
+          setPhase("error");
+        }
+      }
+    }
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [attempt]);
+
+  function handleRetry() {
+    setPhase("booting");
+    setErrorInfo(null);
+    setCompletedStages(["mounted"]);
+    setModules(null);
+    setAttempt((n) => n + 1);
+  }
+
+  if (phase === "error" && errorInfo) {
+    return (
+      <BootErrorView stage={errorInfo.stage} message={errorInfo.message} onRetry={handleRetry} />
+    );
+  }
+
+  if (phase !== "ready" || !modules) {
+    return <BootingView completed={completedStages} />;
+  }
+
+  const {
+    ThemeProvider,
+    I18nProvider,
+    AuthProvider,
+    driverAuthAdapter,
+    Stack,
+    OfflineBanner,
+    AsyncStorage,
+    Appearance,
+  } = modules;
+
+  const storage = {
+    getItem: (key: string) => AsyncStorage.getItem(key),
+    setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
+  };
+  const getSystemTheme = () =>
+    Appearance.getColorScheme() === "dark" ? ("dark" as const) : ("light" as const);
 
   return (
     <ThemeProvider storage={storage} getSystemTheme={getSystemTheme}>
       <I18nProvider storage={storage}>
-        <RootLayoutContent bootAttempt={bootAttempt} onRetry={() => setBootAttempt((n) => n + 1)} />
+        <AuthProvider adapter={driverAuthAdapter}>
+          <OfflineBanner />
+          <Stack screenOptions={{ headerShown: false }} />
+        </AuthProvider>
       </I18nProvider>
     </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { alignItems: "center", justifyContent: "center", gap: 16 },
-  centerText: { textAlign: "center" },
-  fallback: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 24,
+    backgroundColor: "#0B1A2D",
+  },
+  title: { fontSize: 22, fontWeight: "700", color: "#FFFFFF" },
+  subtitle: { fontSize: 14, color: "#D3CCC2" },
+  spinner: { marginTop: 4 },
+  stageList: { marginTop: 16, alignItems: "flex-start", gap: 4 },
+  stageText: { fontSize: 13, color: "#A69C8E" },
+  errorTitle: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
+  errorCode: { fontSize: 12, color: "#D3CCC2", textAlign: "center", marginTop: 4 },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#CB562C",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 9999,
+  },
+  retryLabel: { color: "#FFFFFF", fontWeight: "600", fontSize: 15 },
 });
