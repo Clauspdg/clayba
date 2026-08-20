@@ -3,6 +3,9 @@ export const en = {
     appName: "Clayba",
     /** CLAYBA P2 — the Android driver app's own product name, distinct from the web/shared `appName` ("Clayba"). See app.json's `name` and docs/mobile-branding.md. */
     driverAppName: "Playba Driver",
+    /** CLAYBA P2 — app-wide connectivity banner (driver-app), shown whenever `expo-network`'s NetInfo reports no connection; never a fake local success on reconnect. */
+    noInternetConnection: "No internet connection",
+    reconnecting: "Reconnecting…",
     loading: "Loading…",
     error: "Something went wrong",
     retry: "Retry",

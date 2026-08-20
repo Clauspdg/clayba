@@ -4,6 +4,8 @@ export const fr = {
   common: {
     appName: "Clayba",
     driverAppName: "Playba Driver",
+    noInternetConnection: "Pas de connexion internet",
+    reconnecting: "Reconnexion…",
     loading: "Chargement…",
     error: "Une erreur est survenue",
     retry: "Réessayer",

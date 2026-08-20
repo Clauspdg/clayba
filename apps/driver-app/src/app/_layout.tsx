@@ -4,6 +4,7 @@ import { Stack } from "expo-router";
 import { Appearance } from "react-native";
 
 import { driverAuthAdapter } from "@/lib/firebase-client";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 const storage = {
   getItem: (key: string) => AsyncStorage.getItem(key),
@@ -19,6 +20,7 @@ export default function RootLayout() {
     <ThemeProvider storage={storage} getSystemTheme={getSystemTheme}>
       <I18nProvider storage={storage}>
         <AuthProvider adapter={driverAuthAdapter}>
+          <OfflineBanner />
           <Stack screenOptions={{ headerShown: false }} />
         </AuthProvider>
       </I18nProvider>

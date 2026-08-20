@@ -16,6 +16,7 @@ import { AppButton } from "@/components/AppButton";
 import { AppCard } from "@/components/AppCard";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
+import { useNetworkStatus } from "@/lib/network-status";
 import { colors, spacing } from "@/theme/tokens";
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -38,6 +39,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export default function IncomingOfferScreen() {
   const { t } = useTranslation();
   const { driver } = useDriverSession();
+  const { isConnected } = useNetworkStatus();
   const params = useLocalSearchParams<{ offerId?: string }>();
   const [offers, setOffers] = useState<RideOffer[] | null>(null);
   const [request, setRequest] = useState<TripRequest | null | undefined>(undefined);
@@ -77,7 +79,7 @@ export default function IncomingOfferScreen() {
   }
 
   async function handleAccept() {
-    if (!offer || busy) return;
+    if (!offer || busy || !isConnected) return;
     setBusy("accept");
     try {
       await acceptRideOffer(driverFunctions, offer.id);
@@ -92,7 +94,7 @@ export default function IncomingOfferScreen() {
   }
 
   async function handleDecline() {
-    if (!offer || busy) return;
+    if (!offer || busy || !isConnected) return;
     setBusy("decline");
     try {
       await declineRideOffer(driverFunctions, offer.id);
@@ -161,12 +163,14 @@ export default function IncomingOfferScreen() {
         <AppButton
           label={t("driverOffer.accept")}
           isLoading={busy === "accept"}
+          disabled={!isConnected}
           onPress={() => void handleAccept()}
         />
         <AppButton
           label={t("driverOffer.decline")}
           variant="danger"
           isLoading={busy === "decline"}
+          disabled={!isConnected}
           onPress={() => void handleDecline()}
         />
       </View>

@@ -25,6 +25,7 @@ import { AppButton } from "@/components/AppButton";
 import { AppCard } from "@/components/AppCard";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
+import { useNetworkStatus } from "@/lib/network-status";
 import { colors, spacing } from "@/theme/tokens";
 
 const TRACKED_STATUSES: TripStatus[] = [TripStatus.EN_ROUTE_TO_PICKUP, TripStatus.IN_PROGRESS];
@@ -68,6 +69,7 @@ function formatDuration(seconds: number): string {
 export default function ActiveRideScreen() {
   const { t } = useTranslation();
   const { driver } = useDriverSession();
+  const { isConnected } = useNetworkStatus();
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [request, setRequest] = useState<TripRequest | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -147,7 +149,7 @@ export default function ActiveRideScreen() {
   }
 
   async function handleAdvance() {
-    if (!trip || !driver || busy) return;
+    if (!trip || !driver || busy || !isConnected) return;
     const next = NEXT_STAGE[trip.status];
     if (!next || !canTransitionTrip(trip.status, next.to)) return;
     setBusy(true);
@@ -263,6 +265,7 @@ export default function ActiveRideScreen() {
             <AppButton
               label={t(next.ctaKey)}
               isLoading={busy}
+              disabled={!isConnected}
               onPress={() => void handleAdvance()}
             />
           )
