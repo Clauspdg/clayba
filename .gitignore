@@ -29,6 +29,14 @@ web-build/
 release/**/*.apk
 release/**/*.aab
 
+# CLAYBA P2 — the real Playba Driver APK served from the web driver
+# dashboard's download section. Copied into place locally right before
+# `pnpm build:web` + `firebase deploy --only hosting:web` (same "not
+# committed, only deployed" reasoning as release/**/*.apk above) — Firebase
+# Hosting serves it from apps/web/out/downloads/android/ regardless of
+# whether it's ever in git history.
+apps/web/public/downloads/**/*.apk
+
 # Build outputs
 build/
 # Cloud Functions' tsc output only — NOT a blanket match, which previously

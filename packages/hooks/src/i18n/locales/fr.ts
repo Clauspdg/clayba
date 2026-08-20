@@ -239,6 +239,8 @@ export const fr = {
     viewRideCta: "Voir le trajet",
     paymentTitle: "Paiement",
     managePaymentsCta: "Gérer les paiements",
+    getAppTitle: "Obtenez l'application Playba",
+    androidAppComingSoon: "Application Android bientôt disponible",
   },
   map: {
     pickup: "Départ",
@@ -1625,6 +1627,18 @@ export const fr = {
       viewVehicleCta: "Voir le véhicule",
       viewDocumentsCta: "Voir les documents",
       viewCurrentRideDetails: "Voir les détails",
+      appDownloadTitle: "Obtenez l'application Playba Driver",
+      appDownloadSubtitle:
+        "Conduisez avec Playba depuis votre téléphone Android. Recevez des demandes de trajet, naviguez vers les passagers et gérez vos courses en déplacement.",
+      androidLabel: "Android",
+      versionLabel: "Version",
+      downloadAndroidCta: "Télécharger pour Android",
+      installInstructionsTitle: "Installation directe sur Android",
+      installStep1: "Téléchargez l'APK.",
+      installStep2:
+        "Android peut demander l'autorisation d'installer des applications depuis cette source.",
+      installStep3: "Accordez l'autorisation à votre navigateur.",
+      installStep4: "Installez Playba Driver.",
     },
     requests: {
       emptyOnlineTitle: "Vous êtes en ligne. En attente de demandes de course.",

@@ -383,6 +383,24 @@ export default function DashboardPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/*
+        CLAYBA P2, section 44 — the future Playba passenger Android app
+        isn't built yet. No download button here until a real APK exists
+        — an honest "coming soon" notice instead, same discipline as
+        every other disclosed gap this session (never a placeholder that
+        looks live).
+      */}
+      <Card>
+        <CardContent className="flex flex-col gap-1 p-5">
+          <Text weight="medium" tone="muted" size="sm">
+            {t("dashboard.getAppTitle")}
+          </Text>
+          <Text size="sm" tone="muted">
+            {t("dashboard.androidAppComingSoon")}
+          </Text>
+        </CardContent>
+      </Card>
     </div>
   );
 }

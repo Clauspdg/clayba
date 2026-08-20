@@ -1,6 +1,7 @@
 "use client";
 
 import { webFirestore, webFunctions } from "@/lib/firebase-client";
+import { ANDROID_DRIVER_APP_RELEASE } from "@/lib/android-app-release";
 import { useDriverEarningsSummary } from "@/hooks/useDriverEarningsSummary";
 import { useUserExperience } from "@/hooks/useUserExperience";
 import {
@@ -648,7 +649,63 @@ function ActiveDriverHome({ driver }: { driver: Driver }) {
           </CardContent>
         </Card>
       </div>
+
+      <AndroidAppDownloadCard />
     </div>
+  );
+}
+
+/**
+ * CLAYBA P2 — "Get the Playba Driver App" (brief sections 35-41). The
+ * href points straight at the real, signed release APK on this same
+ * hosting deployment (`apps/web/public/downloads/android/`, served with
+ * `application/vnd.android.package-archive` — see firebase.json) —
+ * public, not gated behind a second auth layer: the APK itself carries
+ * no secrets (client-safe Firebase config only), and every real
+ * privilege still requires a genuine Driver Profile authorization inside
+ * the app, same as the web. Gating the *file* would add complexity
+ * without adding real security.
+ */
+function AndroidAppDownloadCard() {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4 p-5">
+        <div>
+          <Text weight="medium">{t("driverSpace.home.appDownloadTitle")}</Text>
+          <Text size="sm" tone="muted">
+            {t("driverSpace.home.appDownloadSubtitle")}
+          </Text>
+        </div>
+
+        <div className="tablet:flex-row tablet:items-center tablet:justify-between flex flex-col gap-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+          <div>
+            <Text weight="medium">{ANDROID_DRIVER_APP_RELEASE.appName}</Text>
+            <Text size="xs" tone="muted">
+              {t("driverSpace.home.androidLabel")} · {t("driverSpace.home.versionLabel")}{" "}
+              {ANDROID_DRIVER_APP_RELEASE.latestVersion}
+            </Text>
+          </div>
+          <Button asChild>
+            <a href={ANDROID_DRIVER_APP_RELEASE.downloadUrl} download>
+              {t("driverSpace.home.downloadAndroidCta")}
+            </a>
+          </Button>
+        </div>
+
+        <details className="text-sm text-neutral-600 dark:text-neutral-300">
+          <summary className="cursor-pointer font-medium text-neutral-900 dark:text-neutral-50">
+            {t("driverSpace.home.installInstructionsTitle")}
+          </summary>
+          <ol className="mt-2 list-decimal space-y-1 pl-5">
+            <li>{t("driverSpace.home.installStep1")}</li>
+            <li>{t("driverSpace.home.installStep2")}</li>
+            <li>{t("driverSpace.home.installStep3")}</li>
+            <li>{t("driverSpace.home.installStep4")}</li>
+          </ol>
+        </details>
+      </CardContent>
+    </Card>
   );
 }
 
