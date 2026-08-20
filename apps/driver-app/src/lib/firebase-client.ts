@@ -1,4 +1,11 @@
-import { createFirebaseAuthAdapter, getClientAuth, initializeClientApp, type ClientAuthAdapter } from "@the-ride/firebase/client";
+import {
+  createFirebaseAuthAdapter,
+  getClientAuth,
+  getClientFirestore,
+  getClientFunctions,
+  initializeClientApp,
+  type ClientAuthAdapter,
+} from "@the-ride/firebase/client";
 import { getExpoAuthPersistence } from "@the-ride/firebase/client/native-persistence";
 
 /**
@@ -17,3 +24,5 @@ initializeClientApp({
 
 export const driverAuth = getClientAuth(getExpoAuthPersistence());
 export const driverAuthAdapter: ClientAuthAdapter = createFirebaseAuthAdapter(driverAuth);
+export const driverFirestore = getClientFirestore();
+export const driverFunctions = getClientFunctions();

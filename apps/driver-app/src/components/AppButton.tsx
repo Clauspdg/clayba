@@ -1,10 +1,12 @@
-import { Pressable, StyleSheet, Text, type PressableProps } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from "react-native";
 
 import { colors, radius, spacing } from "../theme/tokens";
 
 export interface AppButtonProps extends PressableProps {
   label: string;
   variant?: "primary" | "outline" | "danger";
+  /** Shows a spinner in place of the label and forces `disabled` — for real async actions (accept/decline/advance/complete), never a fake local delay. */
+  isLoading?: boolean;
 }
 
 const LABEL_STYLE_KEY: Record<
@@ -16,28 +18,40 @@ const LABEL_STYLE_KEY: Record<
   danger: "dangerLabel",
 };
 
+const SPINNER_COLOR: Record<NonNullable<AppButtonProps["variant"]>, string> = {
+  primary: colors.brandForeground,
+  outline: colors.neutral900,
+  danger: colors.brandForeground,
+};
+
 export function AppButton({
   label,
   variant = "primary",
   style,
   disabled,
+  isLoading,
   ...props
 }: AppButtonProps) {
+  const isDisabled = Boolean(disabled) || Boolean(isLoading);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: Boolean(disabled) }}
-      disabled={disabled}
+      accessibilityState={{ disabled: isDisabled }}
+      disabled={isDisabled}
       style={(state) => [
         styles.base,
         styles[variant],
         state.pressed && styles.pressed,
-        disabled && styles.disabled,
+        isDisabled && styles.disabled,
         typeof style === "function" ? style(state) : style,
       ]}
       {...props}
     >
-      <Text style={styles[LABEL_STYLE_KEY[variant]]}>{label}</Text>
+      {isLoading ? (
+        <ActivityIndicator color={SPINNER_COLOR[variant]} />
+      ) : (
+        <Text style={styles[LABEL_STYLE_KEY[variant]]}>{label}</Text>
+      )}
     </Pressable>
   );
 }

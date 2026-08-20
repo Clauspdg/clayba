@@ -20,6 +20,14 @@ export const LOCATION_FRESH_THRESHOLD_MS = 30_000;
 export const LOCATION_STALE_THRESHOLD_MS = 120_000;
 
 /**
+ * CLAYBA P2 — promoted out of the web driver app's `current-ride/page.tsx`
+ * (where it was a local, unexported const) so the Android driver app can
+ * genuinely reuse the same throttle value rather than a second one that
+ * happens to match today — see docs/mobile-location.md.
+ */
+export const DRIVER_LOCATION_WRITE_THROTTLE_MS = 10_000;
+
+/**
  * Valid forward transitions for a ride request. Consumed by
  * `packages/utils/src/trips/workflow.ts`, which is the only place allowed
  * to decide whether a transition is legal — mirrors the pattern in

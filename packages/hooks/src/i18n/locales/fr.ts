@@ -3,6 +3,7 @@ import type { en } from "./en";
 export const fr = {
   common: {
     appName: "Clayba",
+    driverAppName: "Playba Driver",
     loading: "Chargement…",
     error: "Une erreur est survenue",
     retry: "Réessayer",
@@ -597,9 +598,13 @@ export const fr = {
     continueToDashboard: "Continuer vers le tableau de bord",
     goOnline: "Passer en ligne",
     goOffline: "Passer hors ligne",
-    onlineHint: "Vous êtes en ligne — simulez une demande de trajet ci-dessous.",
+    onlineHint: "Vous êtes en ligne — en attente de demandes de trajet.",
     offlineHint: "Passez en ligne pour recevoir des demandes de trajet.",
     simulateOffer: "Simuler une offre entrante",
+    locationDisabled:
+      "Le GPS est désactivé. Activez la localisation pour recevoir des demandes de trajet.",
+    locationDenied:
+      "L'accès à la position est requis pour recevoir des demandes de trajet. Vous êtes en ligne, mais ne recevrez pas de courses tant que vous ne l'activez pas.",
     status: {
       offline: "Hors ligne",
       online: "En ligne",
@@ -1640,6 +1645,7 @@ export const fr = {
       arrivedLabel: "Arrivé",
       summaryBody: "Cette course est terminée.",
       navigateToPickupCta: "Naviguer vers le point de prise en charge",
+      navigateCta: "Naviguer",
       arrivedCta: "Je suis arrivé",
       startRideCta: "Démarrer la course",
       completeCta: "Terminer la course",

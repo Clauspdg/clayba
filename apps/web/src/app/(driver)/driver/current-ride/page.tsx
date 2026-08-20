@@ -24,12 +24,17 @@ import {
   useToast,
   useTranslation,
 } from "@the-ride/ui";
-import { TripStatus, type Trip, type TripRequest } from "@the-ride/types";
+import {
+  DRIVER_LOCATION_WRITE_THROTTLE_MS,
+  TripStatus,
+  type Trip,
+  type TripRequest,
+} from "@the-ride/types";
 import { canTransitionTrip } from "@the-ride/utils";
 import { useEffect, useRef, useState } from "react";
 
-/** Skip a `watchPosition` reading if the last write was more recent than this — avoids writing on every GPS tick. */
-const LOCATION_WRITE_THROTTLE_MS = 10_000;
+/** Skip a `watchPosition` reading if the last write was more recent than this — avoids writing on every GPS tick. CLAYBA P2 — now a shared constant so the Android driver app reuses the exact same value. */
+const LOCATION_WRITE_THROTTLE_MS = DRIVER_LOCATION_WRITE_THROTTLE_MS;
 
 /**
  * DRIVER-E2E-08.1 — extra settle time after the realtime subscription

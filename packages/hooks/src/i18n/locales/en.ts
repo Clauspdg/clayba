@@ -1,6 +1,8 @@
 export const en = {
   common: {
     appName: "Clayba",
+    /** CLAYBA P2 — the Android driver app's own product name, distinct from the web/shared `appName` ("Clayba"). See app.json's `name` and docs/mobile-branding.md. */
+    driverAppName: "Playba Driver",
     loading: "Loading…",
     error: "Something went wrong",
     retry: "Retry",
@@ -578,9 +580,12 @@ export const en = {
     continueToDashboard: "Continue to dashboard",
     goOnline: "Go online",
     goOffline: "Go offline",
-    onlineHint: "You're online — simulate an incoming ride offer below.",
+    onlineHint: "You're online — waiting for ride requests.",
     offlineHint: "Go online to start receiving ride offers.",
     simulateOffer: "Simulate incoming offer",
+    locationDisabled: "GPS is turned off. Enable location to receive ride requests.",
+    locationDenied:
+      "Location access is required to receive ride requests. You're online, but won't be offered rides until you enable it.",
     status: {
       offline: "Offline",
       online: "Online",
@@ -1585,6 +1590,8 @@ export const en = {
       arrivedLabel: "Arrived",
       summaryBody: "This ride has ended.",
       navigateToPickupCta: "Navigate to pickup",
+      /** CLAYBA P2 — mobile-only: opens the device's own maps app (section 18), distinct from `navigateToPickupCta` (the stage-advance CTA). */
+      navigateCta: "Navigate",
       arrivedCta: "I've arrived",
       startRideCta: "Start ride",
       completeCta: "Complete ride",
