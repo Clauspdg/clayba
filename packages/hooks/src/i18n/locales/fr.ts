@@ -614,6 +614,9 @@ export const fr = {
   driverHome: {
     title: "Tableau de bord",
     continueToDashboard: "Continuer vers le tableau de bord",
+    accessUnavailableTitle: "Accès chauffeur indisponible",
+    accessUnavailableBody: "Ce compte n'est lié à aucun profil chauffeur approuvé.",
+    logOut: "Se déconnecter",
     goOnline: "Passer en ligne",
     goOffline: "Passer hors ligne",
     onlineHint: "Vous êtes en ligne — en attente de demandes de trajet.",

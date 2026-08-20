@@ -27,7 +27,6 @@
     "@the-ride/firebase": "workspace:*",
     "@the-ride/hooks": "workspace:*",
     "@the-ride/types": "workspace:*",
-    "@the-ride/ui": "workspace:*",
     "@the-ride/utils": "workspace:*",
     "expo": "~52.0.0",
     "expo-image-picker": "~16.0.6",

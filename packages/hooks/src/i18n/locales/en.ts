@@ -598,6 +598,9 @@ export const en = {
   driverHome: {
     title: "Dashboard",
     continueToDashboard: "Continue to dashboard",
+    accessUnavailableTitle: "Driver access unavailable",
+    accessUnavailableBody: "This account isn't linked to an approved driver profile.",
+    logOut: "Log out",
     goOnline: "Go online",
     goOffline: "Go offline",
     onlineHint: "You're online — waiting for ride requests.",

@@ -8,7 +8,7 @@ import {
   subscribeMyRideOffers,
 } from "@the-ride/firebase/client";
 import { setOwnAvailabilityStatus } from "@the-ride/firebase/client";
-import { useTranslation } from "@the-ride/hooks";
+import { useAuth, useTranslation } from "@the-ride/hooks";
 import { DriverAvailabilityStatus, TripStatus, type RideOffer, type Trip } from "@the-ride/types";
 import { getOnlineEligibility, type OnlineBlockReason } from "@the-ride/utils";
 import { router } from "expo-router";
@@ -38,6 +38,7 @@ function startOfToday(): Date {
  */
 export default function HomeScreen() {
   const { t } = useTranslation();
+  const { signOut } = useAuth();
   const { session, driver, vehicle } = useDriverSession();
   const { summary } = useDriverEarningsSummary(session?.uid);
   const [offers, setOffers] = useState<RideOffer[] | null>(null);
@@ -149,10 +150,33 @@ export default function HomeScreen() {
     }
   }
 
-  if (!driver) {
+  if (driver === undefined) {
     return (
       <Screen style={styles.center}>
         <AppText variant="body">{t("common.loading")}</AppText>
+      </Screen>
+    );
+  }
+
+  // CLAYBA Driver P0 complete stabilization, section 15 — `driver === null`
+  // means the backend genuinely resolved: this signed-in account has no
+  // `drivers/{uid}` record. Previously this fell into the same branch as
+  // "still loading" above, so a real non-driver account saw an infinite
+  // spinner instead of an honest, exploitable message with a way out.
+  if (driver === null) {
+    return (
+      <Screen style={styles.center}>
+        <AppText variant="subheading" style={styles.centerText}>
+          {t("driverHome.accessUnavailableTitle")}
+        </AppText>
+        <AppText variant="muted" style={styles.centerText}>
+          {t("driverHome.accessUnavailableBody")}
+        </AppText>
+        <AppButton
+          label={t("driverHome.logOut")}
+          variant="outline"
+          onPress={() => void signOut()}
+        />
       </Screen>
     );
   }
@@ -218,7 +242,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { gap: spacing.lg },
-  center: { alignItems: "center", justifyContent: "center" },
+  center: { alignItems: "center", justifyContent: "center", gap: spacing.sm, padding: spacing.lg },
+  centerText: { textAlign: "center" },
   statusCard: { gap: 4 },
   warning: { color: colors.danger },
   statsRow: { flexDirection: "row", gap: spacing.sm },
