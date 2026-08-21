@@ -16,6 +16,8 @@
     "build:admin": "turbo run build --filter=@the-ride/admin",
     "build:driver": "turbo run build --filter=@the-ride/driver-app",
     "build:passenger": "turbo run build --filter=@the-ride/passenger-app",
+    "driver:android:apk": "node scripts/build-android-local.mjs driver",
+    "passenger:android:apk": "node scripts/build-android-local.mjs passenger",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint -- --fix",
     "test": "turbo run test",

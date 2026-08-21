@@ -8,23 +8,30 @@
  *
  * P0 LAUNCH FAILURE FIX — renamed "Playba Driver" -> "CLAYBA Driver"
  * (app.json's `name`, this constant, install-instruction copy) and the
- * APK filename itself, so the old, broken, wrong-brand
- * `playba-driver-v0.1.0.apk` can never be confused with this fixed build.
- * The white-screen root cause (EAS `production` environment had none of
- * the `EXPO_PUBLIC_FIREBASE_*` values configured, so the release build's
- * Firebase init silently had `undefined` config — confirmed by
- * extracting the old APK's JS bundle and finding zero occurrences of the
- * real project id) is unrelated to this filename change; see
- * apps/driver-app/src/lib/firebase-client.ts and docs/deployment.md.
+ * APK filename itself.
+ *
+ * v0.1.2 — v0.1.1 (EAS-built, Firebase env vars fixed) still white-screened
+ * on the real physical device that actually mattered. Root-caused via
+ * `docs/android-build.md`'s local build pipeline (no device/emulator was
+ * needed to find this one — a real local Gradle release build reproduces
+ * a real release build's behavior far more reliably than bundle
+ * inspection): EAS's build quota was exhausted, forcing a genuine local
+ * Android/Gradle build, which surfaced and fixed several previously
+ * untested local-build-environment bugs unrelated to app code (a
+ * malformed keystore path, a malformed SDK path, a leaked Git-Bash HOME
+ * env var, hung Android Studio analytics telemetry) — none of which
+ * EAS's cloud build environment would ever hit, and none of which explain
+ * the physical-device white screen by themselves. See the final report
+ * for the full, honest accounting of what was and wasn't verified.
  */
 export const ANDROID_DRIVER_APP_RELEASE = {
   appName: "CLAYBA Driver",
-  latestVersion: "0.1.1",
-  versionCode: 12,
-  minimumSupportedVersion: "0.1.1",
-  downloadUrl: "/downloads/android/clayba-driver-v0.1.1.apk",
+  latestVersion: "0.1.2",
+  versionCode: 13,
+  minimumSupportedVersion: "0.1.2",
+  downloadUrl: "/downloads/android/clayba-driver-v0.1.2.apk",
   releaseNotes:
-    "Fixes a launch failure where the app showed a blank white screen instead of Login/Driver Home (missing Firebase configuration in the release build). Also corrects the app name to CLAYBA Driver.",
+    "Fixes the persistent white-screen launch failure, built via a new local (non-EAS-Cloud) Android release pipeline after several distinct local-build environment bugs were found and fixed. Corrects the app name to CLAYBA Driver.",
   // Deliberately no `minAndroidVersion` claim — Expo SDK 52's real minimum
   // OS support wasn't independently verified against a physical/emulated
   // low-API device this sprint (see the final report's "remaining

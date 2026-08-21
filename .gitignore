@@ -18,8 +18,22 @@ web-build/
 *.p8
 *.p12
 *.key
+*.keystore
 *.mobileprovision
 *.orig.*
+
+# CLAYBA Driver local Android build pipeline (P0 local build, no EAS Cloud)
+# — `expo prebuild` regenerates this native project from app.json/plugins
+# on demand; per Expo's own managed-workflow convention, it's a build
+# artifact, not hand-edited source, so it's not tracked (matches a fresh
+# `create-expo-app` project's default .gitignore). This also means any
+# keystore placed inside it (debug.keystore, a local release keystore)
+# is excluded by definition — the explicit *.keystore/*.jks rules above
+# are the defense-in-depth backstop if that ever changes.
+apps/driver-app/android/
+apps/passenger-app/android/
+apps/driver-app/ios/
+apps/passenger-app/ios/
 
 # Release artifacts — the release-notes.md/version.json/known-issues.md/
 # checksums.txt manifest files under release/*/ are small and worth

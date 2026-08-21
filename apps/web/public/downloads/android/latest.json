@@ -1,8 +1,9 @@
 {
   "appName": "CLAYBA Driver",
-  "latestVersion": "0.1.1",
-  "versionCode": 12,
-  "downloadUrl": "/downloads/android/clayba-driver-v0.1.1.apk",
-  "minimumSupportedVersion": "0.1.1",
-  "releaseNotes": "Fixes a launch failure where the app showed a blank white screen instead of Login/Driver Home (missing Firebase configuration in the release build). Also corrects the app name to CLAYBA Driver."
+  "latestVersion": "0.1.2",
+  "versionCode": 13,
+  "downloadUrl": "/downloads/android/clayba-driver-v0.1.2.apk",
+  "minimumSupportedVersion": "0.1.2",
+  "sha256": "8def1ae1749d2b3c09ec90c9bdc35154123ac3de741cf6deb3f88e4b02efa002",
+  "releaseNotes": "Fixes the persistent white-screen launch failure, built via a new local (non-EAS-Cloud) Android release pipeline after several distinct local-build environment bugs were found and fixed. Corrects the app name to CLAYBA Driver."
 }
