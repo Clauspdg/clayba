@@ -21,17 +21,28 @@
  * malformed keystore path, a malformed SDK path, a leaked Git-Bash HOME
  * env var, hung Android Studio analytics telemetry) — none of which
  * EAS's cloud build environment would ever hit, and none of which explain
- * the physical-device white screen by themselves. See the final report
- * for the full, honest accounting of what was and wasn't verified.
+ * the physical-device white screen by themselves.
+ *
+ * v0.1.3 — v0.1.2 STILL white-screened on the real physical device
+ * (confirmed by the user, not assumed). Since the app's own JS boot
+ * architecture already defends against every JS-level failure mode
+ * (dynamic imports, error boundary, visible boot-stage UI — see
+ * _layout.tsx and docs/mobile-boot-architecture.md) and the screen never
+ * even reaches that UI, the likeliest remaining explanation is a native
+ * failure before Hermes ever executes app code. `newArchEnabled` (React
+ * Native's New Architecture / Fabric+TurboModules) is disabled here as a
+ * single, targeted, reversible test of that hypothesis. NOT YET CONFIRMED
+ * to fix anything — this is an untested hypothesis shipped for real
+ * device verification, not a claimed fix. See the final report.
  */
 export const ANDROID_DRIVER_APP_RELEASE = {
   appName: "CLAYBA Driver",
-  latestVersion: "0.1.2",
-  versionCode: 13,
-  minimumSupportedVersion: "0.1.2",
-  downloadUrl: "/downloads/android/clayba-driver-v0.1.2.apk",
+  latestVersion: "0.1.3",
+  versionCode: 14,
+  minimumSupportedVersion: "0.1.3",
+  downloadUrl: "/downloads/android/clayba-driver-v0.1.3.apk",
   releaseNotes:
-    "Fixes the persistent white-screen launch failure, built via a new local (non-EAS-Cloud) Android release pipeline after several distinct local-build environment bugs were found and fixed. Corrects the app name to CLAYBA Driver.",
+    "Disables React Native's New Architecture (Fabric/TurboModules) as a targeted test for a persistent physical-device white-screen launch failure that survived the v0.1.2 Firebase-config fix. Root cause not yet confirmed without real-device testing of this build.",
   // Deliberately no `minAndroidVersion` claim — Expo SDK 52's real minimum
   // OS support wasn't independently verified against a physical/emulated
   // low-API device this sprint (see the final report's "remaining

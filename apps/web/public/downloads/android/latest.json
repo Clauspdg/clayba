@@ -1,9 +1,9 @@
 {
   "appName": "CLAYBA Driver",
-  "latestVersion": "0.1.2",
-  "versionCode": 13,
-  "downloadUrl": "/downloads/android/clayba-driver-v0.1.2.apk",
-  "minimumSupportedVersion": "0.1.2",
-  "sha256": "8def1ae1749d2b3c09ec90c9bdc35154123ac3de741cf6deb3f88e4b02efa002",
-  "releaseNotes": "Fixes the persistent white-screen launch failure, built via a new local (non-EAS-Cloud) Android release pipeline after several distinct local-build environment bugs were found and fixed. Corrects the app name to CLAYBA Driver."
+  "latestVersion": "0.1.3",
+  "versionCode": 14,
+  "downloadUrl": "/downloads/android/clayba-driver-v0.1.3.apk",
+  "minimumSupportedVersion": "0.1.3",
+  "sha256": "b0f7f2f51a1ace94bc48f2838e8aaaa345ccd75c760b6f62f2505264725fe09c",
+  "releaseNotes": "Disables React Native's New Architecture (Fabric/TurboModules) as a targeted test for a persistent physical-device white-screen launch failure that survived the v0.1.2 Firebase-config fix. Root cause not yet confirmed without real-device testing of this build."
 }
