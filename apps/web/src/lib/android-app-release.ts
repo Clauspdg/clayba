@@ -34,15 +34,31 @@
  * single, targeted, reversible test of that hypothesis. NOT YET CONFIRMED
  * to fix anything — this is an untested hypothesis shipped for real
  * device verification, not a claimed fix. See the final report.
+ *
+ * v0.1.5 — CLAYBA Driver V2: full design-system rewrite (dual light/dark
+ * palette, no hardcoded colors left in shared components, the three
+ * confirmed dark-mode contrast bugs fixed), 5-tab bottom navigation
+ * (Home/Rides/Earnings/Wallet/Profile), and the Go Online P0 fix —
+ * root-caused against `firestore.rules`' `isOwnAvailabilityToggle()`,
+ * which rejects a single-write offline->available transition. Go Online
+ * now performs the same two-step online->available sequence already
+ * proven correct on the web driver app, wrapped in an explicit state
+ * machine with real error/retry UI. Built and installed on a physical
+ * device (Samsung Galaxy A17); boots cleanly per `adb logcat` with no
+ * fatal exceptions, and the redesigned Welcome screen was visually
+ * confirmed on-device. The on-device session available for this build
+ * was not driver-role, so the Home/Go-Online screens themselves could
+ * not be visually or functionally exercised live — see the final report
+ * for the CONFIRMED vs CODE-VERIFIED breakdown.
  */
 export const ANDROID_DRIVER_APP_RELEASE = {
   appName: "CLAYBA Driver",
-  latestVersion: "0.1.3",
-  versionCode: 14,
-  minimumSupportedVersion: "0.1.3",
-  downloadUrl: "/downloads/android/clayba-driver-v0.1.3.apk",
+  latestVersion: "0.1.5",
+  versionCode: 16,
+  minimumSupportedVersion: "0.1.5",
+  downloadUrl: "/downloads/android/clayba-driver-v0.1.5.apk",
   releaseNotes:
-    "Disables React Native's New Architecture (Fabric/TurboModules) as a targeted test for a persistent physical-device white-screen launch failure that survived the v0.1.2 Firebase-config fix. Root cause not yet confirmed without real-device testing of this build.",
+    "CLAYBA Driver V2: redesigned dark/light UI with a real design-system, 5-tab navigation, and a fix for the Go Online workflow (root cause: a Firestore-rules-illegal single-write status transition).",
   // Deliberately no `minAndroidVersion` claim — Expo SDK 52's real minimum
   // OS support wasn't independently verified against a physical/emulated
   // low-API device this sprint (see the final report's "remaining
