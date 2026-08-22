@@ -162,13 +162,15 @@ export default function IncomingOfferScreen() {
       <View style={styles.actions}>
         <AppButton
           label={t("driverOffer.accept")}
+          size="lg"
           isLoading={busy === "accept"}
           disabled={!isConnected}
           onPress={() => void handleAccept()}
         />
         <AppButton
           label={t("driverOffer.decline")}
-          variant="danger"
+          variant="outline"
+          size="lg"
           isLoading={busy === "decline"}
           disabled={!isConnected}
           onPress={() => void handleDecline()}

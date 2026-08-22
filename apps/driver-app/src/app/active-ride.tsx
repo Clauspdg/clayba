@@ -25,8 +25,17 @@ import { AppButton } from "@/components/AppButton";
 import { AppCard } from "@/components/AppCard";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
+import { StatusBadge } from "@/components/StatusBadge";
 import { useNetworkStatus } from "@/lib/network-status";
-import { colors, spacing } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
+
+const STATUS_TONE: Partial<Record<TripStatus, "success" | "brand" | "neutral">> = {
+  [TripStatus.MATCHED]: "brand",
+  [TripStatus.EN_ROUTE_TO_PICKUP]: "brand",
+  [TripStatus.ARRIVED]: "brand",
+  [TripStatus.IN_PROGRESS]: "success",
+  [TripStatus.COMPLETED]: "success",
+};
 
 const TRACKED_STATUSES: TripStatus[] = [TripStatus.EN_ROUTE_TO_PICKUP, TripStatus.IN_PROGRESS];
 
@@ -198,9 +207,15 @@ export default function ActiveRideScreen() {
 
   return (
     <Screen style={styles.container}>
-      <AppText variant="heading">{t("driverSpace.nav.currentRide")}</AppText>
+      <View style={styles.headerRow}>
+        <AppText variant="heading">{t("driverSpace.nav.currentRide")}</AppText>
+        <StatusBadge
+          label={t(`driverSpace.tripStatus.${trip.status}`)}
+          tone={STATUS_TONE[trip.status] ?? "neutral"}
+        />
+      </View>
 
-      <AppCard style={styles.card}>
+      <AppCard variant="elevated" style={styles.card}>
         <AppText variant="muted">{t("booking.destinationLabel")}</AppText>
         <AppText variant="subheading">
           {trip.status === TripStatus.IN_PROGRESS
@@ -244,7 +259,7 @@ export default function ActiveRideScreen() {
         )}
 
         {trip.status === TripStatus.EN_ROUTE_TO_PICKUP && (
-          <AppText variant="muted" style={locationNotice ? styles.warning : undefined}>
+          <AppText variant="caption" tone={locationNotice ? "danger" : "muted"}>
             {locationNotice ?? t("driverSpace.currentRide.locationSharing")}
           </AppText>
         )}
@@ -255,15 +270,17 @@ export default function ActiveRideScreen() {
           <AppButton
             label={t("driverSpace.currentRide.navigateCta")}
             variant="outline"
+            size="lg"
             onPress={() => void handleNavigate()}
           />
         )}
         {isCompleted ? (
-          <AppButton label={t("common.back")} onPress={() => router.replace("/home")} />
+          <AppButton label={t("common.back")} size="lg" onPress={() => router.replace("/home")} />
         ) : (
           next && (
             <AppButton
               label={t(next.ctaKey)}
+              size="lg"
               isLoading={busy}
               disabled={!isConnected}
               onPress={() => void handleAdvance()}
@@ -278,10 +295,10 @@ export default function ActiveRideScreen() {
 const styles = StyleSheet.create({
   container: { gap: spacing.lg },
   center: { alignItems: "center", justifyContent: "center", gap: spacing.md },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   card: { gap: spacing.sm },
   statsRow: { flexDirection: "row", gap: spacing.md, marginTop: spacing.sm },
   statBlock: { flex: 1, gap: 2 },
   completedBlock: { gap: 2, marginTop: spacing.sm },
-  warning: { color: colors.danger },
   actions: { gap: spacing.sm, marginTop: "auto" },
 });

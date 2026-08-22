@@ -14,10 +14,16 @@ function startOfWeek(date: Date): Date {
   d.setDate(d.getDate() - day);
   return d;
 }
+function startOfMonth(date: Date): Date {
+  const d = startOfDay(date);
+  d.setDate(1);
+  return d;
+}
 
 export interface DriverEarningsSummary {
   today: number;
   week: number;
+  month: number;
   total: number;
 }
 
@@ -55,12 +61,14 @@ export function useDriverEarningsSummary(userId: string | undefined): {
     const now = new Date();
     const dayStart = startOfDay(now);
     const weekStart = startOfWeek(now);
+    const monthStart = startOfMonth(now);
     const payouts = transactions.filter((tx) => tx.type === TransactionType.PAYOUT);
     const sumSince = (since: Date) =>
       payouts.filter((tx) => tx.createdAt >= since).reduce((s, tx) => s + tx.amount, 0);
     return {
       today: sumSince(dayStart),
       week: sumSince(weekStart),
+      month: sumSince(monthStart),
       total: payouts.reduce((s, tx) => s + tx.amount, 0),
     };
   }, [transactions]);

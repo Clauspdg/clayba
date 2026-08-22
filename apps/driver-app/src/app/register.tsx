@@ -1,34 +1,80 @@
-import { useTranslation } from "@the-ride/hooks";
+import { useTheme, useTranslation } from "@the-ride/hooks";
 import { router } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import { AppButton } from "@/components/AppButton";
-import { AppText } from "@/components/AppText";
 import { AppTextField } from "@/components/AppTextField";
+import { AuthHeader } from "@/components/AuthHeader";
 import { Screen } from "@/components/Screen";
+import { colors, radius, spacing } from "@/theme/tokens";
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   return (
-    <Screen>
-      <AppText variant="heading">{t("auth.registerTitle")}</AppText>
-      <AppText variant="muted" style={styles.subtitle}>
-        {t("auth.registerSubtitle")}
-      </AppText>
-      <View style={styles.form}>
-        <AppTextField label={t("auth.fullNameLabel")} autoCapitalize="words" />
-        <AppTextField label={t("auth.emailLabel")} placeholder={t("auth.emailPlaceholder")} keyboardType="email-address" autoCapitalize="none" />
-        <AppTextField label={t("auth.phoneLabel")} keyboardType="phone-pad" />
-        <AppTextField label={t("auth.passwordLabel")} placeholder={t("auth.passwordPlaceholder")} secureTextEntry />
-        <AppButton label={t("auth.createAccount")} onPress={() => router.push("/become-driver")} />
-        <AppButton label={t("auth.alreadyHaveAccount")} variant="outline" onPress={() => router.push("/login")} />
-      </View>
+    <Screen style={styles.screen}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.flex}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <AuthHeader title={t("auth.registerTitle")} subtitle={t("auth.registerSubtitle")} />
+
+          <View
+            style={[styles.card, { backgroundColor: isDark ? colors.neutral900 : colors.neutral0 }]}
+          >
+            <View style={styles.form}>
+              <AppTextField label={t("auth.fullNameLabel")} autoCapitalize="words" />
+              <AppTextField
+                label={t("auth.emailLabel")}
+                placeholder={t("auth.emailPlaceholder")}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <AppTextField label={t("auth.phoneLabel")} keyboardType="phone-pad" />
+              <AppTextField
+                label={t("auth.passwordLabel")}
+                placeholder={t("auth.passwordPlaceholder")}
+                secureTextEntry
+              />
+              <AppButton
+                label={t("auth.createAccount")}
+                onPress={() => router.push("/become-driver")}
+              />
+            </View>
+          </View>
+
+          <AppButton
+            label={t("auth.alreadyHaveAccount")}
+            variant="outline"
+            onPress={() => router.push("/login")}
+            style={styles.secondaryAction}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  subtitle: { marginTop: 4, marginBottom: 24 },
-  form: { gap: 16 },
+  screen: { padding: 0 },
+  flex: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: "center", padding: spacing.lg },
+  card: {
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    shadowColor: colors.neutral950,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  form: { gap: spacing.md },
+  secondaryAction: { marginTop: spacing.lg },
 });

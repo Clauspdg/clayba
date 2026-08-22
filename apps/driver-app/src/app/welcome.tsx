@@ -3,8 +3,9 @@ import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 
 import { AppButton } from "@/components/AppButton";
-import { AppText } from "@/components/AppText";
+import { AuthHeader } from "@/components/AuthHeader";
 import { Screen } from "@/components/Screen";
+import { spacing } from "@/theme/tokens";
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
@@ -12,14 +13,15 @@ export default function WelcomeScreen() {
   return (
     <Screen style={styles.container}>
       <View style={styles.content}>
-        <AppText variant="heading">{t("auth.welcomeTitle")}</AppText>
-        <AppText variant="body" style={styles.subtitle}>
-          {t("auth.welcomeSubtitle")}
-        </AppText>
+        <AuthHeader title={t("auth.welcomeTitle")} subtitle={t("auth.welcomeSubtitle")} />
       </View>
       <View style={styles.actions}>
         <AppButton label={t("auth.logIn")} onPress={() => router.push("/login")} />
-        <AppButton label={t("auth.signUp")} variant="outline" onPress={() => router.push("/register")} />
+        <AppButton
+          label={t("auth.signUp")}
+          variant="outline"
+          onPress={() => router.push("/register")}
+        />
       </View>
     </Screen>
   );
@@ -27,7 +29,6 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   container: { justifyContent: "space-between" },
-  content: { flex: 1, justifyContent: "center", gap: 12 },
-  subtitle: { marginTop: 4 },
-  actions: { gap: 12 },
+  content: { flex: 1, justifyContent: "center" },
+  actions: { gap: spacing.sm },
 });
