@@ -50,15 +50,37 @@
  * was not driver-role, so the Home/Go-Online screens themselves could
  * not be visually or functionally exercised live — see the final report
  * for the CONFIRMED vs CODE-VERIFIED breakdown.
+ *
+ * v0.1.6 — CLAYBA Driver V3: map-first Home redesign (real
+ * react-native-maps, a floating status pill, and a bottom-sheet panel
+ * for online/offline state — replacing the mostly-empty V2 dashboard),
+ * real vector icons (@expo/vector-icons) replacing V2's plain-glyph tab
+ * bar, a fixed i18n bug (a raw untranslated key was visible on Home —
+ * root cause: the greeting string lived under a different i18n
+ * namespace than the one Home was reading from), a hardened driver
+ * avatar (falls back to initials on a broken/stale photo URL instead of
+ * a broken-image icon), and redesigned Rides/Earnings/Wallet/Profile/
+ * Settings/Welcome screens per the V3 visual spec. Building this
+ * version also surfaced and fixed a real, previously-latent Metro/
+ * monorepo bundling bug (Expo CLI's default workspace-root
+ * auto-detection was silently overriding this app's own manual
+ * monorepo Metro config, corrupting the production entry-file path on
+ * a cold bundler cache) — fixed via `EXPO_NO_METRO_WORKSPACE_ROOT=1` in
+ * the local build pipeline. Built, signed, installed, and confirmed
+ * crash-free via `adb logcat` on the physical Samsung Galaxy A17. The
+ * device's lock screen could not be bypassed non-interactively this
+ * session, so the new screens could not be visually screenshotted this
+ * round — see the final report for the full CONFIRMED vs CODE-VERIFIED
+ * breakdown.
  */
 export const ANDROID_DRIVER_APP_RELEASE = {
   appName: "CLAYBA Driver",
-  latestVersion: "0.1.5",
-  versionCode: 16,
-  minimumSupportedVersion: "0.1.5",
-  downloadUrl: "/downloads/android/clayba-driver-v0.1.5.apk",
+  latestVersion: "0.1.6",
+  versionCode: 17,
+  minimumSupportedVersion: "0.1.6",
+  downloadUrl: "/downloads/android/clayba-driver-v0.1.6.apk",
   releaseNotes:
-    "CLAYBA Driver V2: redesigned dark/light UI with a real design-system, 5-tab navigation, and a fix for the Go Online workflow (root cause: a Firestore-rules-illegal single-write status transition).",
+    "CLAYBA Driver V3: map-first Home redesign, real vector icons, redesigned Rides/Earnings/Wallet/Profile/Settings/Welcome, a fixed i18n bug, and a hardened avatar fallback.",
   // Deliberately no `minAndroidVersion` claim — Expo SDK 52's real minimum
   // OS support wasn't independently verified against a physical/emulated
   // low-API device this sprint (see the final report's "remaining

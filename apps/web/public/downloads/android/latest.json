@@ -1,9 +1,9 @@
 {
   "appName": "CLAYBA Driver",
-  "latestVersion": "0.1.5",
-  "versionCode": 16,
-  "downloadUrl": "/downloads/android/clayba-driver-v0.1.5.apk",
-  "minimumSupportedVersion": "0.1.5",
-  "sha256": "2ec2b762fde7283b1c3537dcfd314b55a493076a4c3bb9e03d06f0d6c7a2b04f",
-  "releaseNotes": "CLAYBA Driver V2: redesigned dark/light UI with a real design-system, 5-tab navigation, and a fix for the Go Online workflow (root cause: a Firestore-rules-illegal single-write status transition)."
+  "latestVersion": "0.1.6",
+  "versionCode": 17,
+  "downloadUrl": "/downloads/android/clayba-driver-v0.1.6.apk",
+  "minimumSupportedVersion": "0.1.6",
+  "sha256": "6b29f87b13d07d63dcf750e77eb848fa8bc1e7ef06ae2b680f63fc0180f569b2",
+  "releaseNotes": "CLAYBA Driver V3: map-first Home redesign, real vector icons, redesigned Rides/Earnings/Wallet/Profile/Settings/Welcome, a fixed i18n bug, and a hardened avatar fallback."
 }
