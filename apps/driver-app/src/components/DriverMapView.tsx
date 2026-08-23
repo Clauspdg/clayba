@@ -15,15 +15,22 @@ export interface DriverMapHandle {
 const DEFAULT_DELTA = { latitudeDelta: 0.015, longitudeDelta: 0.015 };
 
 /**
+ * Whether a real Google Maps API key is configured. On Android,
+ * react-native-maps always renders through the native Google Maps SDK
+ * regardless of provider — with no key (or an invalid one), the native
+ * SDK can throw during MapView init (e.g.
+ * `IllegalStateException: API key not found`), which is a NATIVE crash
+ * a JS error boundary cannot catch and terminates the app outright
+ * (confirmed on a real device: "Something went wrong with CLAYBA
+ * Driver... closed because this app has a bug", specifically when
+ * opening Home). Rendering the real `<MapView>` is gated on this so a
+ * missing key degrades to a placeholder instead of crashing the app —
+ * see `.env.example` for how to provision a real key.
+ */
+const HAS_MAPS_KEY = Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY);
+
+/**
  * Full-bleed map behind the Home screen's status overlay/bottom sheet.
- * Wraps `react-native-maps` (Android always renders through the native
- * Google Maps SDK regardless of provider — there's no non-Google fallback
- * on this platform). Real device rendering depends on
- * `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` actually being set to a valid,
- * Android-enabled key (see app.json's react-native-maps plugin config);
- * that key is currently empty in this repo, so tiles will not render
- * until one is provisioned — the marker/overlay/layout logic below is
- * otherwise complete and does not depend on the key.
  */
 export const DriverMapView = forwardRef<
   DriverMapHandle,
@@ -48,6 +55,20 @@ export const DriverMapView = forwardRef<
       );
     },
   }));
+
+  if (!HAS_MAPS_KEY) {
+    return (
+      <View
+        style={[
+          StyleSheet.absoluteFillObject,
+          styles.placeholder,
+          { backgroundColor: palette.surface },
+        ]}
+      >
+        <Ionicons name="map-outline" size={40} color={palette.textMuted} />
+      </View>
+    );
+  }
 
   return (
     <View style={StyleSheet.absoluteFillObject}>
@@ -100,6 +121,7 @@ export const DriverMapView = forwardRef<
 });
 
 const styles = StyleSheet.create({
+  placeholder: { alignItems: "center", justifyContent: "center" },
   markerRing: {
     width: 36,
     height: 36,
