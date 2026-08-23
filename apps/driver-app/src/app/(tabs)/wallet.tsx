@@ -45,28 +45,31 @@ export default function WalletScreen() {
 
   return (
     <Screen style={styles.container}>
-      <AppText variant="heading">{t("driverSpace.nav.wallet")}</AppText>
+      <AppText variant="title">{t("driverSpace.nav.wallet")}</AppText>
 
       <AppCard variant="elevated" style={styles.balanceCard}>
         <AppText variant="caption" tone="muted">
-          {t("wallet.balance")}
+          {wallet ? t("driverHome.walletAvailableBalance") : t("driverHome.walletNotActivated")}
         </AppText>
-        <AppText variant="display">
-          {wallet ? `${wallet.currency} ${wallet.balance.toFixed(2)}` : "—"}
-        </AppText>
-        {wallet === null && (
-          <AppText variant="caption" tone="muted">
-            {t("wallet.noWallet")}
+        {wallet ? (
+          <AppText variant="display">
+            {wallet.currency} {wallet.balance.toFixed(2)}
           </AppText>
+        ) : wallet === null ? (
+          <AppText variant="body" tone="muted">
+            {t("driverHome.walletNotActivatedBody")}
+          </AppText>
+        ) : (
+          <AppText variant="display">—</AppText>
         )}
       </AppCard>
 
-      <AppText variant="subheading">{t("wallet.transactions")}</AppText>
+      <AppText variant="heading">{t("wallet.transactions")}</AppText>
 
       {transactions === null ? (
         <LoadingState label={t("common.loading")} />
       ) : transactions.length === 0 ? (
-        <EmptyState glyph="▭" title={t("wallet.noTransactions")} />
+        <EmptyState icon="receipt-outline" title={t("wallet.noTransactions")} />
       ) : (
         <FlatList
           data={transactions}

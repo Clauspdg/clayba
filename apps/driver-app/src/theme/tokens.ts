@@ -24,6 +24,8 @@ export const colors = {
   brandLight: "#E4A34E",
   brandForeground: "#FFFFFF",
   accent: "#BA966E",
+  /** CLAYBA Navy — the app icon/splash hero color, distinct from the dark-mode surface scale below. Welcome-screen decorative use only. */
+  navy: "#071B31",
   neutral0: "#FFFFFF",
   neutral50: "#FAF9F7",
   neutral100: "#F3F1EE",
@@ -33,14 +35,13 @@ export const colors = {
   neutral700: "#56564E",
   neutral900: "#262420",
   neutral950: "#171512",
-  // Dark-theme-only surfaces — a real graphite/near-black scale, not the
-  // warm-beige light scale inverted (which is what produced the
-  // "cartes trop claires" complaint: reusing neutral200/neutral100 as
-  // dark-mode borders/surfaces is barely darker than the background).
-  graphite900: "#15130F",
-  graphite800: "#1E1B16",
-  graphite700: "#2A251F",
-  graphite600: "#3A342B",
+  // Dark-theme-only surfaces — CLAYBA Driver V3: a true near-black/graphite
+  // scale (not the warm-brown v2 scale, which still read as "beige
+  // inverted" rather than a premium dark UI).
+  graphite900: "#090B0D",
+  graphite800: "#14171A",
+  graphite700: "#1C2024",
+  graphite600: "#262B30",
   success: "#1F9254",
   successBg: "#0F2A1C",
   successBgLight: "#E7F6ED",
@@ -74,7 +75,7 @@ export interface Palette {
 }
 
 const lightPalette: Palette = {
-  background: colors.neutral50,
+  background: "#F6F7F8",
   surface: colors.neutral0,
   surfaceElevated: colors.neutral0,
   border: colors.neutral200,
@@ -133,8 +134,12 @@ export const radius = {
 } as const;
 
 export const typography = {
-  displaySize: 28,
-  headingSize: 22,
+  /** Big balance/earnings numbers. */
+  displaySize: 34,
+  /** Screen title (e.g. a tab's top-of-screen heading). */
+  titleSize: 30,
+  /** Section heading within a screen. */
+  headingSize: 21,
   subheadingSize: 17,
   bodySize: 15,
   captionSize: 13,

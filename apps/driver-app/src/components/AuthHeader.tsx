@@ -18,7 +18,7 @@ export function AuthHeader({ title, subtitle }: { title: string; subtitle?: stri
         {/* eslint-disable-next-line @typescript-eslint/no-require-imports -- RN requires static require() for bundled images */}
         <Image source={require("../../assets/icon.png")} style={styles.icon} resizeMode="cover" />
       </View>
-      <AppText variant="heading" style={styles.title}>
+      <AppText variant="title" style={styles.title}>
         {title}
       </AppText>
       {subtitle && (

@@ -1,27 +1,30 @@
+import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 
 import { usePalette } from "@/theme/usePalette";
 import { radius, spacing } from "@/theme/tokens";
 
+import { AppButton } from "./AppButton";
 import { AppText } from "./AppText";
 
-/** No icon library in this app (kept out deliberately — see the P0 build report on native-module risk), so the mark is a plain glyph in a soft circle rather than a missing/broken icon. */
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
 export function EmptyState({
   title,
   body,
-  glyph = "•",
+  icon = "file-tray-outline",
+  action,
 }: {
   title: string;
   body?: string;
-  glyph?: string;
+  icon?: IoniconName;
+  action?: { label: string; onPress: () => void };
 }) {
   const palette = usePalette();
   return (
     <View style={styles.container}>
       <View style={[styles.iconCircle, { backgroundColor: palette.surfaceElevated }]}>
-        <AppText variant="heading" tone="muted">
-          {glyph}
-        </AppText>
+        <Ionicons name={icon} size={28} color={palette.textMuted} />
       </View>
       <AppText variant="subheading" style={styles.centerText}>
         {title}
@@ -30,6 +33,14 @@ export function EmptyState({
         <AppText variant="body" tone="muted" style={styles.centerText}>
           {body}
         </AppText>
+      )}
+      {action && (
+        <AppButton
+          label={action.label}
+          variant="outline"
+          onPress={action.onPress}
+          style={styles.action}
+        />
       )}
     </View>
   );
@@ -46,4 +57,5 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   centerText: { textAlign: "center" },
+  action: { marginTop: spacing.sm },
 });

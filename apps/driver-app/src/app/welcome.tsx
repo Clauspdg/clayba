@@ -13,13 +13,14 @@ export default function WelcomeScreen() {
   return (
     <Screen style={styles.container}>
       <View style={styles.content}>
-        <AuthHeader title={t("auth.welcomeTitle")} subtitle={t("auth.welcomeSubtitle")} />
+        <AuthHeader title={t("auth.welcomeTitle")} subtitle={t("auth.driverWelcomeSubtitle")} />
       </View>
       <View style={styles.actions}>
-        <AppButton label={t("auth.logIn")} onPress={() => router.push("/login")} />
+        <AppButton label={t("auth.logIn")} size="lg" onPress={() => router.push("/login")} />
         <AppButton
-          label={t("auth.signUp")}
+          label={t("auth.createAccount")}
           variant="outline"
+          size="lg"
           onPress={() => router.push("/register")}
         />
       </View>

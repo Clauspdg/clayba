@@ -3,7 +3,7 @@
     "name": "CLAYBA Driver",
     "slug": "the-ride-driver",
     "scheme": "theridedriver",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
@@ -24,7 +24,12 @@
         "backgroundColor": "#0B1A2D"
       },
       "package": "com.theride.driver",
-      "versionCode": 16
+      "versionCode": 17,
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      }
     },
     "owner": "clauspp",
     "plugins": [

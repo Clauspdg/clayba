@@ -13,17 +13,19 @@ import { DriverAvailabilityStatus, TripStatus, type RideOffer, type Trip } from 
 import { getOnlineEligibility, type OnlineBlockReason } from "@the-ride/utils";
 import { router } from "expo-router";
 import * as Location from "expo-location";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppButton } from "@/components/AppButton";
-import { AppCard } from "@/components/AppCard";
 import { AppText } from "@/components/AppText";
+import { BottomSheetPanel } from "@/components/BottomSheetPanel";
 import { DriverAvatar } from "@/components/DriverAvatar";
+import { DriverMapView, type DriverMapHandle } from "@/components/DriverMapView";
+import { MapStatusPill } from "@/components/MapStatusPill";
 import { Screen } from "@/components/Screen";
-import { StatCard } from "@/components/StatCard";
-import { StatusBadge } from "@/components/StatusBadge";
-import { spacing } from "@/theme/tokens";
+import { usePalette } from "@/theme/usePalette";
+import { elevation, radius, spacing } from "@/theme/tokens";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -42,19 +44,23 @@ function startOfToday(): Date {
  * "Go Online" with zero explanation. This matches the reference,
  * already-correct implementation in apps/web/src/app/(driver)/driver/page.tsx's
  * `handleGoOnline`, not a new mechanism.
+ *
+ * V3 — this logic is UNTOUCHED by the map-first redesign below (brief:
+ * "NE CASSE PAS cette fonctionnalité"). Only the JSX changed.
  */
 type GoOnlineStage =
   "idle" | "requesting_permission" | "getting_location" | "going_online" | "error";
 
 function greetingKey(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "driverSpace.home.greetingMorning";
-  if (hour < 18) return "driverSpace.home.greetingAfternoon";
-  return "driverSpace.home.greetingEvening";
+  if (hour < 12) return "driverHome.greetingMorning";
+  if (hour < 18) return "driverHome.greetingAfternoon";
+  return "driverHome.greetingEvening";
 }
 
 export default function HomeScreen() {
   const { t } = useTranslation();
+  const palette = usePalette();
   const { session } = useAuth();
   const { driver, vehicle } = useDriverSession();
   const { summary } = useDriverEarningsSummary(session?.uid);
@@ -64,6 +70,7 @@ export default function HomeScreen() {
   const [stage, setStage] = useState<GoOnlineStage>("idle");
   const [stageError, setStageError] = useState<string | null>(null);
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const mapRef = useRef<DriverMapHandle>(null);
 
   useEffect(() => {
     if (!driver) return;
@@ -211,36 +218,55 @@ export default function HomeScreen() {
     );
   }
 
-  return (
-    <Screen style={styles.container}>
-      <View style={styles.header}>
-        <DriverAvatar
-          photoURL={driver.documents.find((doc) => doc.type === "profile_photo")?.url}
-          name={session?.displayName ?? session?.email}
-        />
-        <View>
-          <AppText variant="caption" tone="muted">
-            {t(greetingKey())}
-          </AppText>
-          <AppText variant="subheading">{session?.displayName ?? session?.email ?? "—"}</AppText>
-        </View>
-      </View>
+  const location = driver.lastKnownLocation ?? null;
+  const displayName = session?.displayName ?? session?.email ?? "—";
 
-      <AppCard variant="elevated" style={styles.statusCard}>
-        <View style={styles.statusHeader}>
-          <AppText variant="subheading">
-            {isOnline ? t("driverHome.onlineTitle") : t("driverHome.title")}
-          </AppText>
-          <StatusBadge
-            label={t(`driverHome.status.${availabilityStatus}`)}
-            tone={isOnline ? "success" : "neutral"}
+  return (
+    <View style={[styles.root, { backgroundColor: palette.background }]}>
+      <DriverMapView ref={mapRef} location={location} />
+
+      <SafeAreaView edges={["top"]} style={styles.overlayTop} pointerEvents="box-none">
+        <View style={[styles.header, elevation.card, { backgroundColor: palette.surface }]}>
+          <DriverAvatar
+            photoURL={driver.documents.find((doc) => doc.type === "profile_photo")?.url}
+            name={displayName}
           />
+          <View style={styles.headerText}>
+            <AppText variant="caption" tone="muted">
+              {t(greetingKey())}
+            </AppText>
+            <AppText variant="subheading" numberOfLines={1}>
+              {displayName}
+            </AppText>
+          </View>
         </View>
+
+        <MapStatusPill
+          title={t(`driverHome.status.${availabilityStatus}`)}
+          subtitle={isOnline ? t("driverHome.availableForRides") : undefined}
+          tone={isOnline ? "online" : "neutral"}
+        />
+      </SafeAreaView>
+
+      <BottomSheetPanel contentKey={isOnline ? "online" : "offline"}>
+        {!isOnline && eligibility && !eligibility.eligible ? (
+          <View style={styles.blockList}>
+            {eligibility.reasons.map((reason) => (
+              <AppText key={reason} variant="caption" tone="danger">
+                {t(blockReasonKey[reason])}
+              </AppText>
+            ))}
+          </View>
+        ) : null}
+
+        <AppText variant="heading">
+          {isOnline ? t("driverHome.onlineTitle") : t("driverHome.offlineTitle")}
+        </AppText>
         <AppText variant="body" tone="muted">
-          {isOnline ? t("driverHome.onlineHint") : t("driverHome.offlineHint")}
+          {isOnline ? t("driverHome.waitingBody") : t("driverHome.offlineBody")}
         </AppText>
 
-        {stage !== "idle" && stage !== "error" && goingOnlineLabel[stage] && (
+        {busy && goingOnlineLabel[stage] && (
           <AppText variant="caption" tone="brand">
             {goingOnlineLabel[stage]}
           </AppText>
@@ -255,15 +281,23 @@ export default function HomeScreen() {
             {locationNotice}
           </AppText>
         )}
-        {!isOnline && eligibility && !eligibility.eligible && (
-          <View style={styles.blockList}>
-            {eligibility.reasons.map((reason) => (
-              <AppText key={reason} variant="caption" tone="danger">
-                {t(blockReasonKey[reason])}
-              </AppText>
-            ))}
+
+        <View style={[styles.todayRow, { borderTopColor: palette.border }]}>
+          <AppText variant="caption" tone="muted">
+            {t("driverHome.todayLabel")}
+          </AppText>
+          <View style={styles.todayValues}>
+            <AppText variant="subheading">
+              {t("driverHome.todayEarningsValue", {
+                amount: summary ? `$${summary.today.toFixed(2)}` : "$0.00",
+              })}
+            </AppText>
+            <View style={[styles.dotDivider, { backgroundColor: palette.border }]} />
+            <AppText variant="subheading">
+              {t("driverHome.todayRidesValue", { count: completedToday ?? 0 })}
+            </AppText>
           </View>
-        )}
+        </View>
 
         <AppButton
           label={
@@ -271,54 +305,48 @@ export default function HomeScreen() {
               ? (goingOnlineLabel[stage] ?? t("common.loading"))
               : isOnline
                 ? t("driverHome.goOffline")
-                : t("driverHome.goOnline")
+                : t("driverHome.goOnlineCta")
           }
           size="lg"
           variant={isOnline ? "outline" : "primary"}
           isLoading={busy}
           disabled={!isOnline && eligibility ? !eligibility.eligible : false}
           onPress={() => void (isOnline ? handleGoOffline() : handleGoOnline())}
-          style={styles.goOnlineButton}
         />
-      </AppCard>
-
-      <AppText variant="subheading">{t("driverSpace.home.todayOverviewTitle")}</AppText>
-      <View style={styles.statsRow}>
-        <StatCard
-          label={t("driverSpace.home.todayEarningsLabel")}
-          value={summary ? `$${summary.today.toFixed(2)}` : "—"}
-        />
-        <StatCard
-          label={t("driverSpace.home.completedTodayLabel")}
-          value={completedToday !== null ? String(completedToday) : "—"}
-        />
-      </View>
-      {driver.rating > 0 && (
-        <View style={styles.statsRow}>
-          <StatCard
-            label={t("driverSpace.home.ratingLabel")}
-            value={`★ ${driver.rating.toFixed(1)}`}
-          />
-          {vehicle && (
-            <StatCard
-              label={t("driverSpace.home.vehicleCardTitle")}
-              value={`${vehicle.make} ${vehicle.model}`}
-            />
-          )}
-        </View>
-      )}
-    </Screen>
+      </BottomSheetPanel>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.lg },
+  root: { flex: 1 },
   center: { alignItems: "center", justifyContent: "center", gap: spacing.sm, padding: spacing.lg },
   centerText: { textAlign: "center" },
-  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  statusCard: { gap: spacing.sm },
-  statusHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  overlayTop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+  },
+  headerText: { flex: 1 },
   blockList: { gap: 2 },
-  goOnlineButton: { marginTop: spacing.xs },
-  statsRow: { flexDirection: "row", gap: spacing.sm },
+  todayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  todayValues: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  dotDivider: { width: 4, height: 4, borderRadius: radius.full },
 });

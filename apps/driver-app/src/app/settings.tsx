@@ -22,7 +22,7 @@ export default function SettingsScreen() {
 
   return (
     <Screen style={styles.container}>
-      <AppText variant="heading">{t("settings.title")}</AppText>
+      <AppText variant="title">{t("settings.title")}</AppText>
 
       <View style={styles.section}>
         <AppText variant="caption" tone="muted">

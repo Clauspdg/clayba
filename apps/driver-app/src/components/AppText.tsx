@@ -4,12 +4,13 @@ import { usePalette } from "@/theme/usePalette";
 import { typography } from "@/theme/tokens";
 
 export interface AppTextProps extends TextProps {
-  variant?: "display" | "heading" | "subheading" | "body" | "caption" | "muted";
+  variant?: "display" | "title" | "heading" | "subheading" | "body" | "caption" | "muted";
   tone?: "default" | "secondary" | "muted" | "danger" | "success" | "warning" | "brand";
 }
 
 const SIZE_BY_VARIANT: Record<NonNullable<AppTextProps["variant"]>, number> = {
   display: typography.displaySize,
+  title: typography.titleSize,
   heading: typography.headingSize,
   subheading: typography.subheadingSize,
   body: typography.bodySize,
@@ -19,6 +20,7 @@ const SIZE_BY_VARIANT: Record<NonNullable<AppTextProps["variant"]>, number> = {
 
 const WEIGHT_BY_VARIANT: Record<NonNullable<AppTextProps["variant"]>, TextProps["style"]> = {
   display: { fontWeight: "800" },
+  title: { fontWeight: "800" },
   heading: { fontWeight: "700" },
   subheading: { fontWeight: "600" },
   body: { fontWeight: "400" },
