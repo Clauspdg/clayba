@@ -117,6 +117,18 @@ function main() {
     ANDROID_HOME: androidHome,
     ANDROID_SDK_ROOT: androidHome,
     PATH: `${path.join(javaHome, "bin")}${path.delimiter}${path.join(androidHome, "platform-tools")}${path.delimiter}${process.env.PATH}`,
+    // Expo CLI auto-detects this monorepo's workspace root (the pnpm
+    // lockfile at the repo root) and — as of the @expo/cli version this
+    // project is pinned to — silently redirects Metro's bundling "server
+    // root" to it by default, regardless of metro.config.js's own
+    // `projectRoot`. That conflicts with this app's manual monorepo Metro
+    // config (watchFolders/nodeModulesPaths/disableHierarchicalLookup)
+    // and produces a broken, doubly-relative entry-file path — reliably
+    // reproduced via `expo export:embed` and root-caused by reading
+    // @expo/config's paths/env.js. This app's metro.config.js already
+    // handles monorepo resolution correctly by itself, so the built-in
+    // auto-detection is redundant and actively wrong here.
+    EXPO_NO_METRO_WORKSPACE_ROOT: "1",
     // If this script is itself invoked from Git Bash/MSYS, HOME is
     // inherited as an MSYS-style path (e.g. /c/Users/name) rather than a
     // real Windows path. Gradle/AGP internals (build-profiling code, at
