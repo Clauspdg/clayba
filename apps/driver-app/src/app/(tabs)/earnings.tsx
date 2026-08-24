@@ -12,6 +12,7 @@ import { AppCard } from "@/components/AppCard";
 import { AppText } from "@/components/AppText";
 import { LoadingState } from "@/components/LoadingState";
 import { Screen } from "@/components/Screen";
+import { formatMoney } from "@/lib/currency";
 import { usePalette } from "@/theme/usePalette";
 import { radius, spacing } from "@/theme/tokens";
 
@@ -44,7 +45,7 @@ function startOfMonth(date: Date): Date {
  * showing one would be fabricated, not real, data.
  */
 export default function EarningsScreen() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const palette = usePalette();
   const { session } = useAuth();
   const { driver } = useDriverSession();
@@ -82,7 +83,7 @@ export default function EarningsScreen() {
   ];
 
   const isLoading = wallet === undefined || tripHistory === null;
-  const currency = wallet?.currency ?? "$";
+  const currency = wallet?.currency ?? "USD";
   const total = summary ? summary[period] : 0;
   const trips = tripCounts ? tripCounts[period] : 0;
   const hasAnyActivity = summary ? summary.total > 0 : false;
@@ -112,26 +113,33 @@ export default function EarningsScreen() {
             <AppText variant="caption" tone="muted">
               {periods.find((p) => p.key === period)?.label}
             </AppText>
-            <AppText variant="display">
-              {currency} {total.toFixed(2)}
-            </AppText>
+            <AppText variant="display">{formatMoney(total, currency, locale)}</AppText>
             <AppText variant="body" tone="muted">
               {t("driverSpace.earnings.tripsCountLabel", { count: trips })}
             </AppText>
           </AppCard>
 
-          {wallet && (
-            <AppCard style={styles.breakdownCard}>
+          <AppCard style={styles.breakdownCard}>
+            <AppText variant="caption" tone="muted">
+              {t("driverSpace.earnings.summaryTitle")}
+            </AppText>
+            <View style={styles.breakdownRow}>
+              <AppText variant="body" tone="secondary">
+                {t("driverSpace.earnings.tripsRowLabel")}
+              </AppText>
+              <AppText variant="subheading">{trips}</AppText>
+            </View>
+            {wallet && (
               <View style={styles.breakdownRow}>
                 <AppText variant="body" tone="secondary">
                   {t("driverSpace.earnings.balanceLabel")}
                 </AppText>
                 <AppText variant="subheading">
-                  {wallet.currency} {wallet.balance.toFixed(2)}
+                  {formatMoney(wallet.balance, wallet.currency, locale)}
                 </AppText>
               </View>
-            </AppCard>
-          )}
+            )}
+          </AppCard>
 
           {!hasAnyActivity && (
             <AppText variant="body" tone="muted" style={styles.zeroState}>

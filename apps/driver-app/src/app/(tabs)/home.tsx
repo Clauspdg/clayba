@@ -1,7 +1,8 @@
 import { driverFirestore } from "@/lib/firebase-client";
 import { useDriverSession } from "@/features/drivers/useDriverSession";
 import { useDriverEarningsSummary } from "@/features/wallet/useDriverEarningsSummary";
-import { requestDriverLocationPermission } from "@/lib/location-tracking";
+import { formatMoney } from "@/lib/currency";
+import { isDriverLocationGranted, requestDriverLocationPermission } from "@/lib/location-tracking";
 import {
   subscribeCurrentDriverTrip,
   subscribeDriverTripHistory,
@@ -59,11 +60,12 @@ function greetingKey(): string {
 }
 
 export default function HomeScreen() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const palette = usePalette();
   const { session } = useAuth();
   const { driver, vehicle } = useDriverSession();
-  const { summary } = useDriverEarningsSummary(session?.uid);
+  const { wallet, summary } = useDriverEarningsSummary(session?.uid);
+  const [locationGranted, setLocationGranted] = useState<boolean | null>(null);
   const [offers, setOffers] = useState<RideOffer[] | null>(null);
   const [currentTrip, setCurrentTrip] = useState<Trip | null | undefined>(undefined);
   const [tripHistory, setTripHistory] = useState<Trip[] | null>(null);
@@ -102,6 +104,23 @@ export default function HomeScreen() {
   useEffect(() => {
     if (currentTrip) router.replace("/active-ride");
   }, [currentTrip]);
+
+  // Read-only check (never prompts) so the map's "enable location" banner
+  // reflects reality without ever looping a permission request on its own.
+  useEffect(() => {
+    let cancelled = false;
+    isDriverLocationGranted().then((granted) => {
+      if (!cancelled) setLocationGranted(granted);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stage]);
+
+  async function handleEnableLocation() {
+    const permission = await requestDriverLocationPermission();
+    setLocationGranted(permission === "granted");
+  }
 
   const completedToday = useMemo(() => {
     if (!tripHistory) return null;
@@ -249,6 +268,21 @@ export default function HomeScreen() {
       </SafeAreaView>
 
       <BottomSheetPanel contentKey={isOnline ? "online" : "offline"}>
+        {locationGranted === false && (
+          <View style={[styles.locationPrompt, { backgroundColor: palette.warningBg }]}>
+            <AppText variant="caption" style={styles.locationPromptText}>
+              {t("driverHome.locationPromptBody")}
+            </AppText>
+            <AppButton
+              label={t("driverHome.locationPromptCta")}
+              size="md"
+              variant="outline"
+              style={styles.locationPromptCta}
+              onPress={() => void handleEnableLocation()}
+            />
+          </View>
+        )}
+
         {!isOnline && eligibility && !eligibility.eligible ? (
           <View style={styles.blockList}>
             {eligibility.reasons.map((reason) => (
@@ -289,7 +323,7 @@ export default function HomeScreen() {
           <View style={styles.todayValues}>
             <AppText variant="subheading">
               {t("driverHome.todayEarningsValue", {
-                amount: summary ? `$${summary.today.toFixed(2)}` : "$0.00",
+                amount: formatMoney(summary?.today ?? 0, wallet?.currency ?? "USD", locale),
               })}
             </AppText>
             <View style={[styles.dotDivider, { backgroundColor: palette.border }]} />
@@ -322,6 +356,15 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { alignItems: "center", justifyContent: "center", gap: spacing.sm, padding: spacing.lg },
   centerText: { textAlign: "center" },
+  locationPrompt: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+  },
+  locationPromptText: { flex: 1 },
+  locationPromptCta: { height: 36, paddingHorizontal: spacing.md },
   overlayTop: {
     position: "absolute",
     top: 0,

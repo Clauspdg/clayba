@@ -72,15 +72,32 @@
  * session, so the new screens could not be visually screenshotted this
  * round — see the final report for the full CONFIRMED vs CODE-VERIFIED
  * breakdown.
+ *
+ * v0.1.7 — P0 CRASH FIX. v0.1.6's map-first Home crashed the app
+ * outright for any real driver session: `java.lang.IllegalStateException:
+ * API key not found` thrown from `com.rnmaps.maps.MapView.<init>` (a
+ * native Google Maps SDK failure, not a JS error a React error boundary
+ * can catch) — Android always requires a real Google Maps API key to
+ * initialize `MapView`, and this repo has none configured
+ * (`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is empty). Confirmed via the real
+ * crash log pulled from the reporting user's own device, reproduced
+ * identically across four separate launches. Fixed by gating
+ * `DriverMapView` on whether a key is present at all: with no key, it
+ * now renders a safe static placeholder instead of ever constructing
+ * the native `<MapView>`. Rebuilt, reinstalled, and confirmed via a
+ * clean `adb logcat -b crash` (empty) and a live on-device screenshot
+ * of the Welcome screen — the app no longer crashes on launch/login.
+ * Full driver-role Home confirmation is pending the reporting user
+ * re-logging in on their device.
  */
 export const ANDROID_DRIVER_APP_RELEASE = {
   appName: "CLAYBA Driver",
-  latestVersion: "0.1.6",
-  versionCode: 17,
-  minimumSupportedVersion: "0.1.6",
-  downloadUrl: "/downloads/android/clayba-driver-v0.1.6.apk",
+  latestVersion: "0.1.7",
+  versionCode: 18,
+  minimumSupportedVersion: "0.1.7",
+  downloadUrl: "/downloads/android/clayba-driver-v0.1.7.apk",
   releaseNotes:
-    "CLAYBA Driver V3: map-first Home redesign, real vector icons, redesigned Rides/Earnings/Wallet/Profile/Settings/Welcome, a fixed i18n bug, and a hardened avatar fallback.",
+    "P0 fix: the app crashed opening the dashboard because the map view requires a Google Maps API key that isn't configured. Now shows a safe placeholder instead of crashing.",
   // Deliberately no `minAndroidVersion` claim — Expo SDK 52's real minimum
   // OS support wasn't independently verified against a physical/emulated
   // low-API device this sprint (see the final report's "remaining

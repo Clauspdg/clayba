@@ -1,9 +1,9 @@
 {
   "appName": "CLAYBA Driver",
-  "latestVersion": "0.1.6",
-  "versionCode": 17,
-  "downloadUrl": "/downloads/android/clayba-driver-v0.1.6.apk",
-  "minimumSupportedVersion": "0.1.6",
-  "sha256": "6b29f87b13d07d63dcf750e77eb848fa8bc1e7ef06ae2b680f63fc0180f569b2",
-  "releaseNotes": "CLAYBA Driver V3: map-first Home redesign, real vector icons, redesigned Rides/Earnings/Wallet/Profile/Settings/Welcome, a fixed i18n bug, and a hardened avatar fallback."
+  "latestVersion": "0.1.7",
+  "versionCode": 18,
+  "downloadUrl": "/downloads/android/clayba-driver-v0.1.7.apk",
+  "minimumSupportedVersion": "0.1.7",
+  "sha256": "705f81fee76e8f934ca19d3f9327f5ea6fdf752a16f2c66db35fae87c8a81aed",
+  "releaseNotes": "P0 fix: the app crashed opening the dashboard because the map view requires a Google Maps API key that is not configured. Now shows a safe placeholder instead of crashing."
 }

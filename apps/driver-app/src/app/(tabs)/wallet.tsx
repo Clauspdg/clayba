@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { driverFirestore } from "@/lib/firebase-client";
 import { subscribeMyTransactions, subscribeMyWallet } from "@the-ride/firebase/client";
 import { useAuth, useTranslation } from "@the-ride/hooks";
@@ -11,6 +12,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
 import { Screen } from "@/components/Screen";
 import { StatusBadge, type StatusTone } from "@/components/StatusBadge";
+import { formatMoney } from "@/lib/currency";
+import { usePalette } from "@/theme/usePalette";
 import { spacing } from "@/theme/tokens";
 
 const TRANSACTION_TONE: Record<string, StatusTone> = {
@@ -23,7 +26,8 @@ const TRANSACTION_TONE: Record<string, StatusTone> = {
 
 /** CLAYBA Driver V2 — Wallet tab, ported from the passenger web wallet page's exact real subscriptions (subscribeMyWallet/subscribeMyTransactions) — same backend, same balance, no parallel financial system. */
 export default function WalletScreen() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const palette = usePalette();
   const { session } = useAuth();
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
@@ -48,17 +52,30 @@ export default function WalletScreen() {
       <AppText variant="title">{t("driverSpace.nav.wallet")}</AppText>
 
       <AppCard variant="elevated" style={styles.balanceCard}>
-        <AppText variant="caption" tone="muted">
-          {wallet ? t("driverHome.walletAvailableBalance") : t("driverHome.walletNotActivated")}
-        </AppText>
         {wallet ? (
-          <AppText variant="display">
-            {wallet.currency} {wallet.balance.toFixed(2)}
-          </AppText>
+          <>
+            <AppText variant="caption" tone="muted">
+              {t("driverHome.walletAvailableBalance")}
+            </AppText>
+            <AppText variant="display">
+              {formatMoney(wallet.balance, wallet.currency, locale)}
+            </AppText>
+          </>
         ) : wallet === null ? (
-          <AppText variant="body" tone="muted">
-            {t("driverHome.walletNotActivatedBody")}
-          </AppText>
+          <View style={styles.inactiveRow}>
+            <View style={[styles.walletIcon, { backgroundColor: palette.surfaceElevated }]}>
+              <Ionicons name="wallet-outline" size={20} color={palette.textMuted} />
+            </View>
+            <View style={styles.inactiveText}>
+              <AppText variant="subheading">{t("driverSpace.nav.wallet")}</AppText>
+              <AppText variant="caption" tone="brand">
+                {t("driverHome.walletNotActivated")}
+              </AppText>
+              <AppText variant="caption" tone="muted">
+                {t("driverHome.walletNotActivatedBody")}
+              </AppText>
+            </View>
+          </View>
         ) : (
           <AppText variant="display">—</AppText>
         )}
@@ -93,7 +110,7 @@ export default function WalletScreen() {
                 />
                 <AppText variant="subheading">
                   {item.amount >= 0 ? "+" : ""}
-                  {item.currency} {item.amount.toFixed(2)}
+                  {formatMoney(item.amount, item.currency, locale)}
                 </AppText>
               </View>
             </AppCard>
@@ -107,6 +124,15 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   container: { gap: spacing.md },
   balanceCard: { gap: spacing.xs },
+  inactiveRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  walletIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inactiveText: { flex: 1, gap: 2 },
   list: { gap: spacing.sm, paddingBottom: spacing.xl },
   row: {
     flexDirection: "row",

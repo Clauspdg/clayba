@@ -1,5 +1,5 @@
 import { Role } from "@the-ride/types";
-import { useAuth, useTheme, useTranslation } from "@the-ride/hooks";
+import { useAuth, useTranslation } from "@the-ride/hooks";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
@@ -9,16 +9,16 @@ import { AppText } from "@/components/AppText";
 import { AppTextField } from "@/components/AppTextField";
 import { AuthHeader } from "@/components/AuthHeader";
 import { Screen } from "@/components/Screen";
-import { colors, radius, spacing } from "@/theme/tokens";
+import { usePalette } from "@/theme/usePalette";
+import { radius, spacing } from "@/theme/tokens";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
-  const { resolvedTheme } = useTheme();
+  const palette = usePalette();
   const { status, session, error, signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const isDark = resolvedTheme === "dark";
 
   useEffect(() => {
     if (status !== "authenticated" || !session) return;
@@ -49,9 +49,7 @@ export default function LoginScreen() {
         >
           <AuthHeader title={t("auth.loginTitle")} subtitle={t("auth.loginSubtitle")} />
 
-          <View
-            style={[styles.card, { backgroundColor: isDark ? colors.neutral900 : colors.neutral0 }]}
-          >
+          <View style={[styles.card, { backgroundColor: palette.surface }]}>
             <View style={styles.form}>
               <AppTextField
                 label={t("auth.emailLabel")}
@@ -69,8 +67,8 @@ export default function LoginScreen() {
                 onChangeText={setPassword}
               />
               {error && (
-                <View style={styles.errorBanner}>
-                  <AppText variant="body" style={styles.errorText}>
+                <View style={[styles.errorBanner, { backgroundColor: palette.dangerBg }]}>
+                  <AppText variant="body" tone="danger">
                     {error}
                   </AppText>
                 </View>
@@ -103,7 +101,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: radius.lg,
     padding: spacing.lg,
-    shadowColor: colors.neutral950,
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
@@ -111,11 +109,9 @@ const styles = StyleSheet.create({
   },
   form: { gap: spacing.md },
   errorBanner: {
-    backgroundColor: "#FDECEA",
     borderRadius: radius.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  errorText: { color: colors.danger },
   secondaryAction: { marginTop: spacing.lg },
 });

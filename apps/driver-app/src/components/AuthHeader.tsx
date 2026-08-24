@@ -33,8 +33,8 @@ export function AuthHeader({ title, subtitle }: { title: string; subtitle?: stri
 const styles = StyleSheet.create({
   container: { alignItems: "center", gap: spacing.xs, marginBottom: spacing.xl },
   iconWrap: {
-    width: 72,
-    height: 72,
+    width: 88,
+    height: 88,
     borderRadius: radius.lg,
     overflow: "hidden",
     marginBottom: spacing.sm,

@@ -20,6 +20,17 @@ export async function requestDriverLocationPermission(): Promise<LocationPermiss
   return canAskAgain ? "denied" : "permanently_denied";
 }
 
+/**
+ * Read-only permission check — never prompts, so Home can decide whether
+ * to show its "enable location" banner without ever looping a permission
+ * request on its own (the banner's own CTA is what actually calls
+ * `requestDriverLocationPermission`, on a real tap).
+ */
+export async function isDriverLocationGranted(): Promise<boolean> {
+  const { status } = await Location.getForegroundPermissionsAsync();
+  return status === Location.PermissionStatus.GRANTED;
+}
+
 export interface DriverLocationReading {
   lat: number;
   lng: number;

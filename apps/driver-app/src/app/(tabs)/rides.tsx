@@ -14,10 +14,23 @@ import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
 import { Screen } from "@/components/Screen";
 import { StatusBadge } from "@/components/StatusBadge";
+import { formatMoney } from "@/lib/currency";
 import { usePalette } from "@/theme/usePalette";
 import { radius, spacing } from "@/theme/tokens";
 
 type Filter = "all" | "completed" | "cancelled";
+
+const EMPTY_COPY: Record<Filter, { titleKey: string; bodyKey: string }> = {
+  all: { titleKey: "driverHome.ridesEmptyAllTitle", bodyKey: "driverHome.ridesEmptyAllBody" },
+  completed: {
+    titleKey: "driverHome.ridesEmptyCompletedTitle",
+    bodyKey: "driverHome.ridesEmptyCompletedBody",
+  },
+  cancelled: {
+    titleKey: "driverHome.ridesEmptyCancelledTitle",
+    bodyKey: "driverHome.ridesEmptyCancelledBody",
+  },
+};
 
 /**
  * CLAYBA Driver V3 — Rides tab (real `subscribeDriverTripHistory`, same
@@ -27,7 +40,7 @@ type Filter = "all" | "completed" | "cancelled";
  * back to Home rather than a dead end.
  */
 export default function RidesScreen() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const palette = usePalette();
   const { driver } = useDriverSession();
   const [trips, setTrips] = useState<Trip[] | null>(null);
@@ -87,8 +100,8 @@ export default function RidesScreen() {
           {filtered.length === 0 ? (
             <EmptyState
               icon="car-outline"
-              title={t("driverSpace.trips.emptyTitle")}
-              body={t("driverSpace.trips.emptyBody")}
+              title={t(EMPTY_COPY[filter].titleKey)}
+              body={t(EMPTY_COPY[filter].bodyKey)}
               action={{ label: t("driverHome.navHome"), onPress: () => router.replace("/home") }}
             />
           ) : (
@@ -117,9 +130,13 @@ export default function RidesScreen() {
                     />
                     <AppText variant="subheading">
                       {item.finalFareBreakdown
-                        ? `${item.finalFareBreakdown.total.toFixed(2)} ${item.finalFareBreakdown.currency}`
+                        ? formatMoney(
+                            item.finalFareBreakdown.total,
+                            item.finalFareBreakdown.currency,
+                            locale,
+                          )
                         : item.fareAmount !== undefined
-                          ? `$${item.fareAmount.toFixed(2)}`
+                          ? formatMoney(item.fareAmount, "USD", locale)
                           : "—"}
                     </AppText>
                   </View>

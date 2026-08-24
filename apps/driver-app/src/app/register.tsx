@@ -1,4 +1,4 @@
-import { useTheme, useTranslation } from "@the-ride/hooks";
+import { useTranslation } from "@the-ride/hooks";
 import { router } from "expo-router";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 
@@ -6,12 +6,12 @@ import { AppButton } from "@/components/AppButton";
 import { AppTextField } from "@/components/AppTextField";
 import { AuthHeader } from "@/components/AuthHeader";
 import { Screen } from "@/components/Screen";
-import { colors, radius, spacing } from "@/theme/tokens";
+import { usePalette } from "@/theme/usePalette";
+import { radius, spacing } from "@/theme/tokens";
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const palette = usePalette();
 
   return (
     <Screen style={styles.screen}>
@@ -26,9 +26,7 @@ export default function RegisterScreen() {
         >
           <AuthHeader title={t("auth.registerTitle")} subtitle={t("auth.registerSubtitle")} />
 
-          <View
-            style={[styles.card, { backgroundColor: isDark ? colors.neutral900 : colors.neutral0 }]}
-          >
+          <View style={[styles.card, { backgroundColor: palette.surface }]}>
             <View style={styles.form}>
               <AppTextField label={t("auth.fullNameLabel")} autoCapitalize="words" />
               <AppTextField
@@ -69,7 +67,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: radius.lg,
     padding: spacing.lg,
-    shadowColor: colors.neutral950,
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
