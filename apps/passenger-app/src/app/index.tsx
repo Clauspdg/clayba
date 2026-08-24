@@ -17,7 +17,7 @@ export default function SplashScreen() {
 
     const timer = setTimeout(() => {
       const isPassenger = status === "authenticated" && session?.claims.role === Role.PASSENGER;
-      router.replace(isPassenger ? "/booking" : "/welcome");
+      router.replace(isPassenger ? "/(tabs)/home" : "/welcome");
     }, 1200);
     return () => clearTimeout(timer);
   }, [status, session]);

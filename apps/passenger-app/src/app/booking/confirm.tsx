@@ -1,6 +1,7 @@
-import { DEFAULT_VEHICLE_CATEGORIES } from "@the-ride/types";
-import { useTranslation } from "@the-ride/hooks";
+import { createTripRequest } from "@the-ride/firebase/client";
+import { useAuth, useTranslation } from "@the-ride/hooks";
 import { router } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { AppButton } from "@/components/AppButton";
@@ -8,29 +9,66 @@ import { AppFareBreakdown } from "@/components/AppFareBreakdown";
 import { AppStatusView } from "@/components/AppStatusView";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
+import { passengerFirestore } from "@/lib/firebase-client";
 import { useBookingStore } from "@/stores/booking-store";
 import { spacing } from "@/theme/tokens";
 
-/** Booking Confirmation (Sprint 3, Part 1/8) — final review before requesting a ride. */
+/** Booking Confirmation — final review before submitting a real ride request. */
 export default function ConfirmBookingScreen() {
   const { t } = useTranslation();
-  const { pickup, destination, vehicleCategoryId, fareEstimate, confirm, cancel } = useBookingStore();
+  const { session } = useAuth();
+  const {
+    pickup,
+    destination,
+    stops,
+    route,
+    vehicleCategoryId,
+    selectedCategory,
+    fareEstimate,
+    confirm,
+    cancel,
+  } = useBookingStore();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!pickup || !destination || !vehicleCategoryId || !fareEstimate) {
-    return <AppStatusView state="error" title={t("booking.missingEstimateTitle")} description={t("booking.missingEstimateBody")} />;
+  if (!pickup || !destination || !vehicleCategoryId || !fareEstimate || !route) {
+    return (
+      <AppStatusView
+        state="error"
+        title={t("booking.missingEstimateTitle")}
+        description={t("booking.missingEstimateBody")}
+      />
+    );
   }
 
-  const category = DEFAULT_VEHICLE_CATEGORIES.find((c) => c.id === vehicleCategoryId);
-
-  function handleConfirm() {
-    confirm();
-    router.push("/booking/searching");
+  async function handleConfirm() {
+    if (!session || !pickup || !destination || !vehicleCategoryId || !fareEstimate || !route)
+      return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const requestId = await createTripRequest(passengerFirestore, {
+        passengerId: session.uid,
+        pickup,
+        dropoff: destination,
+        stops,
+        vehicleCategoryId,
+        estimatedDistanceMeters: route.distanceMeters,
+        estimatedDurationSeconds: route.durationSeconds,
+        fareEstimate,
+      });
+      confirm(requestId);
+      router.push("/booking/searching");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("booking.permissionErrorBody"));
+      setSubmitting(false);
+    }
   }
 
   function handleCancel() {
     cancel();
     router.dismissAll();
-    router.replace("/booking");
+    router.replace("/(tabs)/home");
   }
 
   return (
@@ -38,16 +76,22 @@ export default function ConfirmBookingScreen() {
       <AppText variant="heading">{t("booking.confirmTitle")}</AppText>
 
       <View style={styles.section}>
-        <AppText variant="muted">{t("booking.pickupLabel")}</AppText>
+        <AppText variant="caption" tone="muted">
+          {t("booking.pickupLabel")}
+        </AppText>
         <AppText variant="body">{pickup.address}</AppText>
       </View>
       <View style={styles.section}>
-        <AppText variant="muted">{t("booking.destinationLabel")}</AppText>
+        <AppText variant="caption" tone="muted">
+          {t("booking.destinationLabel")}
+        </AppText>
         <AppText variant="body">{destination.address}</AppText>
       </View>
       <View style={styles.section}>
-        <AppText variant="muted">{t("booking.vehicleLabel")}</AppText>
-        <AppText variant="body">{category?.name}</AppText>
+        <AppText variant="caption" tone="muted">
+          {t("booking.vehicleLabel")}
+        </AppText>
+        <AppText variant="body">{selectedCategory?.name}</AppText>
       </View>
 
       <AppFareBreakdown
@@ -62,9 +106,24 @@ export default function ConfirmBookingScreen() {
         }}
       />
 
+      {error && (
+        <AppText variant="caption" tone="danger">
+          {error}
+        </AppText>
+      )}
+
       <View style={styles.actions}>
-        <AppButton label={t("booking.confirmBooking")} onPress={handleConfirm} />
-        <AppButton label={t("booking.cancelBooking")} variant="outline" onPress={handleCancel} />
+        <AppButton
+          label={t("booking.confirmBooking")}
+          isLoading={submitting}
+          onPress={() => void handleConfirm()}
+        />
+        <AppButton
+          label={t("booking.cancelBooking")}
+          variant="outline"
+          disabled={submitting}
+          onPress={handleCancel}
+        />
       </View>
     </Screen>
   );

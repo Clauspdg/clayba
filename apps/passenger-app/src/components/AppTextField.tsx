@@ -1,6 +1,9 @@
-import { View, TextInput, Text, StyleSheet, type TextInputProps } from "react-native";
+import { View, TextInput, StyleSheet, type TextInputProps } from "react-native";
 
-import { colors, radius, spacing } from "../theme/tokens";
+import { usePalette } from "@/theme/usePalette";
+import { radius, spacing } from "@/theme/tokens";
+
+import { AppText } from "./AppText";
 
 export interface AppTextFieldProps extends TextInputProps {
   label: string;
@@ -8,32 +11,39 @@ export interface AppTextFieldProps extends TextInputProps {
 }
 
 export function AppTextField({ label, errorText, style, ...props }: AppTextFieldProps) {
+  const palette = usePalette();
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <AppText variant="caption" style={styles.label}>
+        {label}
+      </AppText>
       <TextInput
-        placeholderTextColor={colors.neutral400}
-        style={[styles.input, errorText ? styles.inputError : null, style]}
+        placeholderTextColor={palette.textMuted}
+        style={[
+          styles.input,
+          { borderColor: errorText ? palette.danger : palette.border, color: palette.textPrimary },
+          style,
+        ]}
         accessibilityLabel={label}
         {...props}
       />
-      {errorText && <Text style={styles.error}>{errorText}</Text>}
+      {errorText && (
+        <AppText variant="caption" tone="danger">
+          {errorText}
+        </AppText>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { gap: spacing.xs },
-  label: { fontSize: 14, fontWeight: "500", color: colors.neutral900 },
+  label: { fontWeight: "500" },
   input: {
     height: 48,
     borderWidth: 1,
-    borderColor: colors.neutral200,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     fontSize: 15,
-    color: colors.neutral900,
   },
-  inputError: { borderColor: colors.danger },
-  error: { fontSize: 12, color: colors.danger },
 });

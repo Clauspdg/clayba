@@ -1,50 +1,74 @@
-import { Pressable, StyleSheet, Text, type PressableProps } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from "react-native";
 
-import { colors, radius, spacing } from "../theme/tokens";
+import { usePalette } from "@/theme/usePalette";
+import { buttonHeight, radius, spacing } from "@/theme/tokens";
 
 export interface AppButtonProps extends PressableProps {
   label: string;
-  variant?: "primary" | "outline";
+  variant?: "primary" | "outline" | "danger" | "ghost";
+  size?: "md" | "lg";
+  /** Shows a spinner in place of the label and forces `disabled` — for real async actions, never a fake local delay. */
+  isLoading?: boolean;
 }
 
 export function AppButton({
   label,
   variant = "primary",
+  size = "md",
   style,
   disabled,
+  isLoading,
   ...props
 }: AppButtonProps) {
+  const palette = usePalette();
+  const isDisabled = Boolean(disabled) || Boolean(isLoading);
+
+  const variantStyle = {
+    primary: { backgroundColor: palette.primary, borderWidth: 0 },
+    outline: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: palette.border },
+    ghost: { backgroundColor: "transparent", borderWidth: 0 },
+    danger: { backgroundColor: palette.danger, borderWidth: 0 },
+  }[variant];
+
+  const labelColor = {
+    primary: palette.primaryForeground,
+    outline: palette.textPrimary,
+    ghost: palette.textPrimary,
+    danger: "#FFFFFF",
+  }[variant];
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: Boolean(disabled) }}
-      disabled={disabled}
+      accessibilityState={{ disabled: isDisabled }}
+      disabled={isDisabled}
       style={(state) => [
         styles.base,
-        variant === "primary" ? styles.primary : styles.outline,
-        state.pressed && styles.pressed,
-        disabled && styles.disabled,
+        { height: buttonHeight[size] },
+        variantStyle,
+        state.pressed && !isDisabled && styles.pressed,
+        isDisabled && styles.disabled,
         typeof style === "function" ? style(state) : style,
       ]}
       {...props}
     >
-      <Text style={variant === "primary" ? styles.primaryLabel : styles.outlineLabel}>{label}</Text>
+      {isLoading ? (
+        <ActivityIndicator color={labelColor} />
+      ) : (
+        <Text style={[styles.label, { color: labelColor }]}>{label}</Text>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    height: 48,
     borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
   },
-  primary: { backgroundColor: colors.brand },
-  outline: { borderWidth: 1, borderColor: colors.neutral200 },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.4 },
-  primaryLabel: { color: colors.brandForeground, fontSize: 16, fontWeight: "600" },
-  outlineLabel: { color: colors.neutral900, fontSize: 16, fontWeight: "600" },
+  label: { fontSize: 16, fontWeight: "600" },
 });

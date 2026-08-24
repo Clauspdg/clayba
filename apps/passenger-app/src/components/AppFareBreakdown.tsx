@@ -1,7 +1,11 @@
+import { useTranslation } from "@the-ride/hooks";
 import type { FareBreakdown } from "@the-ride/types";
 import { StyleSheet, View } from "react-native";
 
-import { colors, spacing } from "../theme/tokens";
+import { formatMoney } from "@/lib/currency";
+import { usePalette } from "@/theme/usePalette";
+import { spacing } from "@/theme/tokens";
+
 import { AppText } from "./AppText";
 
 export interface AppFareBreakdownProps {
@@ -16,8 +20,10 @@ export interface AppFareBreakdownProps {
   };
 }
 
-/** Itemized fare list on the Confirm Booking screen (Part 1: "View estimated fare"). */
+/** Itemized fare list on the Confirm Booking screen. */
 export function AppFareBreakdown({ breakdown, labels }: AppFareBreakdownProps) {
+  const palette = usePalette();
+  const { locale } = useTranslation();
   const rows: Array<[string, number]> = [
     [labels.baseFare, breakdown.baseFare],
     [labels.distanceFare, breakdown.distanceFare],
@@ -30,16 +36,16 @@ export function AppFareBreakdown({ breakdown, labels }: AppFareBreakdownProps) {
     <View style={styles.container}>
       {rows.map(([label, amount]) => (
         <View key={label} style={styles.row}>
-          <AppText variant="muted">{label}</AppText>
-          <AppText variant="body">
-            {breakdown.currency} {amount.toFixed(2)}
+          <AppText variant="caption" tone="muted">
+            {label}
           </AppText>
+          <AppText variant="body">{formatMoney(amount, breakdown.currency, locale)}</AppText>
         </View>
       ))}
-      <View style={[styles.row, styles.totalRow]}>
+      <View style={[styles.row, styles.totalRow, { borderTopColor: palette.border }]}>
         <AppText variant="subheading">{labels.total}</AppText>
         <AppText variant="subheading">
-          {breakdown.currency} {breakdown.total.toFixed(2)}
+          {formatMoney(breakdown.total, breakdown.currency, locale)}
         </AppText>
       </View>
     </View>
@@ -49,5 +55,5 @@ export function AppFareBreakdown({ breakdown, labels }: AppFareBreakdownProps) {
 const styles = StyleSheet.create({
   container: { gap: spacing.xs },
   row: { flexDirection: "row", justifyContent: "space-between" },
-  totalRow: { marginTop: spacing.xs, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.neutral200 },
+  totalRow: { marginTop: spacing.xs, paddingTop: spacing.sm, borderTopWidth: 1 },
 });

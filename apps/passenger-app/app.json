@@ -3,10 +3,10 @@
     "name": "Clayba",
     "slug": "the-ride-passenger",
     "scheme": "theride",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -24,10 +24,26 @@
         "backgroundColor": "#0B1A2D"
       },
       "package": "com.theride.passenger",
-      "versionCode": 6
+      "versionCode": 7
     },
     "owner": "clauspp",
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "CLAYBA uses your location to find nearby drivers and show your pickup point on the map."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0B1A2D"
+        }
+      ]
+    ],
     "extra": {
       "router": {
         "origin": false

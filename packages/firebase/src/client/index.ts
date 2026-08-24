@@ -20,3 +20,4 @@ export * from "./notifications";
 export * from "./support-tickets";
 export * from "./user-profile";
 export * from "./platform-settings";
+export * from "./vehicle-categories";

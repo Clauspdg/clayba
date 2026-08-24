@@ -188,7 +188,13 @@ function main() {
   console.log("Wrote", localPropertiesPath);
 
   step("5/6 — gradlew assembleRelease");
-  const gradlew = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
+  // Explicit `.\` prefix on Windows: some environments set
+  // `NoDefaultCurrentDirectoryInExePath`, which disables cmd.exe's
+  // implicit current-directory search for a bare `gradlew.bat` — it then
+  // fails with "'gradlew.bat' is not recognized..." even though `cwd` is
+  // correctly `androidDir` and the file is right there. A `.\`-qualified
+  // path bypasses that PATH-style lookup entirely and resolves directly.
+  const gradlew = process.platform === "win32" ? ".\\gradlew.bat" : "./gradlew";
   const gradle = spawnSync(gradlew, ["assembleRelease", "--no-daemon"], {
     cwd: androidDir,
     env,
