@@ -16,6 +16,8 @@ interface GooglePlacesAutocompleteResponse {
     description: string;
     structured_formatting?: { main_text: string; secondary_text?: string };
   }>;
+  status: string;
+  error_message?: string;
 }
 
 interface GoogleGeocodingResponse {
@@ -24,6 +26,30 @@ interface GoogleGeocodingResponse {
     place_id: string;
     geometry: { location: { lat: number; lng: number } };
   }>;
+  status: string;
+  error_message?: string;
+}
+
+/**
+ * Google's Places/Geocoding APIs return HTTP 200 even for a rejected
+ * request — a missing/invalid/restricted API key comes back as
+ * `{"predictions": [], "status": "REQUEST_DENIED", "error_message": "..."}`,
+ * not an HTTP error. Every caller here used to only check `response.ok`
+ * and then map `predictions`/`results` directly, so a bad key silently
+ * became "zero results" — indistinguishable in the UI from a real empty
+ * search (confirmed root cause of "Nassau" returning no results with a
+ * blank key). `"ZERO_RESULTS"` is the one non-`"OK"` status that IS a
+ * real empty result, not a failure, and must not throw.
+ */
+function assertGoogleStatusOk(
+  status: string,
+  errorMessage: string | undefined,
+  context: string,
+): void {
+  if (status === "OK" || status === "ZERO_RESULTS") return;
+  throw new Error(
+    `Google ${context} failed with status ${status}${errorMessage ? `: ${errorMessage}` : ""}`,
+  );
 }
 
 interface GoogleDirectionsResponse {
@@ -72,6 +98,7 @@ export class GoogleMapsProvider implements MapProviderClient {
       throw new Error(`Google Places Autocomplete failed with status ${response.status}`);
 
     const data = (await response.json()) as GooglePlacesAutocompleteResponse;
+    assertGoogleStatusOk(data.status, data.error_message, "Places Autocomplete");
     return data.predictions.map((prediction) => ({
       placeId: prediction.place_id,
       description: prediction.description,
@@ -86,6 +113,7 @@ export class GoogleMapsProvider implements MapProviderClient {
     if (!response.ok) throw new Error(`Google Geocoding failed with status ${response.status}`);
 
     const data = (await response.json()) as GoogleGeocodingResponse;
+    assertGoogleStatusOk(data.status, data.error_message, "Geocoding");
     const result = data.results[0];
     if (!result) throw new Error(`No geocoding result for address "${address}"`);
 
@@ -103,6 +131,7 @@ export class GoogleMapsProvider implements MapProviderClient {
       throw new Error(`Google Reverse Geocoding failed with status ${response.status}`);
 
     const data = (await response.json()) as GoogleGeocodingResponse;
+    assertGoogleStatusOk(data.status, data.error_message, "Reverse Geocoding");
     const result = data.results[0];
     if (!result)
       throw new Error(`No reverse geocoding result for location ${formatLatLng(location)}`);

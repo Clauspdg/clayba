@@ -37,14 +37,31 @@ export default function AccountScreen() {
         )}
       </View>
 
-      <Pressable onPress={() => router.push("/wallet")}>
+      <Pressable onPress={() => router.push("/wallet")} disabled={wallet === undefined}>
         <AppCard variant="elevated" style={styles.walletCard}>
-          <AppText variant="caption" tone="muted">
-            {t("wallet.balance")}
-          </AppText>
-          <AppText variant="display">
-            {wallet ? formatMoney(wallet.balance, wallet.currency, locale) : "—"}
-          </AppText>
+          {wallet === undefined ? (
+            <AppText variant="body" tone="muted">
+              {t("common.loading")}
+            </AppText>
+          ) : wallet === null ? (
+            <>
+              <AppText variant="caption" tone="muted">
+                {t("wallet.balance")}
+              </AppText>
+              <AppText variant="subheading" tone="muted">
+                {t("wallet.notActivated")}
+              </AppText>
+            </>
+          ) : (
+            <>
+              <AppText variant="caption" tone="muted">
+                {t("wallet.balance")}
+              </AppText>
+              <AppText variant="display">
+                {formatMoney(wallet.balance, wallet.currency, locale)}
+              </AppText>
+            </>
+          )}
         </AppCard>
       </Pressable>
 

@@ -28,5 +28,5 @@ export interface MapProviderClient {
 /** Matches the global `fetch` signature — injectable so providers are unit-testable without a live network call. */
 export type FetchLike = (
   input: string,
-  init?: { signal?: AbortSignal },
+  init?: { signal?: AbortSignal; headers?: Record<string, string> },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;

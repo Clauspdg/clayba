@@ -4,10 +4,13 @@ import {
   deleteFavoritePlace,
   getOrCreatePassengerProfile,
   subscribeFavoritePlaces,
+  updateFavoritePlace,
 } from "@the-ride/firebase/client";
 import type { FavoritePlace } from "@the-ride/types";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { AppButton } from "@/components/AppButton";
 import { AppCard } from "@/components/AppCard";
@@ -19,22 +22,29 @@ import { LoadingState } from "@/components/LoadingState";
 import { Screen } from "@/components/Screen";
 import { passengerFirestore } from "@/lib/firebase-client";
 import { getCurrentLocation } from "@/lib/location-tracking";
+import { useBookingStore } from "@/stores/booking-store";
+import { usePalette } from "@/theme/usePalette";
 import { spacing } from "@/theme/tokens";
 
 /** Saved Places — real `passengers/{uid}/favoritePlaces`, same functions the web passenger app uses. */
 export default function SavedPlacesScreen() {
   const { t } = useTranslation();
+  const palette = usePalette();
   const { session } = useAuth();
   const [places, setPlaces] = useState<FavoritePlace[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [label, setLabel] = useState("");
   const [address, setAddress] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const favoriteDraft = useBookingStore((s) => s.favoriteDraft);
+  const clearFavoriteDraft = useBookingStore((s) => s.clearFavoriteDraft);
 
   useEffect(() => {
     if (!session) return;
@@ -56,11 +66,31 @@ export default function SavedPlacesScreen() {
     };
   }, [session]);
 
+  // Consumes the result of `booking/location-search.tsx`'s `target=favorite`
+  // mode — set there on select, cleared here once read.
+  useEffect(() => {
+    if (!formOpen || !favoriteDraft) return;
+    setAddress(
+      favoriteDraft.address ?? `${favoriteDraft.lat.toFixed(5)}, ${favoriteDraft.lng.toFixed(5)}`,
+    );
+    setCoords({ lat: favoriteDraft.lat, lng: favoriteDraft.lng });
+    clearFavoriteDraft();
+  }, [formOpen, favoriteDraft, clearFavoriteDraft]);
+
   function openAdd() {
+    setEditingId(null);
     setLabel("");
     setAddress("");
     setCoords(null);
-    setAdding(true);
+    setFormOpen(true);
+  }
+
+  function openEdit(place: FavoritePlace) {
+    setEditingId(place.id);
+    setLabel(place.label);
+    setAddress(place.address);
+    setCoords({ lat: place.lat, lng: place.lng });
+    setFormOpen(true);
   }
 
   async function handleUseCurrentLocation() {
@@ -77,8 +107,16 @@ export default function SavedPlacesScreen() {
     if (!session || !coords) return;
     setSaving(true);
     try {
-      await addFavoritePlace(passengerFirestore, session.uid, { label, address, ...coords });
-      setAdding(false);
+      if (editingId) {
+        await updateFavoritePlace(passengerFirestore, session.uid, editingId, {
+          label,
+          address,
+          ...coords,
+        });
+      } else {
+        await addFavoritePlace(passengerFirestore, session.uid, { label, address, ...coords });
+      }
+      setFormOpen(false);
     } finally {
       setSaving(false);
     }
@@ -94,10 +132,12 @@ export default function SavedPlacesScreen() {
     }
   }
 
-  if (adding) {
+  if (formOpen) {
     return (
       <Screen style={styles.container}>
-        <AppText variant="title">{t("savedPlaces.addPlace")}</AppText>
+        <AppText variant="title">
+          {editingId ? t("savedPlaces.editPlace") : t("savedPlaces.addPlace")}
+        </AppText>
         <AppText variant="body" tone="muted">
           {t("savedPlaces.addPlaceDescription")}
         </AppText>
@@ -108,12 +148,24 @@ export default function SavedPlacesScreen() {
           value={label}
           onChangeText={setLabel}
         />
-        <AppTextField
-          label={t("savedPlaces.addressField")}
-          placeholder={t("savedPlaces.addressPlaceholder")}
-          value={address}
-          onChangeText={setAddress}
-        />
+
+        <Pressable
+          onPress={() =>
+            router.push({ pathname: "/booking/location-search", params: { target: "favorite" } })
+          }
+          style={[styles.addressField, { backgroundColor: palette.surfaceElevated }]}
+        >
+          <Ionicons name="search" size={18} color={palette.textMuted} />
+          <AppText
+            variant="body"
+            tone={address ? "default" : "muted"}
+            numberOfLines={1}
+            style={styles.addressText}
+          >
+            {address || t("savedPlaces.searchAddressCta")}
+          </AppText>
+        </Pressable>
+
         <AppButton
           label={t("savedPlaces.useCurrentLocation")}
           variant="outline"
@@ -136,7 +188,7 @@ export default function SavedPlacesScreen() {
           <AppButton
             label={t("common.cancel")}
             variant="outline"
-            onPress={() => setAdding(false)}
+            onPress={() => setFormOpen(false)}
           />
         </View>
       </Screen>
@@ -147,7 +199,12 @@ export default function SavedPlacesScreen() {
     <Screen style={styles.container}>
       <View style={styles.header}>
         <AppText variant="title">{t("passengerNav.savedPlaces")}</AppText>
-        <AppButton label={t("savedPlaces.addPlace")} size="md" onPress={openAdd} />
+        <AppButton
+          label={t("savedPlaces.addPlace")}
+          size="md"
+          onPress={openAdd}
+          style={styles.addButton}
+        />
       </View>
       <AppText variant="body" tone="muted">
         {t("savedPlaces.description")}
@@ -163,12 +220,19 @@ export default function SavedPlacesScreen() {
         <ScrollView contentContainerStyle={styles.list}>
           {places.map((place) => (
             <AppCard key={place.id} style={styles.placeCard}>
-              <View style={styles.placeText}>
+              <Pressable style={styles.placeText} onPress={() => openEdit(place)}>
                 <AppText variant="subheading">{place.label}</AppText>
                 <AppText variant="body" tone="muted" numberOfLines={1}>
                   {place.address}
                 </AppText>
-              </View>
+              </Pressable>
+              <Pressable
+                onPress={() => openEdit(place)}
+                style={styles.iconButton}
+                accessibilityRole="button"
+              >
+                <Ionicons name="pencil-outline" size={18} color={palette.textSecondary} />
+              </Pressable>
               <AppButton
                 label={t("common.delete")}
                 variant="ghost"
@@ -186,9 +250,20 @@ export default function SavedPlacesScreen() {
 
 const styles = StyleSheet.create({
   container: { gap: spacing.md },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  header: { gap: spacing.sm },
+  addButton: { alignSelf: "flex-start" },
   list: { gap: spacing.sm, paddingBottom: spacing.xl },
-  placeCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  placeCard: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   placeText: { flex: 1, gap: 2 },
+  iconButton: { padding: spacing.xs },
+  addressField: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: 14,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  addressText: { flex: 1 },
   formActions: { gap: spacing.sm, marginTop: spacing.sm },
 });

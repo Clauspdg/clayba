@@ -27,7 +27,7 @@ export default function SplashScreen() {
       {/* eslint-disable-next-line @typescript-eslint/no-require-imports -- RN requires static require() for bundled images */}
       <Image source={require("../../assets/splash.png")} style={styles.logo} resizeMode="contain" />
       <AppText variant="subheading" style={styles.appName}>
-        {t("common.appName")}
+        {t("common.passengerAppName")}
       </AppText>
     </Screen>
   );

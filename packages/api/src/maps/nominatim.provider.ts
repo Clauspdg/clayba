@@ -27,6 +27,17 @@ function formatLatLng(location: GeoLocation): string {
   return `${location.lat},${location.lng}`;
 }
 
+/**
+ * Nominatim's usage policy (https://operations.osmfoundation.org/policies/nominatim/)
+ * requires a real identifying `User-Agent` on every request and permits
+ * blocking/throttling requests that don't send one. The platform default
+ * `fetch` header (blank on some engines, a generic one on others) doesn't
+ * satisfy that — worth setting explicitly now that this provider is an
+ * active fallback (not just a dev-only convenience), so passenger-app
+ * searches don't start silently failing under real usage.
+ */
+const NOMINATIM_HEADERS = { "User-Agent": "CLAYBA-Passenger/1.0 (+React Native/Expo)" };
+
 function splitDisplayName(displayName: string): { mainText: string; secondaryText?: string } {
   const commaIndex = displayName.indexOf(",");
   if (commaIndex === -1) return { mainText: displayName };
@@ -92,7 +103,9 @@ export class NominatimProvider implements MapProviderClient {
       params.set("bounded", "0");
     }
 
-    const response = await this.fetchImpl(`${this.geocodeBaseUrl}/search?${params.toString()}`);
+    const response = await this.fetchImpl(`${this.geocodeBaseUrl}/search?${params.toString()}`, {
+      headers: NOMINATIM_HEADERS,
+    });
     if (!response.ok) throw new Error(`Nominatim search failed with status ${response.status}`);
 
     const data = (await response.json()) as NominatimResult[];
@@ -105,7 +118,9 @@ export class NominatimProvider implements MapProviderClient {
 
   async geocode(address: string): Promise<GeocodingResult> {
     const params = new URLSearchParams({ q: address, format: "jsonv2", limit: "1" });
-    const response = await this.fetchImpl(`${this.geocodeBaseUrl}/search?${params.toString()}`);
+    const response = await this.fetchImpl(`${this.geocodeBaseUrl}/search?${params.toString()}`, {
+      headers: NOMINATIM_HEADERS,
+    });
     if (!response.ok) throw new Error(`Nominatim search failed with status ${response.status}`);
 
     const data = (await response.json()) as NominatimResult[];
@@ -125,7 +140,9 @@ export class NominatimProvider implements MapProviderClient {
       lon: String(location.lng),
       format: "jsonv2",
     });
-    const response = await this.fetchImpl(`${this.geocodeBaseUrl}/reverse?${params.toString()}`);
+    const response = await this.fetchImpl(`${this.geocodeBaseUrl}/reverse?${params.toString()}`, {
+      headers: NOMINATIM_HEADERS,
+    });
     if (!response.ok)
       throw new Error(`Nominatim reverse geocode failed with status ${response.status}`);
 

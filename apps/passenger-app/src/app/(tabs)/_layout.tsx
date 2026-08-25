@@ -48,7 +48,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: t("passengerNav.dashboard"),
+          title: t("passengerNav.tabHome"),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? ICONS.home!.active : ICONS.home!.inactive}
@@ -61,7 +61,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="rides"
         options={{
-          title: t("passengerNav.rideHistory"),
+          title: t("passengerNav.tabRides"),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? ICONS.rides!.active : ICONS.rides!.inactive}
@@ -74,7 +74,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="saved"
         options={{
-          title: t("passengerNav.savedPlaces"),
+          title: t("passengerNav.tabSaved"),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? ICONS.saved!.active : ICONS.saved!.inactive}
@@ -87,7 +87,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          title: t("passengerNav.profile"),
+          title: t("passengerNav.tabProfile"),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? ICONS.account!.active : ICONS.account!.inactive}

@@ -31,7 +31,15 @@ export function BottomSheetPanel({
     Animated.timing(progress, {
       toValue: 1,
       duration: 260,
-      useNativeDriver: true,
+      // JS-driven rather than `useNativeDriver: true`: while investigating
+      // an apparent real-device touch issue on this panel's content
+      // (root cause turned out to be unrelated to this animation), this
+      // was changed as a precaution and then real-device-verified end to
+      // end with it JS-driven. Left as-is since the cost — one 260ms,
+      // once-per-mount transition not running on the native thread — is
+      // negligible, and re-verifying `useNativeDriver: true` would need
+      // another full device test pass.
+      useNativeDriver: false,
     }).start();
   }, [contentKey, progress]);
 

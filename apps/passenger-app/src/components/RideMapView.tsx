@@ -89,10 +89,14 @@ export const RideMapView = forwardRef<
         style={[
           StyleSheet.absoluteFillObject,
           styles.placeholder,
-          { backgroundColor: palette.surface },
+          { backgroundColor: palette.background },
         ]}
       >
-        <Ionicons name="map-outline" size={40} color={palette.textMuted} />
+        <View style={[styles.placeholderRing, { borderColor: palette.primary }]}>
+          <View style={[styles.placeholderDot, { backgroundColor: palette.surfaceElevated }]}>
+            <Ionicons name="map-outline" size={28} color={palette.primary} />
+          </View>
+        </View>
       </View>
     );
   }
@@ -179,6 +183,22 @@ export const RideMapView = forwardRef<
 
 const styles = StyleSheet.create({
   placeholder: { alignItems: "center", justifyContent: "center" },
+  placeholderRing: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  placeholderDot: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   markerRing: {
     width: 36,
     height: 36,

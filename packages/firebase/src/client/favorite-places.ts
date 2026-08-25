@@ -8,6 +8,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -49,6 +50,15 @@ export async function addFavoritePlace(
     passengerId: userId,
     createdAt: serverTimestamp(),
   });
+}
+
+export async function updateFavoritePlace(
+  db: Firestore,
+  userId: string,
+  placeId: string,
+  place: NewFavoritePlace,
+): Promise<void> {
+  await updateDoc(doc(db, "passengers", userId, "favoritePlaces", placeId), { ...place });
 }
 
 export async function deleteFavoritePlace(

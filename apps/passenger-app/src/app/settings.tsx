@@ -1,23 +1,21 @@
-import { useAuth, useTranslation } from "@the-ride/hooks";
+import { LOCALES, LOCALE_LABELS, useAuth, useTheme, useTranslation } from "@the-ride/hooks";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { AppCard } from "@/components/AppCard";
 import { AppText } from "@/components/AppText";
+import { ListDivider, ListRow } from "@/components/ListRow";
 import { Screen } from "@/components/Screen";
+import { usePalette } from "@/theme/usePalette";
+import { radius, spacing } from "@/theme/tokens";
 
+/** Compact segmented controls for Appearance/Language, same pattern as CLAYBA Driver's settings screen — one design system, not a second one for Passenger. */
 export default function SettingsScreen() {
   const { t } = useTranslation();
+  const palette = usePalette();
+  const { mode, setMode } = useTheme();
+  const { locale, setLocale } = useTranslation();
   const { signOut } = useAuth();
-
-  const items: { label: string; href: "/language" | "/notifications" | "/help" | "/privacy" | "/terms" | "/about" }[] = [
-    { label: t("settings.language"), href: "/language" },
-    { label: t("settings.notifications"), href: "/notifications" },
-    { label: t("settings.help"), href: "/help" },
-    { label: t("settings.privacy"), href: "/privacy" },
-    { label: t("settings.terms"), href: "/terms" },
-    { label: t("settings.about"), href: "/about" },
-  ];
 
   async function handleLogOut() {
     await signOut();
@@ -25,26 +23,110 @@ export default function SettingsScreen() {
   }
 
   return (
-    <Screen>
-      <AppText variant="heading">{t("settings.title")}</AppText>
-      <View style={styles.list}>
-        {items.map((item) => (
-          <Pressable key={item.href} onPress={() => router.push(item.href)}>
-            <AppCard>
-              <AppText variant="body">{item.label}</AppText>
-            </AppCard>
-          </Pressable>
-        ))}
-        <Pressable onPress={() => void handleLogOut()}>
-          <AppCard>
-            <AppText variant="body">{t("settings.logOut")}</AppText>
-          </AppCard>
-        </Pressable>
+    <Screen style={styles.container}>
+      <AppText variant="title">{t("settings.title")}</AppText>
+
+      <View style={styles.section}>
+        <AppText variant="caption" tone="muted">
+          {t("settings.appearance")}
+        </AppText>
+        <View style={[styles.segmented, { backgroundColor: palette.surfaceElevated }]}>
+          {(["light", "dark", "system"] as const).map((option) => (
+            <Pressable
+              key={option}
+              onPress={() => setMode(option)}
+              style={[styles.segment, mode === option && { backgroundColor: palette.primary }]}
+            >
+              <AppText
+                variant="caption"
+                style={mode === option ? { color: palette.primaryForeground } : undefined}
+              >
+                {t(`common.${option}`)}
+              </AppText>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <AppText variant="caption" tone="muted">
+          {t("settings.language")}
+        </AppText>
+        <View style={[styles.segmented, { backgroundColor: palette.surfaceElevated }]}>
+          {LOCALES.map((code) => (
+            <Pressable
+              key={code}
+              onPress={() => setLocale(code)}
+              style={[styles.segment, locale === code && { backgroundColor: palette.primary }]}
+            >
+              <AppText
+                variant="caption"
+                style={locale === code ? { color: palette.primaryForeground } : undefined}
+              >
+                {LOCALE_LABELS[code]}
+              </AppText>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <AppCard style={styles.list}>
+          <ListRow
+            icon="notifications-outline"
+            label={t("settings.notifications")}
+            onPress={() => router.push("/notifications")}
+          />
+          <ListDivider />
+          <ListRow
+            icon="help-circle-outline"
+            label={t("settings.help")}
+            onPress={() => router.push("/help")}
+          />
+          <ListDivider />
+          <ListRow
+            icon="shield-checkmark-outline"
+            label={t("settings.privacy")}
+            onPress={() => router.push("/privacy")}
+          />
+          <ListDivider />
+          <ListRow
+            icon="document-text-outline"
+            label={t("settings.terms")}
+            onPress={() => router.push("/terms")}
+          />
+          <ListDivider />
+          <ListRow
+            icon="information-circle-outline"
+            label={t("settings.about")}
+            onPress={() => router.push("/about")}
+          />
+        </AppCard>
+
+        <AppCard style={styles.list}>
+          <ListRow
+            icon="log-out-outline"
+            label={t("settings.logOut")}
+            tone="danger"
+            showChevron={false}
+            onPress={() => void handleLogOut()}
+          />
+        </AppCard>
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { marginTop: 20, gap: 12 },
+  container: { gap: 0 },
+  section: { marginTop: spacing.lg, gap: spacing.sm },
+  segmented: { flexDirection: "row", borderRadius: radius.full, padding: 3 },
+  segment: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.full,
+  },
+  list: { gap: 0, paddingVertical: spacing.xs, marginBottom: spacing.sm },
 });

@@ -3,6 +3,8 @@ export const en = {
     appName: "Clayba",
     /** CLAYBA P2 — the Android driver app's own product name, distinct from the web/shared `appName` ("Clayba"). See app.json's `name` and docs/mobile-branding.md. */
     driverAppName: "CLAYBA Driver",
+    /** Passenger Android app's own visible wordmark — distinct from the shared `appName` ("Clayba") used on the website, same reasoning as `driverAppName`. */
+    passengerAppName: "CLAYBA",
     /** CLAYBA P2 — app-wide connectivity banner (driver-app), shown whenever `expo-network`'s NetInfo reports no connection; never a fake local success on reconnect. */
     noInternetConnection: "No internet connection",
     reconnecting: "Reconnecting…",
@@ -218,6 +220,11 @@ export const en = {
     groupMain: "Main",
     groupAccount: "Account",
     groupSupport: "Support",
+    /** Bottom-nav tab-bar labels — deliberately short (a full-length label like `rideHistory` overflows/truncates in French). Screen headers keep their own longer labels above. */
+    tabHome: "Home",
+    tabRides: "Rides",
+    tabSaved: "Saved",
+    tabProfile: "Profile",
   },
   dashboard: {
     title: "Dashboard",
@@ -237,6 +244,12 @@ export const en = {
     greetingAfternoon: "Good afternoon",
     greetingEvening: "Good evening",
     readyPrompt: "Ready to go somewhere?",
+    whereToTitle: "Where to?",
+    enableLocationPrompt: "Enable location for a faster pickup",
+    enableLocationCta: "Enable location",
+    enterPickupManually: "Enter pickup manually",
+    savePlacesPrompt: "Save places for faster booking",
+    addSavedPlaceCta: "Add saved place",
     continueBookingTitle: "You have a booking in progress",
     continueBookingCta: "Continue booking",
     quickActionsTitle: "Quick Actions",
@@ -246,7 +259,7 @@ export const en = {
     viewRideCta: "View Ride",
     paymentTitle: "Payment",
     managePaymentsCta: "Manage Payments",
-    getAppTitle: "Get the Playba App",
+    getAppTitle: "Get the CLAYBA App",
     androidAppComingSoon: "Android app coming soon",
   },
   map: {
@@ -322,6 +335,7 @@ export const en = {
     balance: "Balance",
     transactions: "Transactions",
     noWallet: "You don't have a wallet yet.",
+    notActivated: "Wallet not activated",
     noTransactions: "No transactions yet.",
     transactionType: {
       credit: "Credit",
@@ -346,6 +360,9 @@ export const en = {
     labelPlaceholder: "Home, Work, Gym…",
     addressField: "Address",
     addressPlaceholder: "A description of this place",
+    searchAddressTitle: "Search address",
+    searchAddressCta: "Search for an address",
+    editPlace: "Edit place",
     useCurrentLocation: "Use current location",
     locationCaptured: "Location captured",
     geolocationUnsupported: "Your browser doesn't support location services.",
@@ -372,8 +389,9 @@ export const en = {
     addStop: "+ Add stop",
     chooseVehicle: "Choose vehicle",
     chooseVehicleTitle: "Choose a ride",
-    searchAddressPlaceholder: "Search for an address…",
-    searchErrorTitle: "Couldn't search addresses",
+    searchAddressPlaceholder: "Search for a place or address",
+    noPlacesFound: "No places found",
+    searchErrorTitle: "Unable to search right now",
     searchErrorBody: "Check your connection and try again.",
     calculatingRoute: "Calculating route…",
     estimatedDistance: "{km} km",

@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Clayba",
+    "name": "CLAYBA",
     "slug": "the-ride-passenger",
     "scheme": "theride",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
@@ -24,7 +24,7 @@
         "backgroundColor": "#0B1A2D"
       },
       "package": "com.theride.passenger",
-      "versionCode": 7
+      "versionCode": 8
     },
     "owner": "clauspp",
     "plugins": [

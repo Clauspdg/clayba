@@ -19,6 +19,14 @@ interface BookingState {
   status: BookingStatus;
   /** The real `tripRequests` doc id once `createTripRequest` has run — set by `booking/confirm.tsx`. */
   tripRequestId: string | null;
+  /**
+   * Transient hand-off slot for `booking/location-search.tsx`'s
+   * `target=favorite` mode — Saved Places' "add/edit place" screen reuses
+   * the same real address-search screen the booking flow uses (one
+   * search implementation, not a second one) rather than a plain text
+   * field. Set on select, consumed and cleared by the Saved Places screen.
+   */
+  favoriteDraft: (GeoLocation & { address?: string }) | null;
 
   setPickup: (location: GeoLocation) => void;
   setDestination: (location: GeoLocation) => void;
@@ -29,6 +37,8 @@ interface BookingState {
   confirm: (tripRequestId: string) => void;
   cancel: () => void;
   reset: () => void;
+  setFavoriteDraft: (location: GeoLocation) => void;
+  clearFavoriteDraft: () => void;
 }
 
 const initialState = {
@@ -41,6 +51,7 @@ const initialState = {
   fareEstimate: null,
   status: "idle" as BookingStatus,
   tripRequestId: null,
+  favoriteDraft: null,
 };
 
 /**
@@ -64,4 +75,6 @@ export const useBookingStore = create<BookingState>((set) => ({
   confirm: (tripRequestId) => set({ status: "searching", tripRequestId }),
   cancel: () => set({ status: "cancelled" }),
   reset: () => set({ ...initialState }),
+  setFavoriteDraft: (location) => set({ favoriteDraft: location }),
+  clearFavoriteDraft: () => set({ favoriteDraft: null }),
 }));

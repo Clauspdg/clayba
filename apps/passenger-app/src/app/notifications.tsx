@@ -5,10 +5,11 @@ import { StyleSheet, Switch, View } from "react-native";
 import { AppCard } from "@/components/AppCard";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/theme/tokens";
+import { usePalette } from "@/theme/usePalette";
 
 export default function NotificationsScreen() {
   const { t } = useTranslation();
+  const palette = usePalette();
   const [push, setPush] = useState(true);
   const [email, setEmail] = useState(true);
   const [sms, setSms] = useState(false);
@@ -26,7 +27,11 @@ export default function NotificationsScreen() {
         {rows.map((row) => (
           <AppCard key={row.label} style={styles.row}>
             <AppText variant="body">{row.label}</AppText>
-            <Switch value={row.value} onValueChange={row.onChange} trackColor={{ true: colors.brand, false: colors.neutral200 }} />
+            <Switch
+              value={row.value}
+              onValueChange={row.onChange}
+              trackColor={{ true: palette.primary, false: palette.border }}
+            />
           </AppCard>
         ))}
       </View>
