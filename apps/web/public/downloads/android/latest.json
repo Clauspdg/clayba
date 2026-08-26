@@ -1,9 +1,9 @@
 {
   "appName": "CLAYBA Driver",
-  "latestVersion": "0.1.7",
-  "versionCode": 18,
-  "downloadUrl": "/downloads/android/clayba-driver-v0.1.7.apk",
-  "minimumSupportedVersion": "0.1.7",
-  "sha256": "705f81fee76e8f934ca19d3f9327f5ea6fdf752a16f2c66db35fae87c8a81aed",
-  "releaseNotes": "P0 fix: the app crashed opening the dashboard because the map view requires a Google Maps API key that is not configured. Now shows a safe placeholder instead of crashing."
+  "latestVersion": "0.1.8",
+  "versionCode": 19,
+  "downloadUrl": "/downloads/android/clayba-driver-v0.1.8.apk",
+  "minimumSupportedVersion": "0.1.8",
+  "sha256": "b722c557d3cb76eb0ad07c0f346de53b67d5d2433716e1d4f384650fda2f0477",
+  "releaseNotes": "Stabilization release: fixed a race where accepting an offer in the final second of the countdown could be silently invalidated by the expiry sweep, and confirmed the driver is atomically freed (available + job count) when a trip completes or is cancelled."
 }

@@ -92,12 +92,12 @@
  */
 export const ANDROID_DRIVER_APP_RELEASE = {
   appName: "CLAYBA Driver",
-  latestVersion: "0.1.7",
-  versionCode: 18,
-  minimumSupportedVersion: "0.1.7",
-  downloadUrl: "/downloads/android/clayba-driver-v0.1.7.apk",
+  latestVersion: "0.1.8",
+  versionCode: 19,
+  minimumSupportedVersion: "0.1.8",
+  downloadUrl: "/downloads/android/clayba-driver-v0.1.8.apk",
   releaseNotes:
-    "P0 fix: the app crashed opening the dashboard because the map view requires a Google Maps API key that isn't configured. Now shows a safe placeholder instead of crashing.",
+    "Stabilization release: fixed a race where accepting an offer in the final second of the countdown could be silently invalidated by the expiry sweep, and confirmed the driver is atomically freed (available + job count) when a trip completes or is cancelled.",
   // Deliberately no `minAndroidVersion` claim — Expo SDK 52's real minimum
   // OS support wasn't independently verified against a physical/emulated
   // low-API device this sprint (see the final report's "remaining
