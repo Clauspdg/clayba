@@ -1,0 +1,9 @@
+{
+  "appName": "CLAYBA",
+  "latestVersion": "0.1.2",
+  "versionCode": 8,
+  "downloadUrl": "/downloads/android/clayba-passenger-v0.1.2.apk",
+  "minimumSupportedVersion": "0.1.2",
+  "sha256": "467b2081b1c015573fd9bcb5edc39c80401c1f0c003df330c43a5118f5209c04",
+  "releaseNotes": "Stabilization release: fixed the offer accept/expire race, the driver-arrival tracking data, and Google Places search reliability."
+}

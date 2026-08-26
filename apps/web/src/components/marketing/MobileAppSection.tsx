@@ -1,13 +1,46 @@
 "use client";
 
-import { useTranslation } from "@the-ride/ui";
+import { Button, useTranslation } from "@the-ride/ui";
 import { motion } from "framer-motion";
+
+import { ANDROID_PASSENGER_APP_RELEASE } from "@/lib/android-app-release";
 
 import { DownloadAppSection } from "./DownloadAppSection";
 import { PhoneMockup } from "./PhoneMockup";
 import { QrCodePlaceholder } from "./QrCodePlaceholder";
 import { Reveal } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
+
+/**
+ * Stabilization Audit follow-up — the real, working download, alongside the
+ * still-inert App Store/Play Store badges above (`DownloadAppSection`,
+ * disclosed as "coming soon"). Same pattern as the driver space's
+ * `AndroidAppDownloadCard` (`(driver)/driver/page.tsx`): a plain `<a href
+ * download>` straight at the signed release APK already served from
+ * `apps/web/public/downloads/android/` with the right MIME type
+ * (`firebase.json`) — no app-store review needed for a direct sideload.
+ */
+function AndroidApkDownload() {
+  const { t } = useTranslation();
+  return (
+    <div className="tablet:flex-row tablet:items-center tablet:justify-between shadow-elevation1 flex w-full max-w-md flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <div>
+        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+          {ANDROID_PASSENGER_APP_RELEASE.appName}
+        </p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          {t("website.landing.androidApkLabel")} · {t("website.landing.androidApkVersionLabel")}{" "}
+          {ANDROID_PASSENGER_APP_RELEASE.latestVersion}
+        </p>
+      </div>
+      <Button asChild size="sm">
+        <a href={ANDROID_PASSENGER_APP_RELEASE.downloadUrl} download>
+          {t("website.landing.downloadAndroidApkCta")}
+        </a>
+      </Button>
+    </div>
+  );
+}
 
 export function MobileAppSection() {
   const { t } = useTranslation();
@@ -51,6 +84,12 @@ export function MobileAppSection() {
             subtitle={t("website.landing.downloadSubtitle")}
           />
           <DownloadAppSection />
+          <div className="flex flex-col gap-2">
+            <AndroidApkDownload />
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {t("website.landing.androidApkNote")}
+            </p>
+          </div>
           <div className="flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_1px_0_0_rgba(232,106,47,0.08),0_12px_28px_-16px_rgba(0,0,0,0.12)] dark:border-neutral-800 dark:bg-neutral-900 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_1px_0_0_rgba(232,106,47,0.1),0_12px_28px_-16px_rgba(0,0,0,0.4)]">
             <QrCodePlaceholder size={80} />
             <div>

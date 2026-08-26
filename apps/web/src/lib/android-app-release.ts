@@ -104,3 +104,20 @@ export const ANDROID_DRIVER_APP_RELEASE = {
   // limitations"), and the brief itself says only show this "uniquement
   // si cette version minimale est réellement choisie."
 } as const;
+
+/**
+ * Stabilization Audit follow-up — same single-source-of-truth pattern as
+ * `ANDROID_DRIVER_APP_RELEASE`, for the CLAYBA passenger app's direct APK
+ * download (added to the marketing home page, mirroring the driver space's
+ * existing real download card). Points at the real, signed local release
+ * build produced by `scripts/build-android-local.mjs passenger`.
+ */
+export const ANDROID_PASSENGER_APP_RELEASE = {
+  appName: "CLAYBA",
+  latestVersion: "0.1.2",
+  versionCode: 8,
+  minimumSupportedVersion: "0.1.2",
+  downloadUrl: "/downloads/android/clayba-passenger-v0.1.2.apk",
+  releaseNotes:
+    "Stabilization release: fixed the offer accept/expire race, the driver-arrival tracking data, and Google Places search reliability.",
+} as const;
