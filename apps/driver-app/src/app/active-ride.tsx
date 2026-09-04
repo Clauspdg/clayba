@@ -24,6 +24,7 @@ import { Linking, StyleSheet, View } from "react-native";
 import { AppButton } from "@/components/AppButton";
 import { AppCard } from "@/components/AppCard";
 import { AppText } from "@/components/AppText";
+import { SafetyPanel } from "@/components/SafetyPanel";
 import { Screen } from "@/components/Screen";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useNetworkStatus } from "@/lib/network-status";
@@ -37,7 +38,22 @@ const STATUS_TONE: Partial<Record<TripStatus, "success" | "brand" | "neutral">> 
   [TripStatus.COMPLETED]: "success",
 };
 
-const TRACKED_STATUSES: TripStatus[] = [TripStatus.EN_ROUTE_TO_PICKUP, TripStatus.IN_PROGRESS];
+/**
+ * GPS Tracking sprint — widened from `[EN_ROUTE_TO_PICKUP, IN_PROGRESS]`:
+ * the passenger should see their driver the moment one is found
+ * (`MATCHED`) and while waiting at pickup (`ARRIVED`), not only while the
+ * driver is actively navigating. Safe to widen — the fare-meter's
+ * `accumulateDistanceFromLocationDelta` (functions/src/trips/index.ts via
+ * `packages/firebase/src/firestore/trips.repository.ts`) already ignores
+ * every status except `IN_PROGRESS`, so publishing more often here cannot
+ * inflate `actualDistanceMeters`.
+ */
+const TRACKED_STATUSES: TripStatus[] = [
+  TripStatus.MATCHED,
+  TripStatus.EN_ROUTE_TO_PICKUP,
+  TripStatus.ARRIVED,
+  TripStatus.IN_PROGRESS,
+];
 
 const NEXT_STAGE: Partial<Record<TripStatus, { to: TripStatus; ctaKey: string }>> = {
   [TripStatus.MATCHED]: {
@@ -109,7 +125,8 @@ export default function ActiveRideScreen() {
     };
   }, [trip?.tripRequestId]);
 
-  // Real GPS tracking — active only while en route/in progress, same scope P1 gave the web app.
+  // Real GPS tracking — active from the moment a driver is matched through
+  // in-progress; stops itself the instant the trip leaves a tracked status.
   useEffect(() => {
     setLocationNotice(null);
     if (!trip || !TRACKED_STATUSES.includes(trip.status)) return;
@@ -122,7 +139,11 @@ export default function ActiveRideScreen() {
         const now = Date.now();
         if (now - lastWriteAt.current < DRIVER_LOCATION_WRITE_THROTTLE_MS) return;
         lastWriteAt.current = now;
-        void updateTripDriverLocation(driverFirestore, tripId, reading);
+        // Fire-and-forget: a real write failure must never crash or stall
+        // the ride — Firestore already queues writes locally while
+        // offline and resolves once reconnected, so this only guards
+        // against a genuine rejection (e.g. permission-denied).
+        void updateTripDriverLocation(driverFirestore, tripId, reading).catch(() => {});
       },
       (state) => {
         if (cancelled) return;
@@ -209,10 +230,13 @@ export default function ActiveRideScreen() {
     <Screen style={styles.container}>
       <View style={styles.headerRow}>
         <AppText variant="heading">{t("driverSpace.nav.currentRide")}</AppText>
-        <StatusBadge
-          label={t(`driverSpace.tripStatus.${trip.status}`)}
-          tone={STATUS_TONE[trip.status] ?? "neutral"}
-        />
+        <View style={styles.headerActions}>
+          <StatusBadge
+            label={t(`driverSpace.tripStatus.${trip.status}`)}
+            tone={STATUS_TONE[trip.status] ?? "neutral"}
+          />
+          <SafetyPanel trip={trip} />
+        </View>
       </View>
 
       <AppCard variant="elevated" style={styles.card}>
@@ -296,6 +320,7 @@ const styles = StyleSheet.create({
   container: { gap: spacing.lg },
   center: { alignItems: "center", justifyContent: "center", gap: spacing.md },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   card: { gap: spacing.sm },
   statsRow: { flexDirection: "row", gap: spacing.md, marginTop: spacing.sm },
   statBlock: { flex: 1, gap: 2 },

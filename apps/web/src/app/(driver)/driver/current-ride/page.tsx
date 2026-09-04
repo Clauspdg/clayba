@@ -72,8 +72,21 @@ const NEXT_STAGE: Partial<Record<TripStatus, { to: TripStatus; ctaKey: string }>
   },
 };
 
-/** Live position tracked whenever the driver is actually moving with the passenger somewhere — approaching pickup, or en route to the destination. Not `MATCHED`/`ARRIVED` (parked, nothing to track). */
-const TRACKED_STATUSES: TripStatus[] = [TripStatus.EN_ROUTE_TO_PICKUP, TripStatus.IN_PROGRESS];
+/**
+ * GPS Tracking sprint — widened from `[EN_ROUTE_TO_PICKUP, IN_PROGRESS]`:
+ * the passenger should see their driver the moment one is found
+ * (`MATCHED`) and while waiting at pickup (`ARRIVED`), not only while the
+ * driver is actively navigating. Safe to widen — the fare-meter's
+ * `accumulateDistanceFromLocationDelta` already ignores every status
+ * except `IN_PROGRESS`, so publishing more often here cannot inflate
+ * `actualDistanceMeters`.
+ */
+const TRACKED_STATUSES: TripStatus[] = [
+  TripStatus.MATCHED,
+  TripStatus.EN_ROUTE_TO_PICKUP,
+  TripStatus.ARRIVED,
+  TripStatus.IN_PROGRESS,
+];
 
 /**
  * UX-3 sprint (Dedicated Driver Space), Part 7 — real stage progression:
@@ -116,13 +129,13 @@ export default function CurrentRidePage() {
   }, []);
 
   /**
-   * DRIVER-E2E-08, extended CLAYBA P1 (Part A) — live position while the
-   * driver is actually en route (to pickup, or to the destination once the
-   * ride has started; still not while `MATCHED`/`ARRIVED`, both stationary).
-   * Stops itself (via the cleanup function) the moment `trip` leaves a
-   * tracked status — status advance, trip completion/cancellation, or
-   * unmount all naturally end tracking; nothing else has to remember to
-   * turn it off. `heading`/`speed`/`accuracy` ride along when the device
+   * DRIVER-E2E-08, extended CLAYBA P1 (Part A), widened by the GPS
+   * Tracking sprint — live position from the moment the driver is matched
+   * through in-progress (see `TRACKED_STATUSES` above). Stops itself (via
+   * the cleanup function) the moment `trip` leaves a tracked status —
+   * status advance, trip completion/cancellation, or unmount all naturally
+   * end tracking; nothing else has to remember to turn it off.
+   * `heading`/`speed`/`accuracy` ride along when the device
    * reports them — `onTripDriverLocationWritten`
    * (functions/src/trips/index.ts) is what actually decides whether a
    * reading is trustworthy enough to count toward the fare meter's
@@ -144,13 +157,17 @@ export default function CurrentRidePage() {
         const now = Date.now();
         if (now - lastLocationWriteAt.current < LOCATION_WRITE_THROTTLE_MS) return;
         lastLocationWriteAt.current = now;
+        // Fire-and-forget: a real write failure must never crash or stall
+        // the ride — Firestore already queues writes locally while
+        // offline and resolves once reconnected, so this only guards
+        // against a genuine rejection (e.g. permission-denied).
         void updateTripDriverLocation(webFirestore, tripId, {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           heading: position.coords.heading ?? undefined,
           speed: position.coords.speed ?? undefined,
           accuracy: position.coords.accuracy,
-        });
+        }).catch(() => {});
       },
       () => {
         setLocationSharing(false);

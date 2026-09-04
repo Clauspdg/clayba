@@ -231,13 +231,23 @@ service cloud.firestore {
 
       // CLAYBA P1, Part D — price/distance/duration tampering guard. A
       // passenger or driver may still update their own trip directly
-      // (status advances via advanceTripStatus, driverLocation pushes via
-      // updateTripDriverLocation, cancellation) exactly as before, but may
-      // never themselves change actualDistanceMeters/actualDurationSeconds/
-      // finalFareBreakdown/fareAmount — those are frozen only by the
-      // `completeTrip` Cloud Function (Admin SDK, bypasses these rules)
-      // from the server-accumulated distance `onTripDriverLocationWritten`
-      // built up. Staff keep unrestricted write access, same as before.
+      // (status advances via advanceTripStatus, cancellation) exactly as
+      // before, but may never themselves change
+      // actualDistanceMeters/actualDurationSeconds/finalFareBreakdown/
+      // fareAmount — those are frozen only by the `completeTrip` Cloud
+      // Function (Admin SDK, bypasses these rules) from the
+      // server-accumulated distance `onTripDriverLocationWritten` built
+      // up. Staff keep unrestricted write access, same as before.
+      //
+      // GPS Tracking sprint — driverLocation/driverLocationUpdatedAt get
+      // the same "unchanged unless you're specifically allowed" guard,
+      // but scoped to the DRIVER only (not passenger-or-driver like the
+      // fields above): a position must be impérativement associated with
+      // the driver who reports it, never forgeable by the passenger's own
+      // client. `updateTripDriverLocation`
+      // (packages/firebase/src/client/driver-trips.ts) already documented
+      // this as the intended behavior; the rule itself hadn't enforced it
+      // until now.
       allow update: if hasRole(['admin', 'super_admin', 'dispatcher'])
         || (
           isSignedIn()
@@ -246,6 +256,13 @@ service cloud.firestore {
           && request.resource.data.get('actualDurationSeconds', null) == resource.data.get('actualDurationSeconds', null)
           && request.resource.data.get('finalFareBreakdown', null) == resource.data.get('finalFareBreakdown', null)
           && request.resource.data.get('fareAmount', null) == resource.data.get('fareAmount', null)
+          && (
+            resource.data.driverId == request.auth.uid
+            || (
+              request.resource.data.get('driverLocation', null) == resource.data.get('driverLocation', null)
+              && request.resource.data.get('driverLocationUpdatedAt', null) == resource.data.get('driverLocationUpdatedAt', null)
+            )
+          )
         );
       allow delete: if false;
     }
@@ -421,6 +438,18 @@ service cloud.firestore {
     match /emergencyContacts/{contactId} {
       allow read, write: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow read: if hasRole(['admin', 'super_admin', 'dispatcher', 'support']);
+    }
+
+    // --- emergency: sosIncidents ---
+    // Created only by the triggerSosAlert Cloud Function (Admin SDK, bypasses
+    // rules) so a client can never forge/spoof an incident's trip, identity,
+    // or timestamp. Acknowledge/resolve is a legitimate direct dispatch/admin
+    // write, same convention as other staff-actioned collections here.
+    match /sosIncidents/{incidentId} {
+      allow read: if hasRole(['admin', 'super_admin', 'dispatcher', 'support']);
+      allow create: if false;
+      allow update: if hasRole(['admin', 'super_admin', 'dispatcher']);
+      allow delete: if false;
     }
 
     // --- notifications ---

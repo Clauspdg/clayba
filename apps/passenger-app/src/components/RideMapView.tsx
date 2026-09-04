@@ -127,6 +127,7 @@ export const RideMapView = forwardRef<
           <Marker
             coordinate={{ latitude: pickup.lat, longitude: pickup.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
           >
             <View style={[styles.markerRing, { borderColor: palette.success }]}>
               <View style={[styles.markerDot, { backgroundColor: palette.success }]}>
@@ -140,6 +141,7 @@ export const RideMapView = forwardRef<
           <Marker
             coordinate={{ latitude: destination.lat, longitude: destination.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
           >
             <View style={[styles.markerRing, { borderColor: palette.danger }]}>
               <View style={[styles.markerDot, { backgroundColor: palette.danger }]}>
@@ -154,6 +156,7 @@ export const RideMapView = forwardRef<
             coordinate={{ latitude: driver.lat, longitude: driver.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
             rotation={driver.heading}
+            tracksViewChanges={false}
           >
             <View style={[styles.markerRing, { borderColor: palette.primary }]}>
               <View style={[styles.markerDot, { backgroundColor: palette.primary }]}>
