@@ -10,6 +10,7 @@ import {
   setAvailableAfterTripCompletion,
   subscribeCurrentDriverTrip,
   updateTripDriverLocation,
+  type TripSettlementSummary,
 } from "@the-ride/firebase/client";
 import {
   Badge,
@@ -27,12 +28,15 @@ import {
 } from "@the-ride/ui";
 import {
   DRIVER_LOCATION_WRITE_THROTTLE_MS,
+  PaymentMethodType,
+  PaymentStatus,
   TripStatus,
   type Trip,
   type TripRequest,
 } from "@the-ride/types";
 import {
   canTransitionTrip,
+  driverEarningsFromFare,
   estimateEtaSeconds,
   getLocationFreshness,
   haversineDistanceMeters,
@@ -103,6 +107,10 @@ export default function CurrentRidePage() {
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [request, setRequest] = useState<TripRequest | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  /** Returned by `completeTrip` — null after a page reload, when the summary falls back to `trip.paymentMethod`. */
+  const [settlement, setSettlement] = useState<TripSettlementSummary | null>(null);
+  /** The ride just completed here — `subscribeCurrentDriverTrip` drops it the moment it completes, but the driver still needs the cash/PayPal instruction. */
+  const [completedTrip, setCompletedTrip] = useState<Trip | null>(null);
   // DRIVER-E2E-08.1 — the status this page is waiting to observe come back
   // through the realtime subscription. Non-null covers BOTH the write
   // in-flight and the "waiting for the echo + settle window" phases, so
@@ -247,7 +255,18 @@ export default function CurrentRidePage() {
       // trip's own accumulated `actualDistanceMeters` — `firestore.rules`
       // no longer lets a driver's client set those fields directly.
       if (next.to === TripStatus.COMPLETED) {
-        await completeTrip(webFunctions, trip.id);
+        const result = await completeTrip(webFunctions, trip.id);
+        setSettlement(result.settlement);
+        setCompletedTrip({
+          ...trip,
+          status: TripStatus.COMPLETED,
+          fareAmount: result.settlement?.total ?? trip.fareAmount,
+        });
+        setCompletedTrip({
+          ...trip,
+          status: TripStatus.COMPLETED,
+          fareAmount: result.settlement?.total ?? trip.fareAmount,
+        });
       } else {
         await advanceTripStatus(webFirestore, trip.id, next.to);
       }
@@ -290,6 +309,19 @@ export default function CurrentRidePage() {
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <Heading level={1}>{t("driverSpace.nav.currentRide")}</Heading>
+        {completedTrip && (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+              <Badge tone="success">{t("payments.rideCompletedTitle")}</Badge>
+              {completedTrip.fareAmount !== undefined && (
+                <Text size="lg" weight="medium">
+                  ${completedTrip.fareAmount.toFixed(2)}
+                </Text>
+              )}
+              <SettlementNotice trip={completedTrip} settlement={settlement} />
+            </CardContent>
+          </Card>
+        )}
         <EmptyState
           icon={<Illustration name="empty" size={80} />}
           title={t("driverSpace.currentRide.emptyTitle")}
@@ -314,6 +346,9 @@ export default function CurrentRidePage() {
               <Text size="lg" weight="medium">
                 ${trip.fareAmount.toFixed(2)}
               </Text>
+            )}
+            {trip.status === TripStatus.COMPLETED && (
+              <SettlementNotice trip={trip} settlement={settlement} />
             )}
           </CardContent>
         </Card>
@@ -380,6 +415,15 @@ export default function CurrentRidePage() {
               {t("driverSpace.currentRide.fareLabel")}: ${trip.fareAmount.toFixed(2)}
             </Text>
           )}
+          <Text size="sm" tone="muted">
+            {t("payments.paidWith", {
+              method: t(
+                trip.paymentMethod === PaymentMethodType.PAYPAL
+                  ? "payments.paypal"
+                  : "payments.cash",
+              ),
+            })}
+          </Text>
 
           {trip.arrivedAt && (
             <Text size="xs" tone="muted">
@@ -456,5 +500,47 @@ export default function CurrentRidePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * Payments — the after-ride instruction for the driver: how much cash to
+ * collect, or confirmation PayPal paid. Prefers the live `completeTrip`
+ * result; after a reload it falls back to the trip's own payment method
+ * and final fare (the same numbers settlement used).
+ */
+function SettlementNotice({
+  trip,
+  settlement,
+}: {
+  trip: Trip;
+  settlement: TripSettlementSummary | null;
+}) {
+  const { t } = useTranslation();
+  const method = settlement?.paymentMethod ?? trip.paymentMethod ?? PaymentMethodType.CASH;
+  const fare = trip.finalFareBreakdown;
+
+  if (settlement?.paymentStatus === PaymentStatus.FAILED) {
+    return (
+      <Text size="sm" tone="danger">
+        {t("payments.settlementFailed")}
+      </Text>
+    );
+  }
+  if (method === PaymentMethodType.PAYPAL) {
+    const earnings = settlement?.driverEarnings ?? (fare ? driverEarningsFromFare(fare) : null);
+    return (
+      <Badge tone="success">
+        {t("payments.paidByPaypal", {
+          amount: earnings !== null ? `$${earnings.toFixed(2)}` : "—",
+        })}
+      </Badge>
+    );
+  }
+  const cash = settlement?.cashToCollect ?? trip.fareAmount;
+  return (
+    <Badge tone="warning">
+      {t("payments.collectCash", { amount: cash !== undefined ? `$${cash.toFixed(2)}` : "—" })}
+    </Badge>
   );
 }

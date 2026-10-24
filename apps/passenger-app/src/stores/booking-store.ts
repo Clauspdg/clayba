@@ -1,4 +1,10 @@
-import type { FareBreakdown, GeoLocation, VehicleCategory } from "@the-ride/types";
+import {
+  PaymentMethodType,
+  type BookablePaymentMethod,
+  type FareBreakdown,
+  type GeoLocation,
+  type VehicleCategory,
+} from "@the-ride/types";
 import { create } from "zustand";
 
 export type BookingStatus = "idle" | "searching" | "cancelled";
@@ -27,6 +33,8 @@ interface BookingState {
    * field. Set on select, consumed and cleared by the Saved Places screen.
    */
   favoriteDraft: (GeoLocation & { address?: string }) | null;
+  /** Cash or PayPal — see docs/payments.md. */
+  paymentMethod: BookablePaymentMethod;
 
   setPickup: (location: GeoLocation) => void;
   setDestination: (location: GeoLocation) => void;
@@ -34,6 +42,7 @@ interface BookingState {
   removeStop: (index: number) => void;
   setVehicleCategoryId: (id: string, category: VehicleCategory) => void;
   setEstimate: (route: RouteEstimate, fareEstimate: FareBreakdown) => void;
+  setPaymentMethod: (method: BookablePaymentMethod) => void;
   confirm: (tripRequestId: string) => void;
   cancel: () => void;
   reset: () => void;
@@ -52,6 +61,7 @@ const initialState = {
   status: "idle" as BookingStatus,
   tripRequestId: null,
   favoriteDraft: null,
+  paymentMethod: PaymentMethodType.CASH as BookablePaymentMethod,
 };
 
 /**
@@ -72,6 +82,7 @@ export const useBookingStore = create<BookingState>((set) => ({
   setVehicleCategoryId: (id, category) =>
     set({ vehicleCategoryId: id, selectedCategory: category }),
   setEstimate: (route, fareEstimate) => set({ route, fareEstimate }),
+  setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
   confirm: (tripRequestId) => set({ status: "searching", tripRequestId }),
   cancel: () => set({ status: "cancelled" }),
   reset: () => set({ ...initialState }),

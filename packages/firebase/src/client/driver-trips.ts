@@ -20,6 +20,8 @@ import {
 } from "firebase/firestore";
 import { httpsCallable, type Functions } from "firebase/functions";
 
+import type { TripSettlementSummary } from "./payments";
+
 const TRIPS = "trips";
 const TRIP_REQUESTS = "tripRequests";
 const RIDE_OFFERS = "rideOffers";
@@ -254,7 +256,14 @@ export async function updateTripDriverLocation(
  * stage (`Navigate to pickup`/`I've arrived`/`Start ride`) is untouched —
  * still `advanceTripStatus`, exactly as before.
  */
-export async function completeTrip(functions: Functions, tripId: string): Promise<void> {
-  const call = httpsCallable(functions, "completeTrip");
-  await call({ tripId });
+export async function completeTrip(
+  functions: Functions,
+  tripId: string,
+): Promise<{ settlement: TripSettlementSummary | null }> {
+  const call = httpsCallable<{ tripId: string }, { settlement?: TripSettlementSummary | null }>(
+    functions,
+    "completeTrip",
+  );
+  const result = await call({ tripId });
+  return { settlement: result.data?.settlement ?? null };
 }

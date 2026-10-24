@@ -1,6 +1,8 @@
 import {
   DEFAULT_TRIP_REQUEST_EXPIRY_SECONDS,
+  PaymentMethodType,
   TripRequestStatus,
+  type BookablePaymentMethod,
   type FareBreakdown,
   type GeoLocation,
   type Trip,
@@ -82,6 +84,8 @@ export interface NewTripRequestInput {
   estimatedDistanceMeters: number;
   estimatedDurationSeconds: number;
   fareEstimate: FareBreakdown;
+  /** Defaults to cash. A PayPal request waits at `confirmed` until `authorizePaypal` (./payments.ts) holds the fare. */
+  paymentMethod?: BookablePaymentMethod;
 }
 
 export async function createTripRequest(
@@ -90,9 +94,14 @@ export async function createTripRequest(
 ): Promise<string> {
   const ref = doc(collection(db, TRIP_REQUESTS));
   const expiresAt = new Date(Date.now() + DEFAULT_TRIP_REQUEST_EXPIRY_SECONDS * 1000);
+  const paymentMethod = input.paymentMethod ?? PaymentMethodType.CASH;
   await setDoc(ref, {
     ...input,
-    status: TripRequestStatus.SEARCHING_DRIVER,
+    paymentMethod,
+    status:
+      paymentMethod === PaymentMethodType.PAYPAL
+        ? TripRequestStatus.CONFIRMED
+        : TripRequestStatus.SEARCHING_DRIVER,
     offeredDriverIds: [],
     requestedAt: serverTimestamp(),
     expiresAt,

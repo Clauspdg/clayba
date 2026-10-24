@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { firestoreDateSchema } from "../common/firestore-date.schema";
+import { paymentMethodTypeSchema } from "../payments/payments.schemas";
 import {
   DISPATCH_EVENT_TYPES,
   DispatchQueueStatus,
@@ -126,6 +127,8 @@ export const tripSchema = z.object({
    */
   finalFareBreakdown: fareBreakdownSchema.optional(),
   fareAmount: z.number().min(0).optional(),
+  /** Copied from the trip request at match time. Absent on rides booked before payments shipped — treat as cash. */
+  paymentMethod: paymentMethodTypeSchema.optional(),
   createdAt: firestoreDateSchema,
   updatedAt: firestoreDateSchema,
 });
@@ -152,6 +155,13 @@ export const tripRequestSchema = z.object({
   estimatedDistanceMeters: z.number().min(0).optional(),
   estimatedDurationSeconds: z.number().min(0).optional(),
   fareEstimate: fareBreakdownSchema.optional(),
+  /**
+   * Cash or PayPal (see docs/payments.md). A PayPal request is created at
+   * `confirmed` and only moves to `searching_driver` once the
+   * `authorizePaypalOrder` callable has held the fare — `firestore.rules`
+   * enforces that pairing. Absent on older requests — treat as cash.
+   */
+  paymentMethod: paymentMethodTypeSchema.optional(),
   /** Driver ids offered this request, in dispatch order — see `packages/utils/src/trips/dispatch.ts`. */
   offeredDriverIds: z.array(z.string()).default([]),
   assignedDriverId: z.string().optional(),

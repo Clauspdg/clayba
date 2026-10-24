@@ -5,7 +5,7 @@ import {
   subscribeMyTrips,
 } from "@the-ride/firebase/client";
 import { useAuth, useTranslation } from "@the-ride/hooks";
-import { TripRequestStatus, type Trip, type TripRequest } from "@the-ride/types";
+import { PaymentMethodType, TripRequestStatus, type Trip, type TripRequest } from "@the-ride/types";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -40,6 +40,7 @@ export default function SearchingDriverScreen() {
     vehicleCategoryId,
     route,
     fareEstimate,
+    paymentMethod,
     tripRequestId,
     confirm,
     cancel,
@@ -94,6 +95,12 @@ export default function SearchingDriverScreen() {
   async function handleRetry() {
     if (!session || !pickup || !destination || !vehicleCategoryId || !route || !fareEstimate)
       return;
+    // A PayPal retry needs a fresh hold — go back through PayPal rather
+    // than silently rebooking the ride as cash.
+    if (paymentMethod === PaymentMethodType.PAYPAL) {
+      router.replace("/booking/confirm");
+      return;
+    }
     setRetrying(true);
     try {
       const requestId = await createTripRequest(passengerFirestore, {

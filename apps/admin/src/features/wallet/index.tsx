@@ -1,19 +1,27 @@
 "use client";
 
-import { adminFirestore } from "@/lib/firebase-client";
+import { adminFirestore, adminFunctions } from "@/lib/firebase-client";
 import { exportToCsv } from "@/lib/csv";
 import { useTableState } from "@/lib/useTableState";
+import { recordDriverCashDeposit } from "@the-ride/firebase/client";
 import {
+  Badge,
   Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   EmptyState,
   ErrorState,
   Heading,
   Illustration,
+  Input,
   LoadingState,
   Pagination,
   SearchBar,
@@ -23,11 +31,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useToast,
   useTranslation,
 } from "@the-ride/ui";
-import type { Wallet } from "@the-ride/types";
+import { WalletOwnerType, type Wallet } from "@the-ride/types";
 import { collection, limit as fsLimit, onSnapshot, orderBy, query } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Wallet (Web Phase W1, Parts 5-6) — live, read-only Firestore list from
@@ -38,6 +47,7 @@ import { useEffect, useState } from "react";
  */
 export function WalletPage() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [wallets, setWallets] = useState<Wallet[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +70,41 @@ export function WalletPage() {
     searchFields: ["id", "ownerId"],
     pageSize: 10,
   });
+
+  // Payments — a driver handing over the platform's share of cash rides.
+  // Goes through the admin-only `recordDriverCashDeposit` callable (ledger
+  // entry + audit log), never a direct balance write.
+  const [depositFor, setDepositFor] = useState<Wallet | null>(null);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositNote, setDepositNote] = useState("");
+  const [depositSaving, setDepositSaving] = useState(false);
+  const depositRequestId = useRef("");
+
+  function openDeposit(wallet: Wallet) {
+    setDepositFor(wallet);
+    setDepositAmount(wallet.balance < 0 ? (-wallet.balance).toFixed(2) : "");
+    setDepositNote("");
+    depositRequestId.current = crypto.randomUUID();
+  }
+
+  async function handleRecordDeposit() {
+    if (!depositFor) return;
+    setDepositSaving(true);
+    try {
+      await recordDriverCashDeposit(adminFunctions, {
+        driverId: depositFor.ownerId,
+        amount: Number(depositAmount),
+        note: depositNote,
+        clientRequestId: depositRequestId.current,
+      });
+      toast({ variant: "success", title: t("payments.depositRecorded") });
+      setDepositFor(null);
+    } catch (err) {
+      toast({ variant: "danger", title: err instanceof Error ? err.message : t("common.error") });
+    } finally {
+      setDepositSaving(false);
+    }
+  }
 
   function handleExport() {
     exportToCsv(
@@ -123,6 +168,7 @@ export function WalletPage() {
                         <TableHead>{t("admin.walletPage.owner")}</TableHead>
                         <TableHead>{t("admin.walletPage.ownerType")}</TableHead>
                         <TableHead>{t("admin.walletPage.balance")}</TableHead>
+                        <TableHead />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -131,7 +177,23 @@ export function WalletPage() {
                           <TableCell>{wallet.ownerId}</TableCell>
                           <TableCell>{wallet.ownerType}</TableCell>
                           <TableCell>
-                            {wallet.currency} {wallet.balance.toFixed(2)}
+                            <span className="flex items-center gap-2">
+                              {wallet.currency} {wallet.balance.toFixed(2)}
+                              {wallet.balance < 0 && (
+                                <Badge tone="warning">{t("payments.owedToPlatform")}</Badge>
+                              )}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {wallet.ownerType === WalletOwnerType.DRIVER && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openDeposit(wallet)}
+                              >
+                                {t("payments.recordDeposit")}
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -154,6 +216,39 @@ export function WalletPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(depositFor)} onOpenChange={(open) => !open && setDepositFor(null)}>
+        <DialogContent closeLabel={t("common.close")}>
+          <DialogHeader>
+            <DialogTitle>{t("payments.recordDeposit")}</DialogTitle>
+          </DialogHeader>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            label={`${t("payments.depositAmount")} (${depositFor?.currency ?? "USD"})`}
+            value={depositAmount}
+            onChange={(e) => setDepositAmount(e.target.value)}
+          />
+          <Input
+            label={t("payments.depositNote")}
+            value={depositNote}
+            onChange={(e) => setDepositNote(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDepositFor(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={() => void handleRecordDeposit()}
+              isLoading={depositSaving}
+              disabled={!(Number(depositAmount) > 0)}
+            >
+              {t("admin.settingsForm.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

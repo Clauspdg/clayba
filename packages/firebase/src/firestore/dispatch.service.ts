@@ -8,6 +8,7 @@ import {
   type TripRequest,
 } from "@the-ride/types";
 import {
+  driverEarningsFromFare,
   getDocumentExpirationStatus,
   getRadiusForAttempt,
   hasMoreExpansionTiers,
@@ -108,8 +109,7 @@ export class DispatchService {
 
   private estimateDriverEarnings(request: TripRequest): number {
     if (!request.fareEstimate) return 0;
-    const { total, commission, bookingFee, serviceFee } = request.fareEstimate;
-    return Math.max(0, total - commission - bookingFee - serviceFee);
+    return driverEarningsFromFare(request.fareEstimate);
   }
 
   /**

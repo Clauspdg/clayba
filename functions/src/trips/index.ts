@@ -4,7 +4,7 @@ import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/fire
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeAdminApp, getAdminFirestore } from "@the-ride/firebase/admin";
-import { createRepositories, NoDriversAvailableError } from "@the-ride/firebase/firestore";
+import { createRepositories } from "@the-ride/firebase/firestore";
 import {
   RIDE_SHARE_EXPIRY_AFTER_COMPLETION_SECONDS,
   RIDE_SHARE_MAX_ACTIVE_LIFETIME_SECONDS,
@@ -15,6 +15,9 @@ import {
   type Trip,
 } from "@the-ride/types";
 import { estimateEtaSeconds, haversineDistanceMeters } from "@the-ride/utils";
+
+import { PAYPAL_SECRETS, settleCompletedTrip } from "../payments/settlement";
+import { runDispatch } from "./dispatch-runner";
 
 initializeAdminApp();
 
@@ -40,18 +43,7 @@ export const onTripRequestCreated = onDocumentCreated("tripRequests/{requestId}"
     return;
   }
 
-  const repos = createRepositories(getAdminFirestore());
-
-  try {
-    await repos.dispatch.dispatch(requestId);
-    logger.info("Dispatch completed for tripRequest", { requestId });
-  } catch (error) {
-    if (error instanceof NoDriversAvailableError) {
-      logger.info("Dispatch exhausted all radius tiers with no eligible drivers", { requestId });
-      return;
-    }
-    logger.error("Dispatch failed for tripRequest", { requestId, error });
-  }
+  await runDispatch(createRepositories(getAdminFirestore()), requestId);
 });
 
 interface RespondToOfferData {
@@ -160,66 +152,74 @@ interface CompleteTripData {
  * already accumulated server-side (see that trigger below) — this
  * callable freezes it, it doesn't compute it from scratch.
  */
-export const completeTrip = onCall<CompleteTripData>(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Sign in required.");
-  }
-  const tripId = request.data?.tripId;
-  if (!tripId) {
-    throw new HttpsError("invalid-argument", "tripId is required.");
-  }
+export const completeTrip = onCall<CompleteTripData>(
+  { secrets: PAYPAL_SECRETS },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Sign in required.");
+    }
+    const tripId = request.data?.tripId;
+    if (!tripId) {
+      throw new HttpsError("invalid-argument", "tripId is required.");
+    }
 
-  const repos = createRepositories(getAdminFirestore());
-  const trip = await repos.trips.findById(tripId);
-  if (!trip) {
-    throw new HttpsError("not-found", "This ride no longer exists.");
-  }
-  if (trip.driverId !== request.auth.uid) {
-    throw new HttpsError("permission-denied", "This isn't your ride.");
-  }
-  if (trip.status !== TripStatus.IN_PROGRESS) {
-    throw new HttpsError("failed-precondition", "This ride isn't in progress.");
-  }
+    const repos = createRepositories(getAdminFirestore());
+    const trip = await repos.trips.findById(tripId);
+    if (!trip) {
+      throw new HttpsError("not-found", "This ride no longer exists.");
+    }
+    if (trip.driverId !== request.auth.uid) {
+      throw new HttpsError("permission-denied", "This isn't your ride.");
+    }
+    if (trip.status !== TripStatus.IN_PROGRESS) {
+      throw new HttpsError("failed-precondition", "This ride isn't in progress.");
+    }
 
-  const now = new Date();
-  const actualDurationSeconds = trip.startedAt
-    ? Math.max(0, (now.getTime() - trip.startedAt.getTime()) / 1000)
-    : 0;
-  const actualDistanceMeters = trip.actualDistanceMeters ?? 0;
+    const now = new Date();
+    const actualDurationSeconds = trip.startedAt
+      ? Math.max(0, (now.getTime() - trip.startedAt.getTime()) / 1000)
+      : 0;
+    const actualDistanceMeters = trip.actualDistanceMeters ?? 0;
 
-  try {
-    const { trip: completedTrip, recomputed } = await repos.trips.completeWithFare(
-      tripId,
-      actualDistanceMeters,
-      actualDurationSeconds,
-    );
-    if (!recomputed) {
-      logger.warn(
-        "completeTrip: could not recompute the final fare (category/settings unresolved) — kept the pre-trip estimate",
-        { tripId },
+    try {
+      const { trip: completedTrip, recomputed } = await repos.trips.completeWithFare(
+        tripId,
+        actualDistanceMeters,
+        actualDurationSeconds,
+      );
+      if (!recomputed) {
+        logger.warn(
+          "completeTrip: could not recompute the final fare (category/settings unresolved) — kept the pre-trip estimate",
+          { tripId },
+        );
+      }
+      logger.info("Trip completed with server-computed final fare", {
+        tripId,
+        driverId: request.auth.uid,
+        actualDistanceMeters,
+        actualDurationSeconds,
+        fareAmount: completedTrip.fareAmount,
+      });
+      // Payments — settle in the same call so the driver's app can show
+      // "collect X in cash" / "paid by PayPal" right away. Never throws: a
+      // settlement problem is recorded on the payment, the ride stays completed.
+      const settlement = await settleCompletedTrip(repos, completedTrip);
+      return {
+        status: completedTrip.status,
+        fareAmount: completedTrip.fareAmount,
+        actualDistanceMeters,
+        actualDurationSeconds,
+        settlement,
+      };
+    } catch (error) {
+      logger.error("completeTrip failed", { tripId, driverId: request.auth.uid, error });
+      throw new HttpsError(
+        "failed-precondition",
+        error instanceof Error ? error.message : "Could not complete this ride.",
       );
     }
-    logger.info("Trip completed with server-computed final fare", {
-      tripId,
-      driverId: request.auth.uid,
-      actualDistanceMeters,
-      actualDurationSeconds,
-      fareAmount: completedTrip.fareAmount,
-    });
-    return {
-      status: completedTrip.status,
-      fareAmount: completedTrip.fareAmount,
-      actualDistanceMeters,
-      actualDurationSeconds,
-    };
-  } catch (error) {
-    logger.error("completeTrip failed", { tripId, driverId: request.auth.uid, error });
-    throw new HttpsError(
-      "failed-precondition",
-      error instanceof Error ? error.message : "Could not complete this ride.",
-    );
-  }
-});
+  },
+);
 
 /**
  * CLAYBA P1, Part A/D — the trusted follow-up to a driver's raw

@@ -198,6 +198,7 @@ export class TripsRepository extends FirestoreRepository<Trip> {
       dropoff: request.dropoff,
       requestedAt: request.requestedAt,
       fareAmount: request.fareEstimate?.total,
+      paymentMethod: request.paymentMethod,
       createdAt: now,
       updatedAt: now,
     });
@@ -269,6 +270,16 @@ export class TripRequestsRepository extends FirestoreRepository<TripRequest> {
   ): Promise<TripRequest> {
     const expiresAt = new Date(Date.now() + expiryInSeconds * 1000);
     return this.transition(id, TripRequestStatus.CONFIRMED, { expiresAt });
+  }
+
+  /**
+   * PayPal booking — the fare is now held, so the request may enter
+   * dispatch: `confirmed` -> `searching_driver`, with a fresh `expiresAt`
+   * (the passenger may have spent minutes on PayPal's approval page).
+   */
+  async releaseAfterPaymentAuthorized(id: string): Promise<TripRequest> {
+    const expiresAt = new Date(Date.now() + DEFAULT_TRIP_REQUEST_EXPIRY_SECONDS * 1000);
+    return this.transition(id, TripRequestStatus.SEARCHING_DRIVER, { expiresAt });
   }
 
   /** Dispatch begins searching for a driver — `confirmed` (or `driver_rejected`, to re-offer) -> `searching_driver`. */

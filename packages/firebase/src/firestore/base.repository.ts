@@ -1,5 +1,6 @@
 import type {
   CollectionReference,
+  DocumentReference,
   Firestore,
   FirestoreDataConverter,
   OrderByDirection,
@@ -66,12 +67,20 @@ export class FirestoreRepository<T extends { id: string }> {
     orderByField: string,
     direction: OrderByDirection = "desc",
   ): Promise<T[]> {
-    const snapshot = await this.collection.where(field, op, value).orderBy(orderByField, direction).get();
+    const snapshot = await this.collection
+      .where(field, op, value)
+      .orderBy(orderByField, direction)
+      .get();
     return snapshot.docs.map((doc) => doc.data());
   }
 
   /** Allocates a new document ID without writing anything (for pre-generating IDs). */
   newId(): string {
     return this.collection.doc().id;
+  }
+
+  /** Typed document reference — for multi-collection `runTransaction` work that a single `update()` can't express. */
+  ref(id: string): DocumentReference<T> {
+    return this.collection.doc(id);
   }
 }

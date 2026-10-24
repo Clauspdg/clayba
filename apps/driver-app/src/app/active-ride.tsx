@@ -8,18 +8,21 @@ import {
   setAvailableAfterTripCompletion,
   subscribeCurrentDriverTrip,
   updateTripDriverLocation,
+  type TripSettlementSummary,
 } from "@the-ride/firebase/client";
 import { useTranslation } from "@the-ride/hooks";
 import {
   DRIVER_LOCATION_WRITE_THROTTLE_MS,
+  PaymentMethodType,
+  PaymentStatus,
   TripStatus,
   type Trip,
   type TripRequest,
 } from "@the-ride/types";
-import { canTransitionTrip } from "@the-ride/utils";
+import { canTransitionTrip, driverEarningsFromFare } from "@the-ride/utils";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Linking, StyleSheet, View } from "react-native";
+import { Alert, Linking, StyleSheet, View } from "react-native";
 
 import { AppButton } from "@/components/AppButton";
 import { AppCard } from "@/components/AppCard";
@@ -185,7 +188,11 @@ export default function ActiveRideScreen() {
     setBusy(true);
     try {
       if (next.to === TripStatus.COMPLETED) {
-        await completeTrip(driverFunctions, trip.id);
+        const { settlement } = await completeTrip(driverFunctions, trip.id);
+        // Payments — this screen unmounts as soon as the trip leaves the
+        // active set, so the cash/PayPal instruction goes in an Alert that
+        // survives the redirect to Home.
+        Alert.alert(t("payments.rideCompletedTitle"), describeSettlement(settlement, trip, t));
         try {
           await setAvailableAfterTripCompletion(driverFirestore, driver.id);
         } catch {
@@ -327,3 +334,23 @@ const styles = StyleSheet.create({
   completedBlock: { gap: 2, marginTop: spacing.sm },
   actions: { gap: spacing.sm, marginTop: "auto" },
 });
+
+/** Payments — the driver's after-ride instruction: cash to collect, or PayPal confirmation. */
+function describeSettlement(
+  settlement: TripSettlementSummary | null,
+  trip: Trip,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  if (settlement?.paymentStatus === PaymentStatus.FAILED) return t("payments.settlementFailed");
+  const method = settlement?.paymentMethod ?? trip.paymentMethod ?? PaymentMethodType.CASH;
+  if (method === PaymentMethodType.PAYPAL) {
+    const earnings =
+      settlement?.driverEarnings ??
+      (trip.finalFareBreakdown ? driverEarningsFromFare(trip.finalFareBreakdown) : undefined);
+    return t("payments.paidByPaypal", {
+      amount: earnings !== undefined ? `$${earnings.toFixed(2)}` : "—",
+    });
+  }
+  const cash = settlement?.cashToCollect ?? trip.fareAmount;
+  return t("payments.collectCash", { amount: cash !== undefined ? `$${cash.toFixed(2)}` : "—" });
+}

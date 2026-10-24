@@ -26,9 +26,10 @@
 
 ## Phase 3 — Money
 
-- [ ] Payments (card on file, charge on trip completion)
-- [ ] Wallet (passenger/driver balances, ledger)
-- [ ] Payouts to drivers
+- [x] Payments: cash + PayPal (authorize at booking, capture at completion) — see [payments.md](payments.md)
+- [x] Driver wallet + ledger (cash commission owed, PayPal earnings credited, admin cash deposits)
+- [ ] Payouts to drivers (PayPal Payouts API — today recorded manually as a negative deposit)
+- [ ] Card payments
 
 ## Phase 4 — Trust & Safety
 

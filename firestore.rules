@@ -256,6 +256,7 @@ service cloud.firestore {
           && request.resource.data.get('actualDurationSeconds', null) == resource.data.get('actualDurationSeconds', null)
           && request.resource.data.get('finalFareBreakdown', null) == resource.data.get('finalFareBreakdown', null)
           && request.resource.data.get('fareAmount', null) == resource.data.get('fareAmount', null)
+          && request.resource.data.get('paymentMethod', null) == resource.data.get('paymentMethod', null)
           && (
             resource.data.driverId == request.auth.uid
             || (
@@ -314,7 +315,16 @@ service cloud.firestore {
       // `assignedDriverId` in the same step it creates the offer, so it's
       // already present by the time a driver would try to read this.
       allow read: if isSignedIn() && (resource.data.passengerId == request.auth.uid || resource.data.assignedDriverId == request.auth.uid || hasRole(['admin', 'super_admin', 'dispatcher']));
-      allow create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid;
+      // Payments (docs/payments.md) — a cash booking goes straight to
+      // `searching_driver` (dispatch starts on create); a PayPal booking
+      // must start at `confirmed` and is only released into dispatch by
+      // the `authorizePaypalOrder` function once the fare is held, so a
+      // client can't create a PayPal ride that skips payment.
+      allow create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid
+        && (
+          (request.resource.data.get('paymentMethod', 'cash') == 'cash' && request.resource.data.status == 'searching_driver')
+          || (request.resource.data.get('paymentMethod', 'cash') == 'paypal' && request.resource.data.status == 'confirmed')
+        );
       // Owners may cancel their own request (status -> cancelled only);
       // every other transition (matched/assigned/etc.) is dispatch-engine-only.
       allow update: if hasRole(['admin', 'super_admin', 'dispatcher'])
@@ -365,8 +375,9 @@ service cloud.firestore {
     // --- payments: payments ---
 
     match /payments/{paymentId} {
-      allow read: if isSignedIn() && (resource.data.payerId == request.auth.uid || isAdmin());
-      // Captures/refunds are backend-authoritative (PaymentsRepository).
+      allow read: if isSignedIn() && (resource.data.payerId == request.auth.uid || resource.data.get('driverId', null) == request.auth.uid || isAdmin());
+      // Captures/refunds are backend-authoritative — every write goes
+      // through functions/src/payments (see docs/payments.md).
       allow write: if isAdmin();
     }
 

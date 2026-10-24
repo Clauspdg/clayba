@@ -1,15 +1,22 @@
-import { createTripRequest } from "@the-ride/firebase/client";
+import {
+  cancelTripRequest,
+  createTripRequest,
+  startPaypalCheckout,
+} from "@the-ride/firebase/client";
 import { useAuth, useTranslation } from "@the-ride/hooks";
+import { PaymentMethodType } from "@the-ride/types";
 import { router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 
 import { AppButton } from "@/components/AppButton";
 import { AppFareBreakdown } from "@/components/AppFareBreakdown";
+import { AppPaymentMethodPicker } from "@/components/AppPaymentMethodPicker";
 import { AppStatusView } from "@/components/AppStatusView";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
-import { passengerFirestore } from "@/lib/firebase-client";
+import { passengerFirestore, passengerFunctions } from "@/lib/firebase-client";
+import { isFailedPrecondition } from "@/lib/callable-errors";
 import { useBookingStore } from "@/stores/booking-store";
 import { spacing } from "@/theme/tokens";
 
@@ -25,6 +32,8 @@ export default function ConfirmBookingScreen() {
     vehicleCategoryId,
     selectedCategory,
     fareEstimate,
+    paymentMethod,
+    setPaymentMethod,
     confirm,
     cancel,
   } = useBookingStore();
@@ -46,8 +55,9 @@ export default function ConfirmBookingScreen() {
       return;
     setSubmitting(true);
     setError(null);
+    let requestId: string | null = null;
     try {
-      const requestId = await createTripRequest(passengerFirestore, {
+      requestId = await createTripRequest(passengerFirestore, {
         passengerId: session.uid,
         pickup,
         dropoff: destination,
@@ -56,11 +66,31 @@ export default function ConfirmBookingScreen() {
         estimatedDistanceMeters: route.distanceMeters,
         estimatedDurationSeconds: route.durationSeconds,
         fareEstimate,
+        paymentMethod,
       });
       confirm(requestId);
+      if (paymentMethod === PaymentMethodType.PAYPAL) {
+        // PayPal opens in the browser; its return page deep-links back to
+        // the `paypal/return` route, which authorizes and then shows the search.
+        const { approveUrl } = await startPaypalCheckout(passengerFunctions, requestId, "app");
+        await Linking.openURL(approveUrl);
+        setSubmitting(false);
+        return;
+      }
       router.push("/booking/searching");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("booking.permissionErrorBody"));
+      // Never leave a PayPal booking stranded at `confirmed` if checkout didn't start.
+      if (requestId && paymentMethod === PaymentMethodType.PAYPAL) {
+        await cancelTripRequest(passengerFirestore, requestId).catch(() => undefined);
+      }
+      const notConfigured = isFailedPrecondition(err);
+      setError(
+        notConfigured
+          ? t("payments.notConfigured")
+          : err instanceof Error
+            ? err.message
+            : t("booking.permissionErrorBody"),
+      );
       setSubmitting(false);
     }
   }
@@ -106,6 +136,12 @@ export default function ConfirmBookingScreen() {
         }}
       />
 
+      <AppPaymentMethodPicker
+        value={paymentMethod}
+        onChange={setPaymentMethod}
+        disabled={submitting}
+      />
+
       {error && (
         <AppText variant="caption" tone="danger">
           {error}
@@ -114,7 +150,11 @@ export default function ConfirmBookingScreen() {
 
       <View style={styles.actions}>
         <AppButton
-          label={t("booking.confirmBooking")}
+          label={
+            paymentMethod === PaymentMethodType.PAYPAL
+              ? t("payments.continueToPaypal")
+              : t("booking.confirmBooking")
+          }
           isLoading={submitting}
           onPress={() => void handleConfirm()}
         />

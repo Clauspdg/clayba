@@ -17,6 +17,7 @@ export * from "./trips";
 export * from "./driver-trips";
 export * from "./ride-shares";
 export * from "./wallet";
+export * from "./payments";
 export * from "./notifications";
 export * from "./support-tickets";
 export * from "./user-profile";

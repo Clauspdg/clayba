@@ -1,14 +1,16 @@
 "use client";
 
 import { clearBookingDraft, loadBookingDraft, saveBookingDraft } from "@/lib/booking-draft";
-import { webFirestore } from "@/lib/firebase-client";
+import { webFirestore, webFunctions } from "@/lib/firebase-client";
 import { estimateFareForCategory, resolveRoute, type RouteEstimate } from "@/lib/fare-estimate";
 import { getMapProvider } from "@/lib/map-provider";
 import { getDefaultScheduleSlot, getTodayDateString } from "@/lib/schedule-defaults";
 import {
+  cancelTripRequest,
   createTripRequest,
   getGlobalSettings,
   getOrCreatePassengerProfile,
+  startPaypalCheckout,
   subscribeFavoritePlaces,
 } from "@the-ride/firebase/client";
 import {
@@ -29,12 +31,15 @@ import {
   useTranslation,
 } from "@the-ride/ui";
 import { useAuth, useDebouncedValue } from "@the-ride/hooks";
-import type {
-  AddressSuggestion,
-  FavoritePlace,
-  GeoLocation,
-  PlatformSettings,
-  VehicleCategory,
+import {
+  BOOKABLE_PAYMENT_METHODS,
+  PaymentMethodType,
+  type AddressSuggestion,
+  type BookablePaymentMethod,
+  type FavoritePlace,
+  type GeoLocation,
+  type PlatformSettings,
+  type VehicleCategory,
 } from "@the-ride/types";
 import { FirebaseError } from "firebase/app";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
@@ -153,6 +158,7 @@ function BookRidePageContent() {
     () => initialDraft?.selectedCategoryId ?? null,
   );
   const [confirming, setConfirming] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<BookablePaymentMethod>(PaymentMethodType.CASH);
 
   // BOOKING-UX-01 — destination autocomplete. `lastAppliedDestinationRef`
   // tracks whatever text a selection (or a resolved geocode) last produced,
@@ -467,8 +473,9 @@ function BookRidePageContent() {
     if (!fareEstimate) return;
 
     setConfirming(true);
+    let requestId: string | null = null;
     try {
-      await createTripRequest(webFirestore, {
+      requestId = await createTripRequest(webFirestore, {
         passengerId: session.uid,
         pickup: pickup.location,
         dropoff: destination.location,
@@ -478,12 +485,31 @@ function BookRidePageContent() {
         estimatedDistanceMeters: route.distanceMeters,
         estimatedDurationSeconds: route.durationSeconds,
         fareEstimate,
+        paymentMethod,
       });
+      if (paymentMethod === PaymentMethodType.PAYPAL) {
+        // The request waits at `confirmed` — dispatch only starts once
+        // /payment/paypal/return has the fare authorized.
+        const { approveUrl } = await startPaypalCheckout(webFunctions, requestId, "web");
+        clearBookingDraft();
+        toast({ title: t("payments.redirectingToPaypal") });
+        window.location.assign(approveUrl);
+        return;
+      }
       clearBookingDraft();
       toast({ variant: "success", title: t("booking.confirmed") });
       router.push("/rides");
     } catch (err) {
-      toast({ variant: "danger", title: describeBookingError(err, t) });
+      // Never leave a PayPal booking stranded at `confirmed` if checkout didn't start.
+      if (requestId && paymentMethod === PaymentMethodType.PAYPAL) {
+        await cancelTripRequest(webFirestore, requestId).catch(() => undefined);
+      }
+      const notConfigured =
+        err instanceof FirebaseError && err.code === "functions/failed-precondition";
+      toast({
+        variant: "danger",
+        title: notConfigured ? t("payments.notConfigured") : describeBookingError(err, t),
+      });
     } finally {
       setConfirming(false);
     }
@@ -842,13 +868,46 @@ function BookRidePageContent() {
               );
             })()}
 
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+              {t("payments.methodLabel")}
+            </legend>
+            <div className="tablet:grid-cols-2 grid gap-3">
+              {BOOKABLE_PAYMENT_METHODS.map((method) => {
+                const selected = paymentMethod === method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setPaymentMethod(method)}
+                    className="text-left"
+                  >
+                    <Card className={selected ? "border-brand ring-brand ring-2" : ""}>
+                      <CardContent className="flex flex-col gap-1 p-4">
+                        <span className="font-medium text-neutral-900 dark:text-neutral-50">
+                          {t(`payments.${method}`)}
+                        </span>
+                        <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                          {t(`payments.${method}Hint`)}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
           <Button
             onClick={() => void handleConfirm()}
             isLoading={confirming}
             disabled={!selectedCategoryId || scheduleMode === "later"}
             className="self-start"
           >
-            {t("booking.confirmBooking")}
+            {paymentMethod === PaymentMethodType.PAYPAL
+              ? t("payments.continueToPaypal")
+              : t("booking.confirmBooking")}
           </Button>
         </div>
       )}

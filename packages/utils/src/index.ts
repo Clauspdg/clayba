@@ -3,5 +3,6 @@
 export * from "./authentication";
 export * from "./drivers";
 export * from "./experience";
+export * from "./payments";
 export * from "./responsive";
 export * from "./trips";
