@@ -45,3 +45,16 @@ What changed is presentation:
 - Nothing about "Trusted Contact," trip sharing, live GPS coordinates,
   SOS, or Trip PIN was newly depicted as available, since none of them
   are backed by real functionality today.
+
+## Update — SOS is now real
+
+The "SOS / emergency button" row above is now stale: a real alert
+pipeline shipped after this audit was written. Pressing "Send SOS Alert"
+in the Safety panel (web, passenger-app, and now driver-app, which
+previously had no Safety UI at all) calls the `triggerSosAlert` Cloud
+Function, which records a staff-visible `sosIncidents` document
+(trip, who triggered it, best-effort location) that admin/dispatch see
+live at `/emergency` and can acknowledge/resolve. "Trusted Contact,"
+trip sharing (`ShareRideControl`/`createRideShare`), live GPS
+coordinates, and Trip PIN remain as described above — this update
+covers only the SOS row.

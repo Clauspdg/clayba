@@ -1,12 +1,30 @@
 import { Ionicons } from "@expo/vector-icons";
-import { getGlobalSettings, subscribeEmergencyContacts } from "@the-ride/firebase/client";
+import {
+  getGlobalSettings,
+  subscribeEmergencyContacts,
+  triggerSosAlert,
+} from "@the-ride/firebase/client";
 import { useAuth, useTranslation } from "@the-ride/hooks";
-import type { EmergencyContact, Trip } from "@the-ride/types";
+import {
+  DEFAULT_EMERGENCY_NUMBER,
+  EMERGENCY_NUMBER_BY_COUNTRY,
+  type EmergencyContact,
+  type Trip,
+} from "@the-ride/types";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
-import { passengerFirestore } from "@/lib/firebase-client";
+import { passengerFirestore, passengerFunctions } from "@/lib/firebase-client";
+import { getCurrentLocation } from "@/lib/location-tracking";
 import { usePalette } from "@/theme/usePalette";
 import { radius, spacing } from "@/theme/tokens";
 
@@ -14,30 +32,14 @@ import { AppButton } from "./AppButton";
 import { AppText } from "./AppText";
 import { ShareRideControl } from "./ShareRideControl";
 
-/**
- * Best-effort emergency dial number derived from the platform's real
- * `settings.country`, not a fabricated field — same small table as the web
- * app's `SafetyPanel` (duplicated here rather than shared: two call sites,
- * six rows, not worth a shared-package entry). Only the handful of
- * countries below have a confirmed single national number; everything
- * else falls back to 112 (the GSM standard emergency code) rather than
- * guessing.
- */
-const EMERGENCY_NUMBER_BY_COUNTRY: Record<string, string> = {
-  US: "911",
-  CA: "911",
-  GB: "999",
-  FR: "112",
-  DE: "112",
-};
-const DEFAULT_EMERGENCY_NUMBER = "112";
+type SosState = "idle" | "sending" | "sent" | "error";
 
 /**
  * Native port of the web app's `SafetyPanel` — same `ShareRideControl`
  * reused verbatim, same real `emergencyContacts` collection. "Call
- * Emergency Services" is a genuine `tel:` action, never a simulated alert
- * — no automatic dispatch/notification system exists anywhere in this
- * codebase, and this must not pretend one does.
+ * Emergency Services" is a genuine `tel:` action. "Send SOS Alert" is now
+ * ALSO real (`triggerSosAlert`) — it records a staff-visible incident
+ * dispatch/admin can see live in the admin app.
  */
 export function SafetyPanel({ trip }: { trip: Trip }) {
   const { t } = useTranslation();
@@ -46,6 +48,7 @@ export function SafetyPanel({ trip }: { trip: Trip }) {
   const [open, setOpen] = useState(false);
   const [contacts, setContacts] = useState<EmergencyContact[] | null>(null);
   const [emergencyNumber, setEmergencyNumber] = useState(DEFAULT_EMERGENCY_NUMBER);
+  const [sosState, setSosState] = useState<SosState>("idle");
 
   useEffect(() => {
     if (!open || !session) return;
@@ -70,6 +73,25 @@ export function SafetyPanel({ trip }: { trip: Trip }) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) setSosState("idle");
+  }, [open]);
+
+  async function handleSendSos() {
+    setSosState("sending");
+    const reading = await getCurrentLocation().catch(() => null);
+    try {
+      await triggerSosAlert(
+        passengerFunctions,
+        trip.id,
+        reading ? { lat: reading.lat, lng: reading.lng, accuracy: reading.accuracy } : undefined,
+      );
+      setSosState("sent");
+    } catch {
+      setSosState("error");
+    }
+  }
+
   return (
     <>
       <AppButton
@@ -89,6 +111,51 @@ export function SafetyPanel({ trip }: { trip: Trip }) {
           </View>
 
           <ScrollView contentContainerStyle={styles.content}>
+            {sosState === "sent" ? (
+              <View
+                style={[
+                  styles.emergencyRow,
+                  { backgroundColor: palette.successBg, borderColor: palette.success },
+                ]}
+              >
+                <Ionicons name="checkmark-circle" size={20} color={palette.success} />
+                <View style={styles.flex}>
+                  <AppText variant="body" style={styles.bold}>
+                    {t("rideHistory.safety.sosSentTitle")}
+                  </AppText>
+                  <AppText variant="caption" tone="muted">
+                    {t("rideHistory.safety.sosSentBody")}
+                  </AppText>
+                </View>
+              </View>
+            ) : (
+              <View style={[styles.section, { borderColor: palette.border }]}>
+                <Pressable
+                  onPress={() => void handleSendSos()}
+                  disabled={sosState === "sending"}
+                  style={[styles.sosButton, { backgroundColor: palette.danger }]}
+                >
+                  {sosState === "sending" ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Ionicons name="warning" size={18} color="#FFFFFF" />
+                  )}
+                  <AppText variant="body" style={styles.sosButtonLabel}>
+                    {sosState === "sending"
+                      ? t("rideHistory.safety.sosSendingCta")
+                      : sosState === "error"
+                        ? t("rideHistory.safety.sosRetryCta")
+                        : t("rideHistory.safety.sosCta")}
+                  </AppText>
+                </Pressable>
+                {sosState === "error" && (
+                  <AppText variant="caption" tone="danger">
+                    {t("rideHistory.safety.sosErrorBody")}
+                  </AppText>
+                )}
+              </View>
+            )}
+
             <Pressable
               onPress={() => void Linking.openURL(`tel:${emergencyNumber}`)}
               style={[
@@ -189,6 +256,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   section: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
+  sosButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+  },
+  sosButtonLabel: { color: "#FFFFFF", fontWeight: "600" },
   contactList: { gap: spacing.xs },
   contactRow: {
     flexDirection: "row",

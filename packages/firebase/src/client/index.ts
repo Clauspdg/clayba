@@ -12,6 +12,7 @@ export * from "./contact";
 export * from "./passenger-profile";
 export * from "./favorite-places";
 export * from "./emergency-contacts";
+export * from "./sos-incidents";
 export * from "./trips";
 export * from "./driver-trips";
 export * from "./ride-shares";

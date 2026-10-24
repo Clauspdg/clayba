@@ -10,6 +10,7 @@ import { PaymentsRepository } from "./payments.repository";
 import { ReportsRepository } from "./reports.repository";
 import { RideSharesRepository } from "./ride-shares.repository";
 import { SettingsRepository, VehicleCategoriesRepository } from "./settings.repository";
+import { SosIncidentsRepository } from "./sos-incidents.repository";
 import { SupportTicketsRepository } from "./support.repository";
 import {
   DispatchEventsRepository,
@@ -42,6 +43,7 @@ export * from "./ride-shares.repository";
 export * from "./support.repository";
 export * from "./settings.repository";
 export * from "./emergency.repository";
+export * from "./sos-incidents.repository";
 export * from "./notifications.repository";
 export * from "./dispatch.service";
 
@@ -73,6 +75,7 @@ export function createRepositories(db: Firestore) {
   const reports = new ReportsRepository(db, auditLogs);
   const supportTickets = new SupportTicketsRepository(db, auditLogs);
   const emergencyContacts = new EmergencyContactsRepository(db);
+  const sosIncidents = new SosIncidentsRepository(db);
   const notifications = new NotificationsRepository(db);
   const offers = new RideOffersRepository(db);
   const dispatchQueue = new DispatchQueueRepository(db);
@@ -115,6 +118,7 @@ export function createRepositories(db: Firestore) {
     settings,
     vehicleCategories,
     emergencyContacts,
+    sosIncidents,
     notifications,
     rideOffers: offers,
     dispatchQueue,

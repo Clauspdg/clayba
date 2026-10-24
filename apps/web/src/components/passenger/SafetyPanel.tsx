@@ -1,7 +1,11 @@
 "use client";
 
-import { webFirestore } from "@/lib/firebase-client";
-import { getGlobalSettings, subscribeEmergencyContacts } from "@the-ride/firebase/client";
+import { webFirestore, webFunctions } from "@/lib/firebase-client";
+import {
+  getGlobalSettings,
+  subscribeEmergencyContacts,
+  triggerSosAlert,
+} from "@the-ride/firebase/client";
 import {
   Button,
   Dialog,
@@ -13,40 +17,59 @@ import {
   useTranslation,
 } from "@the-ride/ui";
 import { useAuth } from "@the-ride/hooks";
-import type { EmergencyContact, Trip } from "@the-ride/types";
+import {
+  DEFAULT_EMERGENCY_NUMBER,
+  EMERGENCY_NUMBER_BY_COUNTRY,
+  type EmergencyContact,
+  type Trip,
+} from "@the-ride/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { ShareRideControl } from "./ShareRideControl";
 
+type SosState = "idle" | "sending" | "sent" | "error";
+
 /**
- * CLAYBA P1.1, section 4 — best-effort emergency dial number derived from
- * the platform's real `settings.country` (already used for currency/tax
- * elsewhere), not a fabricated field. Deliberately small and honest: only
- * the handful of countries below have a confirmed single national number;
- * everything else falls back to 112 (the GSM standard emergency code,
- * functional on most modern phones regardless of carrier/country, though
- * not a guarantee of correct routing everywhere) rather than guessing.
+ * Best-effort one-shot location for the SOS alert — mirrors the
+ * `navigator.geolocation.getCurrentPosition` shape already used in
+ * `apps/web/src/app/(driver)/driver/page.tsx`, but with a shorter timeout
+ * (SOS is urgent) and, critically, NEVER rejects: permission denial or an
+ * unsupported browser resolves `undefined` so the alert is always sent,
+ * with or without a location fix.
  */
-const EMERGENCY_NUMBER_BY_COUNTRY: Record<string, string> = {
-  US: "911",
-  CA: "911",
-  GB: "999",
-  FR: "112",
-  DE: "112",
-};
-const DEFAULT_EMERGENCY_NUMBER = "112";
+function getBestEffortLocation(): Promise<
+  { lat: number; lng: number; accuracy?: number } | undefined
+> {
+  return new Promise((resolve) => {
+    if (!("geolocation" in navigator)) {
+      resolve(undefined);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }),
+      () => resolve(undefined),
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 0 },
+    );
+  });
+}
 
 /**
  * CLAYBA P1.1, section 4 — the SOS/Safety panel. `createRideShare`'s real
  * flow (`ShareRideControl`) is reused verbatim, not re-implemented.
- * "Call Emergency Services" is a genuine `tel:` action, never a simulated
- * alert (no automatic dispatch/notification system exists — this sprint
- * explicitly forbids pretending one does). "Trusted Contact" is NOT a
- * placeholder: `emergencyContacts` (Sprint 6) is a real, owner-writable
- * Firestore collection already manageable at /profile — shown here for
- * real, with an honest "none saved yet" state (not fabricated data) when
- * empty.
+ * "Call Emergency Services" is a genuine `tel:` action. "Send SOS Alert"
+ * is now ALSO real (`triggerSosAlert`) — it records a staff-visible
+ * incident dispatch/admin can see live at `/emergency`, closing the gap
+ * this comment used to document ("no automatic dispatch/notification
+ * system exists"). "Trusted Contact" is NOT a placeholder:
+ * `emergencyContacts` (Sprint 6) is a real, owner-writable Firestore
+ * collection already manageable at /profile — shown here for real, with
+ * an honest "none saved yet" state (not fabricated data) when empty.
  */
 export function SafetyPanel({ trip }: { trip: Trip }) {
   const { t } = useTranslation();
@@ -54,6 +77,7 @@ export function SafetyPanel({ trip }: { trip: Trip }) {
   const [open, setOpen] = useState(false);
   const [contacts, setContacts] = useState<EmergencyContact[] | null>(null);
   const [emergencyNumber, setEmergencyNumber] = useState(DEFAULT_EMERGENCY_NUMBER);
+  const [sosState, setSosState] = useState<SosState>("idle");
 
   useEffect(() => {
     if (!open || !session) return;
@@ -78,6 +102,21 @@ export function SafetyPanel({ trip }: { trip: Trip }) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) setSosState("idle");
+  }, [open]);
+
+  async function handleSendSos() {
+    setSosState("sending");
+    const location = await getBestEffortLocation();
+    try {
+      await triggerSosAlert(webFunctions, trip.id, location);
+      setSosState("sent");
+    } catch {
+      setSosState("error");
+    }
+  }
+
   return (
     <>
       <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
@@ -92,6 +131,38 @@ export function SafetyPanel({ trip }: { trip: Trip }) {
           </DialogHeader>
 
           <div className="flex flex-col gap-4">
+            {sosState === "sent" ? (
+              <div className="border-success/30 bg-success/5 flex items-center gap-3 rounded-xl border p-4">
+                <Icon name="checkCircle" size={20} className="text-success" />
+                <div>
+                  <Text weight="semibold">{t("rideHistory.safety.sosSentTitle")}</Text>
+                  <Text size="xs" tone="muted">
+                    {t("rideHistory.safety.sosSentBody")}
+                  </Text>
+                </div>
+              </div>
+            ) : (
+              <div className="border-danger/30 bg-danger/5 flex flex-col gap-2 rounded-xl border p-4">
+                <Button
+                  variant="destructive"
+                  onClick={() => void handleSendSos()}
+                  disabled={sosState === "sending"}
+                >
+                  <Icon name="alertCircle" size={16} className="mr-1.5" />
+                  {sosState === "sending"
+                    ? t("rideHistory.safety.sosSendingCta")
+                    : sosState === "error"
+                      ? t("rideHistory.safety.sosRetryCta")
+                      : t("rideHistory.safety.sosCta")}
+                </Button>
+                {sosState === "error" && (
+                  <Text size="xs" className="text-danger">
+                    {t("rideHistory.safety.sosErrorBody")}
+                  </Text>
+                )}
+              </div>
+            )}
+
             <a
               href={`tel:${emergencyNumber}`}
               className="border-danger/30 bg-danger/5 text-danger flex items-center gap-3 rounded-xl border p-4 font-medium transition-colors hover:bg-red-50 dark:hover:bg-red-950"

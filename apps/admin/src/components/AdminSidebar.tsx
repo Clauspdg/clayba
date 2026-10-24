@@ -66,6 +66,7 @@ export function AdminSidebar() {
       items: withActive([
         { label: t("admin.sidebar.reports"), href: "/reports", icon: "flag" },
         { label: t("admin.sidebar.support"), href: "/support", icon: "lifeBuoy" },
+        { label: t("admin.sidebar.emergency"), href: "/emergency", icon: "alertTriangle" },
       ]),
     },
     {

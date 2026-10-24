@@ -97,6 +97,14 @@
       ]
     },
     {
+      "collectionGroup": "rideOffers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "rideShares",
       "queryScope": "COLLECTION",
       "fields": [

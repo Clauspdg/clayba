@@ -39,6 +39,20 @@ export interface DriverLocationReading {
   accuracy?: number;
 }
 
+/** One-shot read of the driver's current position — used to enrich an SOS alert with a location fix, same shape as the passenger app's `getCurrentLocation`. */
+export async function getCurrentLocation(): Promise<DriverLocationReading | null> {
+  const permission = await requestDriverLocationPermission();
+  if (permission !== "granted") return null;
+  const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  return {
+    lat: position.coords.latitude,
+    lng: position.coords.longitude,
+    heading: position.coords.heading ?? undefined,
+    speed: position.coords.speed ?? undefined,
+    accuracy: position.coords.accuracy ?? undefined,
+  };
+}
+
 /**
  * CLAYBA P2 — same throttled foreground-watch pattern as the web driver
  * app's `current-ride/page.tsx` (`LOCATION_WRITE_THROTTLE_MS`), reused
